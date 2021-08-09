@@ -1,7 +1,7 @@
 /**
  * @author yuanlu
  */
-package yuan.plugins.mould.util.command;
+package yuan.plugins.serverDo.util.command;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -12,7 +12,7 @@ import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
 
 import lombok.NonNull;
-import yuan.plugins.mould.Main;
+import yuan.plugins.serverDo.bukkit.Main;
 
 /**
  * 代表一个命令，在用户输入时执行各种任务.<br>

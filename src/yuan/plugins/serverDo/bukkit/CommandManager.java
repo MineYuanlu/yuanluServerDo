@@ -1,7 +1,7 @@
 /**
  * @author yuanlu
  */
-package yuan.plugins.mould;
+package yuan.plugins.serverDo.bukkit;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,11 +13,11 @@ import org.bukkit.command.CommandSender;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import yuan.plugins.mould.util.command.AbstractCommand;
-import yuan.plugins.mould.util.command.CheckSenderCommand;
-import yuan.plugins.mould.util.command.FilterCommand;
-import yuan.plugins.mould.util.command.RootCommand;
-import yuan.plugins.mould.util.command.SwitchCommand;
+import yuan.plugins.serverDo.util.command.AbstractCommand;
+import yuan.plugins.serverDo.util.command.CheckSenderCommand;
+import yuan.plugins.serverDo.util.command.FilterCommand;
+import yuan.plugins.serverDo.util.command.RootCommand;
+import yuan.plugins.serverDo.util.command.SwitchCommand;
 
 /**
  * 命令管理器<br>
@@ -43,7 +43,7 @@ public final class CommandManager implements MESSAGE {
 	 * 2: 优化 {@link SwitchCommand} tab提示, 完善用户体验 <br>
 	 * 3: 修正 {@link CheckSenderCommand}的提示信息BUG, 添加日志doc<br>
 	 * 4: 修改 {@link FilterCommand}(及其子类) 处理结构, 检测tab<br>
-	 * 5: 修改消息类, 将 {@link String}改为 {@link yuan.plugins.mould.MESSAGE.Msg}
+	 * 5: 修改消息类, 将 {@link String}改为 {@link yuan.plugins.serverDo.bukkit.MESSAGE.Msg}
 	 */
 	public static final long   VERSION_NUMBER = 5;
 

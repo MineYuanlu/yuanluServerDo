@@ -1,0 +1,243 @@
+package yuan.plugins.serverDo;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.DelayQueue;
+import java.util.concurrent.Delayed;
+import java.util.concurrent.TimeUnit;
+
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.NonNull;
+import lombok.Value;
+import lombok.val;
+
+/**
+ * 等待任务的维护清理
+ * 
+ * @author yuanlu
+ *
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class WaitMaintain {
+	public static long maxTime = 10 * 1000;
+
+	/**
+	 * 延时监听元素
+	 * 
+	 * @author yuanlu
+	 *
+	 */
+	@Value
+	@EqualsAndHashCode(callSuper = true)
+	@SuppressWarnings("rawtypes")
+	private static final class CElement extends Element {
+
+		/** 图 */
+		Collection	set;
+
+		/** 键 */
+		Object		k;
+
+		@SuppressWarnings("javadoc")
+		public CElement(long expire, Collection set, Object k, Runnable clearListener) {
+			super(expire, clearListener);
+			this.set	= set;
+			this.k		= k;
+		}
+
+		/** 处理 */
+		@Override
+		void handle() {
+			if (set.remove(k) && clearListener != null) clearListener.run();
+		}
+	}
+
+	/**
+	 * 延时监听元素
+	 * 
+	 * @author yuanlu
+	 *
+	 */
+	@AllArgsConstructor
+	private static abstract class Element implements Delayed {
+		/** 单位 */
+		private static final TimeUnit	U	= TimeUnit.MILLISECONDS;
+
+		/** 到期时间 */
+		long							expire;
+		/** 清理监听 */
+		Runnable						clearListener;
+
+		@Override
+		public int compareTo(Delayed o) {
+			return Long.compare(getDelay(U), o.getDelay(U));
+		}
+
+		@Override
+		public long getDelay(TimeUnit unit) {
+			return unit.convert(this.expire - System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+		}
+
+		/** 处理 */
+		abstract void handle();
+
+	}
+
+	/**
+	 * 延时监听元素
+	 * 
+	 * @author yuanlu
+	 *
+	 */
+	@Value
+	@EqualsAndHashCode(callSuper = true)
+	@SuppressWarnings("rawtypes")
+	private static final class MapElement extends Element {
+
+		/** 图 */
+		Map		map;
+
+		/** 键 */
+		Object	k;
+
+		/** 值 */
+		Object	old;
+
+		@SuppressWarnings("javadoc")
+		public MapElement(long expire, Map map, Object k, Object old, Runnable clearListener) {
+			super(expire, clearListener);
+			this.map	= map;
+			this.k		= k;
+			this.old	= old;
+		}
+
+		/** 处理 */
+		@Override
+		void handle() {
+			if (map.remove(k, old) && clearListener != null) clearListener.run();
+		}
+	}
+
+	/**
+	 * 延时监听元素
+	 * 
+	 * @author yuanlu
+	 *
+	 */
+	@Value
+	@EqualsAndHashCode(callSuper = true)
+	private static final class NElement extends Element {
+		/** 原始值 */
+		long	originalLong;
+		/** 原始值 */
+		double	originalDouble;
+		/** 更新值 */
+		Number	num;
+
+		@SuppressWarnings("javadoc")
+		public NElement(long expire, Runnable clearListener, Number num) {
+			super(expire, clearListener);
+			this.num			= num;
+			this.originalDouble	= num.doubleValue();
+			this.originalLong	= num.longValue();
+		}
+
+		@Override
+		void handle() {
+			if (num.doubleValue() == originalDouble && //
+					num.longValue() == originalLong)
+				clearListener.run();
+		}
+
+	}
+
+	/** 队列 */
+	private static final DelayQueue<Element> QUEUE = new DelayQueue<>();
+	static {
+		new Thread("YSH-" + WaitMaintain.class) {
+			@Override
+			public void run() {
+				while (true) {
+					try {
+						val ele = QUEUE.take();
+						if (ele != null) ele.handle();
+					} catch (Throwable e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}.start();
+	}
+
+	/**
+	 * 将键放入set,并设置最长超时时间, 超时后将被清理
+	 * 
+	 * @param <K> 数据类型
+	 * @param set 图
+	 * @param k   键
+	 * @return return
+	 */
+	public static final <K> boolean add(Collection<K> set, K k) {
+		return add(set, k, null);
+	}
+
+	/**
+	 * 将键放入set,并设置最长超时时间, 超时后将被清理
+	 * 
+	 * @param <K>           数据类型
+	 * @param set           图
+	 * @param k             键
+	 * @param clearListener 清理监听
+	 * @return return
+	 */
+	public static final <K> boolean add(Collection<K> set, K k, Runnable clearListener) {
+		val r = set.add(k);
+		QUEUE.add(new CElement(System.currentTimeMillis() + maxTime, set, k, clearListener));
+		return r;
+	}
+
+	/**
+	 * 监听数值, 并设置最长超时时间, 若超时后数值未发生改变则触发清理
+	 * 
+	 * @param <K>           数据类型
+	 * @param num           数值
+	 * @param clearListener 清理监听
+	 */
+	public static final <K> void monitor(@NonNull Number num, @NonNull Runnable clearListener) {
+		QUEUE.add(new NElement(System.currentTimeMillis() + maxTime, clearListener, num));
+	}
+
+	/**
+	 * 将键值对放入map,并设置最长超时时间, 超时后将被清理
+	 * 
+	 * @param <K> 数据类型
+	 * @param <V> 数据类型
+	 * @param map 图
+	 * @param k   键
+	 * @param v   值
+	 * @return return
+	 */
+	public static final <K, V> V put(Map<K, V> map, K k, V v) {
+		return put(map, k, v, null);
+	}
+
+	/**
+	 * 将键值对放入map,并设置最长超时时间, 超时后将被清理
+	 * 
+	 * @param <K>           数据类型
+	 * @param <V>           数据类型
+	 * @param map           图
+	 * @param k             键
+	 * @param v             值
+	 * @param clearListener 清理监听
+	 * @return return
+	 */
+	public static final <K, V> V put(Map<K, V> map, K k, V v, Runnable clearListener) {
+		val old = map.put(k, v);
+		QUEUE.add(new MapElement(System.currentTimeMillis() + maxTime, map, k, v, clearListener));
+		return old;
+	}
+}

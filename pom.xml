@@ -5,8 +5,8 @@
 	<groupId>bid.yuanlu</groupId>
 	<artifactId>yuanluPluginMC</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>Minecraft server plugin</name>
-	<description>minecraft's server plugin</description>
+	<name>yuanluServerDo</name>
+	<description>Provide players with a series of cross server operations</description>
 	<repositories>
 		<!-- This adds the Bstats Maven repository to the build -->
 		<!-- <repository> <id>bstats-repo</id> <url>https://repo.bstats.org/content/repositories/releases/</url> 

@@ -1,7 +1,7 @@
 /**
  * @author yuanlu
  */
-package yuan.plugins.mould.util.command;
+package yuan.plugins.serverDo.util.command;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,8 +10,8 @@ import java.util.List;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 
-import yuan.plugins.mould.MESSAGE;
-import yuan.plugins.mould.Main;
+import yuan.plugins.serverDo.bukkit.MESSAGE;
+import yuan.plugins.serverDo.bukkit.Main;
 
 /**
  * 命令<br>

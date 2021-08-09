@@ -3,7 +3,7 @@
  * user: yuanlu<br>
  * date: 星期三 12 02 2020
  */
-package yuan.plugins.mould;
+package yuan.plugins.serverDo.bukkit;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -17,6 +17,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Value;
+import yuan.plugins.serverDo.Tool;
 
 /**
  * 语言文件
@@ -24,18 +25,17 @@ import lombok.Value;
  * @author yuanlu
  *
  */
-@SuppressWarnings ("javadoc")
+@SuppressWarnings("javadoc")
 public interface MESSAGE {
 
 	@Value
-	@EqualsAndHashCode (callSuper = false)
+	@EqualsAndHashCode(callSuper = false)
 	final class JsonMsg extends Msg {
-		@NonNull
-		String json, msg;
+		@NonNull String json, msg;
 
 		public JsonMsg(@NonNull String json, String metaMsg) {
-			this.json = " "/* 减少字符串拼接次数 */ + json;
-			msg = metaMsg;
+			this.json	= " "/* 减少字符串拼接次数 */ + json;
+			msg			= metaMsg;
 		}
 
 		@Override
@@ -52,9 +52,9 @@ public interface MESSAGE {
 		@Override
 		public void send(CommandSender sender, Object... args) {
 			String cmd = this.json;
-			if (args.length != 0) try{
+			if (args.length != 0) try {
 				cmd = String.format(cmd, args);
-			} catch (IllegalArgumentException e){
+			} catch (IllegalArgumentException e) {
 				Main.getMain().getLogger().warning("错误的格式化: " + cmd + ", 参数: " + Arrays.deepToString(args));
 			}
 			Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "tellraw " + sender.getName() + cmd);
@@ -67,7 +67,7 @@ public interface MESSAGE {
 	 * @see StrMsg
 	 * @see JsonMsg
 	 */
-	@NoArgsConstructor (access = AccessLevel.PRIVATE)
+	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	abstract class Msg {
 
 		public abstract String getMsg();
@@ -107,10 +107,9 @@ public interface MESSAGE {
 
 	@AllArgsConstructor
 	@Value
-	@EqualsAndHashCode (callSuper = false)
+	@EqualsAndHashCode(callSuper = false)
 	final class StrMsg extends Msg {
-		@NonNull
-		String msg;
+		@NonNull String msg;
 
 		@Override
 		public StrMsg replace(String target, String replacement) {
@@ -126,20 +125,23 @@ public interface MESSAGE {
 		@Override
 		public void send(CommandSender sender, Object... args) {
 			String msg = this.msg;
-			if (args.length != 0) try{
+			if (args.length != 0) try {
 				msg = String.format(msg, args);
-			} catch (IllegalArgumentException e){
+			} catch (IllegalArgumentException e) {
 				Main.getMain().getLogger().warning("错误的格式化: " + msg + ", 参数: " + Arrays.deepToString(args));
 			}
 			sender.sendMessage(msg);
 		}
 	}
 
-	Msg NO_PERMISSION = mes("no-permission");
+	Msg	NO_PERMISSION	= mes("no-permission");
 
-	Msg CMD_HELP      = mes("cmd.help");
+	Msg	CMD_HELP		= mes("cmd.help");
 
-	Msg NOT_PLAYER    = mes("not-player");
+	Msg	NOT_PLAYER		= mes("not-player");
+
+	Msg	M_TIME_OUT		= mes("basic.message-time-out");
+	Msg	BAD_VERSION		= mes("basic.version-bad");
 
 	static Msg mes(String node) {
 		return Main.getMain().mes(node);

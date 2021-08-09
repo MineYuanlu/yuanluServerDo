@@ -1,4 +1,4 @@
-package yuan.plugins.mould;
+package yuan.plugins.serverDo.bukkit;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -14,13 +14,15 @@ import java.util.List;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import lombok.Getter;
 import lombok.val;
-import yuan.plugins.mould.MESSAGE.Msg;
+import yuan.plugins.serverDo.ShareData;
+import yuan.plugins.serverDo.bukkit.MESSAGE.Msg;
 
 /**
  * 主类
@@ -30,25 +32,33 @@ import yuan.plugins.mould.MESSAGE.Msg;
  */
 public class Main extends JavaPlugin implements Listener {
 
-	/** 插件名称 用于信息提示 模板自动生成 */
-	public final static String     SHOW_NAME = "元路模板插件";
+	/** 语言文件丢失时显示的信息 模板自动生成 */
+	public static final String		LANG_LOST	= "§c§l[语言文件缺失]§4§l(完全损坏)§c§l节点:%node%";
 
 	/** 语言文件丢失时显示的信息 模板自动生成 */
-	public static final String     LANG_LOST = "§c§l[语言文件缺失]§4§l(完全损坏)§c§l节点:%node%";
-
-	/** 语言文件丢失时显示的信息 模板自动生成 */
-	private static String          langLost;
+	private static String			langLost;
 
 	/** 插件前缀 模板自动生成 */
-	private static String          prefix    = "";
+	private static String			prefix		= "";
 
 	/** 插件主体 */
-	private static @Getter Main    main;
+	private static @Getter Main		main;
 
 	/** 调试模式 */
-	private static @Getter boolean DEBUG;
+	private static @Getter boolean	DEBUG;
 	/** 强制替换文件 */
-	private static @Getter boolean FORECE_OUT_FILE;
+	private static @Getter boolean	FORECE_OUT_FILE;
+
+	/**
+	 * 向玩家(BC端)发送数据
+	 * 
+	 * @param player 玩家
+	 * @param data   数据
+	 */
+	public static void send(Player player, byte[] data) {
+		if (isDEBUG()) getMain().getLogger().info("发送: " + player.getName() + " " + Arrays.toString(data));
+		player.sendPluginMessage(getMain(), ShareData.BC_CHANNEL, data);
+	}
 
 	/**
 	 * 翻译字符串<br>
@@ -74,7 +84,7 @@ public class Main extends JavaPlugin implements Listener {
 		Metrics metrics = new Metrics(this);
 		metrics.addCustomChart(new Metrics.SimplePie("pls_count", () -> {
 			int count = 0;
-			for (Plugin pl : getServer().getPluginManager().getPlugins()){
+			for (Plugin pl : getServer().getPluginManager().getPlugins()) {
 				if (pl.getName().startsWith("yuanlu")) count++;
 			}
 			return Integer.toString(count);
@@ -84,15 +94,15 @@ public class Main extends JavaPlugin implements Listener {
 
 	/** 检查中央配置文件 */
 	private void checkYuanluConfig() {
-		val yuanluFolder = new File(getDataFolder().getParentFile(), "yuanlu");
-		val configFile = new File(yuanluFolder, "config.yml");
-		if (!configFile.exists()){
-			DEBUG = false;
-			FORECE_OUT_FILE = false;
-		} else{
+		val	yuanluFolder	= new File(getDataFolder().getParentFile(), "yuanlu");
+		val	configFile		= new File(yuanluFolder, "config.yml");
+		if (!configFile.exists()) {
+			DEBUG			= false;
+			FORECE_OUT_FILE	= false;
+		} else {
 			YamlConfiguration config = YamlConfiguration.loadConfiguration(configFile);
-			DEBUG = config.getBoolean("debug", false);
-			FORECE_OUT_FILE = config.getBoolean("force-override-file", false);
+			DEBUG			= config.getBoolean("debug", false);
+			FORECE_OUT_FILE	= config.getBoolean("force-override-file", false);
 		}
 	}
 
@@ -107,18 +117,18 @@ public class Main extends JavaPlugin implements Listener {
 	 */
 	public ArrayList<String> list(String node) {
 		node = "message." + node;
-		if (config.isList(node)){
-			List<String> l = config.getStringList(node);
-			ArrayList<String> r = new ArrayList<>(l.size());
+		if (config.isList(node)) {
+			List<String>		l	= config.getStringList(node);
+			ArrayList<String>	r	= new ArrayList<>(l.size());
 			l.forEach(x -> r.add(t(x)));
 			return r;
-		} else if (config.isString(node)){
-			String message = config.getString(node);
-			List<String> l = Arrays.asList(message.split("\n"));
-			ArrayList<String> r = new ArrayList<>(l.size());
+		} else if (config.isString(node)) {
+			String				message	= config.getString(node);
+			List<String>		l		= Arrays.asList(message.split("\n"));
+			ArrayList<String>	r		= new ArrayList<>(l.size());
 			l.forEach(x -> r.add(t(x)));
 			return r;
-		} else{
+		} else {
 			getLogger().warning("§d[LMES] §c§lcan not find list in config: " + node);
 			return new ArrayList<>(Arrays.asList(langLost.replace("%node%", node)));
 		}
@@ -132,22 +142,22 @@ public class Main extends JavaPlugin implements Listener {
 	 */
 	public YamlConfiguration loadFile(String fileName) {
 		File file = new File(getDataFolder(), fileName);
-		if (FORECE_OUT_FILE || !file.exists()) try{
+		if (FORECE_OUT_FILE || !file.exists()) try {
 			if (FORECE_OUT_FILE) file.delete();
 			saveResource(fileName, false);
-		} catch (IllegalArgumentException e){
-			try{
+		} catch (IllegalArgumentException e) {
+			try {
 				file.createNewFile();
-			} catch (IOException e1){
+			} catch (IOException e1) {
 				e1.printStackTrace();
 			}
-		} catch (Exception e1){
+		} catch (Exception e1) {
 			e1.printStackTrace();
 			return null;
 		}
-		try{
+		try {
 			return YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), "UTF-8"));
-		} catch (Exception e){
+		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}
@@ -197,26 +207,26 @@ public class Main extends JavaPlugin implements Listener {
 	public Msg mes(String node, int type) {
 		val real = node;
 		node = "message." + node;
-		boolean nop = (type & 1) > 0;
-		boolean checkEmpty = (type & 2) > 0;
-		boolean notSenior = (type & 4) > 0;
-		if (config.isConfigurationSection(node)){
+		boolean	nop			= (type & 1) > 0;
+		boolean	checkEmpty	= (type & 2) > 0;
+		boolean	notSenior	= (type & 4) > 0;
+		if (config.isConfigurationSection(node)) {
 			val msg = mes(real + ".msg", type | 4);
 			if (notSenior) return msg;
-			else{
+			else {
 				String json = config.getString(node + ".json", null);
 				if (json != null) return new MESSAGE.JsonMsg(t(json), msg.getMsg());
 			}
-		} else if (config.isList(node)){
-			List<String> l = config.getStringList(node);
-			final StringBuilder sb = new StringBuilder(32);
+		} else if (config.isList(node)) {
+			List<String>		l	= config.getStringList(node);
+			final StringBuilder	sb	= new StringBuilder(32);
 			l.forEach((x) -> {
 				if (!nop) sb.append(prefix);
 				sb.append(x).append('\n');
 			});
 			if (sb.length() > 0) sb.setLength(sb.length() - 1);
 			return checkEmpty && sb.length() < 1 ? null : new MESSAGE.StrMsg(t(sb.toString()));
-		} else if (config.isString(node)){
+		} else if (config.isString(node)) {
 			String message = config.getString(node);
 			return checkEmpty && message.isEmpty() ? null : new MESSAGE.StrMsg(t(nop ? message : (prefix + message)));
 		}
@@ -229,7 +239,7 @@ public class Main extends JavaPlugin implements Listener {
 	@Override
 	public void onDisable() {
 		// 关闭插件时自动发出
-		getLogger().info("§a" + SHOW_NAME + "-关闭");
+		getLogger().info("§a" + ShareData.SHOW_NAME + "-关闭");
 	}
 
 	@Override
@@ -239,12 +249,14 @@ public class Main extends JavaPlugin implements Listener {
 
 		// 启用插件时自动发出
 		main = this;
-		getLogger().info("§a" + SHOW_NAME + "-启动");
-		config = loadFile("config.yml");
-		prefix = config.getString("Prefix", "");
-		langLost = config.getString("message.LanguageFileIsLost", LANG_LOST);
+		getLogger().info("§a" + ShareData.SHOW_NAME + "-启动");
+		config		= loadFile("config.yml");
+		prefix		= config.getString("Prefix", "");
+		langLost	= config.getString("message.LanguageFileIsLost", LANG_LOST);
 //		getServer().getPluginManager().registerEvents(this, this); // 注册监听器
 		CommandManager.init();
+		getServer().getMessenger().registerOutgoingPluginChannel(this, ShareData.BC_CHANNEL);
+		getServer().getMessenger().registerIncomingPluginChannel(this, ShareData.BC_CHANNEL, Core.INSTANCE);
 
 	}
 
@@ -257,9 +269,9 @@ public class Main extends JavaPlugin implements Listener {
 	 */
 	public void saveFile(FileConfiguration c, String fileName) {
 		val f = new File(getDataFolder(), fileName);
-		try (val o = new OutputStreamWriter(new FileOutputStream(f), Charset.forName("UTF-8"))){
+		try (val o = new OutputStreamWriter(new FileOutputStream(f), Charset.forName("UTF-8"))) {
 			o.write(c.saveToString());
-		} catch (Throwable e){
+		} catch (Throwable e) {
 			e.printStackTrace();
 		}
 	}

@@ -3,12 +3,10 @@
  * user: yuanlu<br>
  * date: 星期日 08 12 2019
  */
-package yuan.plugins.mould;
+package yuan.plugins.serverDo;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -20,6 +18,8 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+
+
 
 /**
  * 工具类<br>
@@ -276,7 +276,7 @@ public final class Tool {
 			}
 			return sb.toString();
 		} catch (Throwable e) {
-			Main.getMain().getLogger().warning("不能翻译字符串: " + msg);
+			ShareData.getLogger().warning("不能翻译字符串: " + msg);
 			e.printStackTrace();
 			return msg;
 		}
@@ -314,26 +314,6 @@ public final class Tool {
 	public static final <E, M extends Map<E, E>> M setToMap(Set<E> set, M map) {
 		set.forEach((e) -> map.put(e, e));
 		return map;
-	}
-
-	/**
-	 * 一个测试方法: 使用反射将某实例内字段放入一个map集合内
-	 * 
-	 * @param obj 实例
-	 * @return map
-	 * @throws IllegalAccessException   Exception
-	 * @throws IllegalArgumentException Exception
-	 */
-	public static Map<String, Object> test(Object obj) throws IllegalArgumentException, IllegalAccessException {
-		HashMap<String, Object>	m	= new HashMap<String, Object>();
-		Field[]					fs	= obj.getClass().getDeclaredFields();
-		for (Field field : fs) {
-			field.setAccessible(true);
-			String	name	= field.getName();
-			Object	data	= field.get(obj);
-			m.put(name, data);
-		}
-		return m;
 	}
 
 	/**
@@ -454,7 +434,7 @@ public final class Tool {
 		if (needRun) try {
 			tr.run();
 		} catch (Throwable e) {
-			Main.getMain().getLogger().warning("尝试运行部分代码时出错:");
+			ShareData.getLogger().warning("尝试运行部分代码时出错:");
 			e.printStackTrace();
 		}
 	}
@@ -468,7 +448,7 @@ public final class Tool {
 		try {
 			tr.run();
 		} catch (Throwable e) {
-			Main.getMain().getLogger().warning("尝试运行部分代码时出错:");
+			ShareData.getLogger().warning("尝试运行部分代码时出错:");
 			e.printStackTrace();
 		}
 	}
@@ -482,7 +462,7 @@ public final class Tool {
 		try {
 			r.run();
 		} catch (Throwable e) {
-			Main.getMain().getLogger().warning("尝试运行部分代码时出错:");
+			ShareData.getLogger().warning("尝试运行部分代码时出错:");
 			e.printStackTrace();
 		}
 	}

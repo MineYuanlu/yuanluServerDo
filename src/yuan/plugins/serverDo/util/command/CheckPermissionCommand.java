@@ -1,7 +1,7 @@
 /**
  * @author yuanlu
  */
-package yuan.plugins.mould.util.command;
+package yuan.plugins.serverDo.util.command;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
