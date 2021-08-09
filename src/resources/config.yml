@@ -1,0 +1,7 @@
+Prefix: ''
+message:
+ LanguageFileIsLost: '&c&l[语言文件缺失]节点:%node%'
+ not-player: "&c您不是玩家!"
+ no-permission: "&c您没有权限"
+ cmd:
+  help: '模板内容'
