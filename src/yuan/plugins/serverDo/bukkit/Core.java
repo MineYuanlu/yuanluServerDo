@@ -34,6 +34,7 @@ import yuan.plugins.serverDo.WaitMaintain;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Core implements PluginMessageListener, MESSAGE {
+	/** 单例 */
 	public static final Core INSTANCE = new Core();
 	/*
 	 * tp,tpa,tpahere,tphere tpaccept,tpcancel

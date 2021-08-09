@@ -9,8 +9,10 @@ import java.util.concurrent.TimeUnit;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.Value;
 import lombok.val;
 
@@ -22,7 +24,8 @@ import lombok.val;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class WaitMaintain {
-	public static long maxTime = 10 * 1000;
+	/** 等待时长(ms) */
+	public static @Getter @Setter long maxTime = 10 * 1000;
 
 	/**
 	 * 延时监听元素

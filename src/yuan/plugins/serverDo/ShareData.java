@@ -37,6 +37,7 @@ public final class ShareData {
 	 * 
 	 * @param bs     byte[]
 	 * @param offset 偏移下标
+	 * @param def    默认值
 	 * @return 读取的int<br>
 	 *         null: 超出长度
 	 */

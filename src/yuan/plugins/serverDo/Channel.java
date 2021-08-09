@@ -29,7 +29,7 @@ public enum Channel {
 	/** 版本检查 */
 	VERSION_CHECK(VersionCheck.class),
 	/** 权限检查 */
-	PERMISSION(Permission.class);
+	PERMISSION(Permission.class), TP(Tp.class);
 
 	/** 数据输入 */
 	private static final class DataIn extends DataInputStream {
@@ -107,18 +107,19 @@ public enum Channel {
 		 * 
 		 * @return 输出器
 		 */
-		public static DataOut pool() {
+		public static DataOut pool(int ID) throws IOException {
 			synchronized (POOL) {
-				if (pool > 0) return POOL[--pool].reset();
+				if (pool > 0) return POOL[--pool].reset(ID);
 			}
-			return new DataOut();
+			return new DataOut(ID);
 		}
 
 		private boolean release = true;
 
-		public DataOut() {
+		public DataOut(int ID) throws IOException {
 			super(new ByteArrayOutputStream());
 			release = false;
+			writeInt(ID);
 		}
 
 		@Override
@@ -140,12 +141,10 @@ public enum Channel {
 			return ((ByteArrayOutputStream) super.out).toByteArray();
 		}
 
-		/**
-		 * @return
-		 */
-		private DataOut reset() {
+		private DataOut reset(int ID) throws IOException {
 			release = false;
 			((ByteArrayOutputStream) super.out).reset();
+			writeInt(ID);
 			return this;
 		}
 
@@ -186,8 +185,7 @@ public enum Channel {
 		/** 发送至Client */
 		@NonNull
 		public static byte[] sendC(boolean permission) {
-			try (val out = DataOut.pool()) {
-				out.writeInt(ID);
+			try (val out = DataOut.pool(ID)) {
 				out.writeBoolean(permission);
 				return out.getByte();
 			} catch (IOException e) {
@@ -198,8 +196,7 @@ public enum Channel {
 		/** 发送至Server */
 		@NonNull
 		public static byte[] sendS(@NonNull String permission) {
-			try (val out = DataOut.pool()) {
-				out.writeInt(ID);
+			try (val out = DataOut.pool(ID)) {
 				out.writeUTF(permission);
 				return out.getByte();
 			} catch (IOException e) {
@@ -209,19 +206,175 @@ public enum Channel {
 	}
 
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
-	public static final class VersionCheck extends Package {
-		/** 发送至Client */
-		@NonNull
-		public static byte[] sendC(boolean equal) {
-			try (val out = DataOut.pool()) {
-				out.writeInt(ID);
-				out.writeBoolean(equal);
+	public static final class Tp extends Package {
+		/** 解析: C1搜索用户 */
+		public static void p0C_search(byte[] buf) {
+
+		}
+
+		/** 解析: S响应用户 to C1 */
+		public static void p1S_searchResult(byte[] buf) {
+
+		}
+
+		/** 解析: C1传送请求 */
+		public static void p2C_tpReq(byte[] buf) {
+
+		}
+
+		/** 解析: S接收到请求 to C1 */
+		public static void p3S_tpReqReceive(byte[] buf) {
+
+		}
+
+		/** 解析: S传送请求(转发) to C2 */
+		public static void p4S_tpReq(byte[] buf) {
+
+		}
+
+		/** 解析: C2请求响应 */
+		public static void p5C_tpResp(byte[] buf) {
+
+		}
+
+		/** 解析: S接收到响应 to C2 */
+		public static void p6S_tpRespReceive(byte[] buf) {
+
+		}
+
+		/** 解析: S请求响应(转发) to C1 */
+		public static void p7S_tpResp(byte[] buf) {
+
+		}
+
+		/** 解析: C实际传送(二人情况)(谁移动谁发起) */
+		public static void p8C_tpReal(byte[] buf) {
+
+		}
+
+		/** 解析: C实际传送(三人情况) */
+		public static void p9C_tpThird(byte[] buf) {
+
+		}
+
+		//
+
+		/** C1搜索用户 */
+		public static byte[] s0C_search(String target) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(0);
+				out.writeUTF(target);
 				return out.getByte();
-			} catch (IOException e) {
-				throw new RuntimeException(e);
+			} catch (Exception e) {
+				throw new InternalError(e);
 			}
 		}
 
+		/** S响应用户 to C1 */
+		public static byte[] s1S_searchResult(String name, String display) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(1);
+				out.writeUTF(name);
+				out.writeUTF(display);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new InternalError(e);
+			}
+		}
+
+		/** C1传送请求 */
+		public static byte[] s2C_tpReq(String name, int type) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(2);
+				out.writeUTF(name);
+				out.writeInt(type);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new InternalError(e);
+			}
+		}
+
+		/** S接收到请求 to C1 */
+		public static byte[] s3S_tpReqReceive() {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(3);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new InternalError(e);
+			}
+		}
+
+		/** S传送请求(转发) to C2 */
+		public static byte[] s4S_tpReq(String name, String display) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(4);
+				out.writeUTF(name);
+				out.writeUTF(display);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new InternalError(e);
+			}
+		}
+
+		/** C2请求响应 */
+		public static byte[] s5C_tpResp(boolean allow) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(5);
+				out.writeBoolean(allow);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new InternalError(e);
+			}
+		}
+
+		/** S接收到响应 to C2 */
+		public static byte[] s6S_tpRespReceive() {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(6);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new InternalError(e);
+			}
+		}
+
+		/** S请求响应(转发) to C1 */
+		public static byte[] s7S_tpResp(boolean allow) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(7);
+				out.writeBoolean(allow);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new InternalError(e);
+			}
+		}
+
+		/** C实际传送(二人情况)(谁移动谁发起) */
+		public static byte[] s8C_tpReal(String target) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(8);
+				out.writeUTF(target);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new InternalError(e);
+			}
+		}
+
+		/** C实际传送(三人情况) */
+		public static byte[] s9C_tpThird(String mover, String target) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(9);
+				out.writeUTF(mover);
+				out.writeUTF(target);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new InternalError(e);
+			}
+		}
+
+	}
+
+	@NoArgsConstructor(access = AccessLevel.PRIVATE)
+	public static final class VersionCheck extends Package {
 		/** 解析Client */
 		public static boolean parseC(byte[] buf) {
 			try (DataIn in = DataIn.pool(buf)) {
@@ -234,22 +387,32 @@ public enum Channel {
 			}
 		}
 
-		/** 发送至Server */
+		/** 解析Server */
+		public static boolean parseS(@NonNull byte[] buf) {
+			try (val in = DataIn.pool(buf)) {
+				return in.readBoolean();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/** 发送至Client */
 		@NonNull
-		public static byte[] sendS() {
-			try (val out = DataOut.pool()) {
-				out.writeInt(ID);
-				out.write(VERSION);
+		public static byte[] sendC(boolean equal) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeBoolean(equal);
 				return out.getByte();
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
 		}
 
-		/** 解析Server */
-		public static boolean parseS(@NonNull byte[] buf) {
-			try (val in = DataIn.pool(buf)) {
-				return in.readBoolean();
+		/** 发送至Server */
+		@NonNull
+		public static byte[] sendS() {
+			try (val out = DataOut.pool(ID)) {
+				out.write(VERSION);
+				return out.getByte();
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -270,6 +433,19 @@ public enum Channel {
 		}
 	}
 
+	/** 所有数据包 */
+	private static final Channel CHANNELS[] = values();
+
+	/**
+	 * 解析数据包
+	 * 
+	 * @param id
+	 * @return 数据包类型
+	 */
+	public static final Channel byId(int id) {
+		return id >= 0 && id < CHANNELS.length ? CHANNELS[id] : null;
+	}
+
 	public final Class<? extends Package> target;
 
 	private Channel(Class<? extends Package> target) {
@@ -279,16 +455,5 @@ public enum Channel {
 		} catch (Exception e) {
 			throw new InternalError(e);
 		}
-	}
-
-	/** 所有数据包 */
-	private static final Channel CHANNELS[] = values();
-
-	/**解析数据包
-	 * @param id
-	 * @return 数据包类型
-	 */
-	public static final Channel byId(int id) {
-		return id >= 0 && id < CHANNELS.length ? CHANNELS[id] : null;
 	}
 }
