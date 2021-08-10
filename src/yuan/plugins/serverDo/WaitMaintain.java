@@ -24,9 +24,6 @@ import lombok.val;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class WaitMaintain {
-	/** 等待时长(ms) */
-	public static @Getter @Setter long maxTime = 10 * 1000;
-
 	/**
 	 * 延时监听元素
 	 * 
@@ -157,8 +154,14 @@ public final class WaitMaintain {
 
 	}
 
+	/** 等待时长(ms) 网络 */
+	public static @Getter @Setter long			T_Net	= 5 * 1000;
+
+	/** 等待时长(ms) 用户 */
+	public static @Getter @Setter long			T_User	= 120 * 1000;
+
 	/** 队列 */
-	private static final DelayQueue<Element> QUEUE = new DelayQueue<>();
+	private static final DelayQueue<Element>	QUEUE	= new DelayQueue<>();
 	static {
 		new Thread("YSH-" + WaitMaintain.class) {
 			@Override
@@ -178,13 +181,14 @@ public final class WaitMaintain {
 	/**
 	 * 将键放入set,并设置最长超时时间, 超时后将被清理
 	 * 
-	 * @param <K> 数据类型
-	 * @param set 图
-	 * @param k   键
+	 * @param <K>     数据类型
+	 * @param set     图
+	 * @param k       键
+	 * @param maxTime 等待时长
 	 * @return return
 	 */
-	public static final <K> boolean add(Collection<K> set, K k) {
-		return add(set, k, null);
+	public static final <K> boolean add(Collection<K> set, K k, long maxTime) {
+		return add(set, k, maxTime, null);
 	}
 
 	/**
@@ -193,10 +197,11 @@ public final class WaitMaintain {
 	 * @param <K>           数据类型
 	 * @param set           图
 	 * @param k             键
+	 * @param maxTime       等待时长
 	 * @param clearListener 清理监听
 	 * @return return
 	 */
-	public static final <K> boolean add(Collection<K> set, K k, Runnable clearListener) {
+	public static final <K> boolean add(Collection<K> set, K k, long maxTime, Runnable clearListener) {
 		val r = set.add(k);
 		QUEUE.add(new CElement(System.currentTimeMillis() + maxTime, set, k, clearListener));
 		return r;
@@ -207,24 +212,26 @@ public final class WaitMaintain {
 	 * 
 	 * @param <K>           数据类型
 	 * @param num           数值
+	 * @param maxTime       等待时长
 	 * @param clearListener 清理监听
 	 */
-	public static final <K> void monitor(@NonNull Number num, @NonNull Runnable clearListener) {
+	public static final <K> void monitor(@NonNull Number num, long maxTime, @NonNull Runnable clearListener) {
 		QUEUE.add(new NElement(System.currentTimeMillis() + maxTime, clearListener, num));
 	}
 
 	/**
 	 * 将键值对放入map,并设置最长超时时间, 超时后将被清理
 	 * 
-	 * @param <K> 数据类型
-	 * @param <V> 数据类型
-	 * @param map 图
-	 * @param k   键
-	 * @param v   值
+	 * @param <K>     数据类型
+	 * @param <V>     数据类型
+	 * @param map     图
+	 * @param k       键
+	 * @param v       值
+	 * @param maxTime 等待时长
 	 * @return return
 	 */
-	public static final <K, V> V put(Map<K, V> map, K k, V v) {
-		return put(map, k, v, null);
+	public static final <K, V> V put(Map<K, V> map, K k, V v, long maxTime) {
+		return put(map, k, v, maxTime, null);
 	}
 
 	/**
@@ -235,10 +242,11 @@ public final class WaitMaintain {
 	 * @param map           图
 	 * @param k             键
 	 * @param v             值
+	 * @param maxTime       等待时长
 	 * @param clearListener 清理监听
 	 * @return return
 	 */
-	public static final <K, V> V put(Map<K, V> map, K k, V v, Runnable clearListener) {
+	public static final <K, V> V put(Map<K, V> map, K k, V v, long maxTime, Runnable clearListener) {
 		val old = map.put(k, v);
 		QUEUE.add(new MapElement(System.currentTimeMillis() + maxTime, map, k, v, clearListener));
 		return old;

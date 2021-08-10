@@ -254,7 +254,7 @@ public class Main extends JavaPlugin implements Listener {
 		prefix		= config.getString("Prefix", "");
 		langLost	= config.getString("message.LanguageFileIsLost", LANG_LOST);
 //		getServer().getPluginManager().registerEvents(this, this); // 注册监听器
-		CommandManager.init();
+//		CommandManager.init();
 		getServer().getMessenger().registerOutgoingPluginChannel(this, ShareData.BC_CHANNEL);
 		getServer().getMessenger().registerIncomingPluginChannel(this, ShareData.BC_CHANNEL, Core.INSTANCE);
 

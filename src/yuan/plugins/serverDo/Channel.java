@@ -13,6 +13,9 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.ObjIntConsumer;
 
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -21,29 +24,47 @@ import lombok.NonNull;
 import lombok.val;
 
 /**
+ * 通道数据<br>
+ * 包含了服务器之间数据交互所用到的所有数据包<br>
+ * 枚举定义了数据包类型, 其指向的实现类有此数据包下所有方法.
+ * 
  * @author yuanlu
  *
  */
-@SuppressWarnings("javadoc")
 public enum Channel {
 	/** 版本检查 */
 	VERSION_CHECK(VersionCheck.class),
 	/** 权限检查 */
-	PERMISSION(Permission.class), TP(Tp.class);
+	PERMISSION(Permission.class),
+	/** 传送 */
+	TP(Tp.class);
 
 	/** 数据输入 */
 	private static final class DataIn extends DataInputStream {
+		/** 字节输入 */
 		private static final class ByteIn extends ByteArrayInputStream {
+			/** 数据包偏移量 */
 			private static final int offsetByPackageID = 4;
 
+			/**
+			 * 构造并初始化
+			 * 
+			 * @param buf 初始化数据流
+			 */
 			public ByteIn(byte[] buf) {
 				super(buf, offsetByPackageID, buf.length);
 			}
 
+			/** 清除 */
 			public void clear() {
 				super.buf = null;
 			}
 
+			/**
+			 * 初始化
+			 * 
+			 * @param buf 初始化数据流
+			 */
 			public void reset(byte[] buf) {
 				super.buf	= buf;
 				this.pos	= this.mark = offsetByPackageID;
@@ -52,8 +73,9 @@ public enum Channel {
 
 		}
 
+		/** 缓存池 */
 		private static final DataIn	POOL[]	= new DataIn[16];
-
+		/** 缓存池有效容量 */
 		private static int			pool	= 0;
 
 		/**
@@ -69,8 +91,14 @@ public enum Channel {
 			return new DataIn(buf);
 		}
 
-		private boolean release = true;
+		/** 此输入器是否已经释放 */
+		private boolean release;
 
+		/**
+		 * 构造并初始化
+		 * 
+		 * @param buf 初始化数据流
+		 */
 		private DataIn(byte[] buf) {
 			super(new ByteIn(buf));
 			release = false;
@@ -88,6 +116,12 @@ public enum Channel {
 			}
 		}
 
+		/**
+		 * 初始化
+		 * 
+		 * @param buf 初始化数据流
+		 * @return this
+		 */
 		private DataIn reset(byte[] buf) {
 			((ByteIn) super.in).reset(buf);
 			release = false;
@@ -98,14 +132,17 @@ public enum Channel {
 	/** 数据输出 */
 	private static final class DataOut extends DataOutputStream {
 
+		/** 缓存池 */
 		private static final DataOut	POOL[]	= new DataOut[128];
-
+		/** 缓存池有效容量 */
 		private static int				pool	= 0;
 
 		/**
-		 * 从对象池中取出一个数据输出器
+		 * 从对象池中取出一个数据输出器并初始化
 		 * 
+		 * @param ID 包ID
 		 * @return 输出器
+		 * @throws IOException IO错误
 		 */
 		public static DataOut pool(int ID) throws IOException {
 			synchronized (POOL) {
@@ -114,8 +151,15 @@ public enum Channel {
 			return new DataOut(ID);
 		}
 
-		private boolean release = true;
+		/** 此输入器是否已经释放 */
+		private boolean release;
 
+		/**
+		 * 构造并初始化
+		 * 
+		 * @param ID 包ID
+		 * @throws IOException IO错误
+		 */
 		public DataOut(int ID) throws IOException {
 			super(new ByteArrayOutputStream());
 			release = false;
@@ -141,6 +185,13 @@ public enum Channel {
 			return ((ByteArrayOutputStream) super.out).toByteArray();
 		}
 
+		/**
+		 * 初始化
+		 * 
+		 * @param ID 包ID
+		 * @return this
+		 * @throws IOException IO错误
+		 */
 		private DataOut reset(int ID) throws IOException {
 			release = false;
 			((ByteArrayOutputStream) super.out).reset();
@@ -157,13 +208,49 @@ public enum Channel {
 	 */
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static abstract class Package {
+		@SuppressWarnings("javadoc")
+		@FunctionalInterface
+		public interface BiIntConsumer<T, U> {
+			void accept(T t, U u, int x);
+		}
+
+		@SuppressWarnings("javadoc")
+		@FunctionalInterface
+		public interface BiPlayerConsumer {
+			void accept(String aName, String aDisplay, String bName, String bDisplay);
+		}
+
+		@SuppressWarnings("javadoc")
+		@FunctionalInterface
+		public interface BoolConsumer {
+			void accept(boolean t);
+		}
+
+		@SuppressWarnings("javadoc")
+		@FunctionalInterface
+		public interface ObjBoolConsumer<T> {
+			void accept(T t, boolean u);
+		}
+
 		/** 此数据包ID */
 		protected static @Getter int ID;
+
 	}
 
+	/**
+	 * 权限检查数据包
+	 * 
+	 * @author yuanlu
+	 * @see Channel#PERMISSION
+	 */
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Permission extends Package {
-		/** 解析Client */
+		/**
+		 * 解析Client
+		 * 
+		 * @param buf 数据
+		 * @return 权限节点
+		 */
 		@NonNull
 		public static String parseC(@NonNull byte[] buf) {
 			try (val in = DataIn.pool(buf)) {
@@ -173,27 +260,44 @@ public enum Channel {
 			}
 		}
 
-		/** 解析Server */
-		public static boolean parseS(@NonNull byte[] buf) {
+		/**
+		 * 解析Server
+		 * 
+		 * @param buf                数据
+		 * @param permissionAndAllow 权限,是否允许
+		 */
+		public static void parseS(@NonNull byte[] buf, ObjBoolConsumer<String> permissionAndAllow) {
 			try (val in = DataIn.pool(buf)) {
-				return in.readBoolean();
+				permissionAndAllow.accept(in.readUTF(), in.readBoolean());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
 		}
 
-		/** 发送至Client */
+		/**
+		 * 发送至Client
+		 * 
+		 * @param permission 权限节点
+		 * @param allow      是否拥有权限
+		 * @return 数据包
+		 */
 		@NonNull
-		public static byte[] sendC(boolean permission) {
+		public static byte[] sendC(String permission, boolean allow) {
 			try (val out = DataOut.pool(ID)) {
-				out.writeBoolean(permission);
+				out.writeUTF(permission);
+				out.writeBoolean(allow);
 				return out.getByte();
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
 		}
 
-		/** 发送至Server */
+		/**
+		 * 发送至Server
+		 * 
+		 * @param permission 权限节点
+		 * @return 数据包
+		 */
 		@NonNull
 		public static byte[] sendS(@NonNull String permission) {
 			try (val out = DataOut.pool(ID)) {
@@ -205,177 +309,527 @@ public enum Channel {
 		}
 	}
 
+	/**
+	 * 传送 <br>
+	 * /tp target:
+	 * 
+	 * <pre>
+	 * A(移动者) B(服务器) C(目标者)
+	 * 1. A 0 B (C名 0)
+	 * 2. B 2 C (A全名 A展名 0)
+	 * C msg
+	 * 3. B 1 A (C全名 C展名)
+	 * A msg
+	 * 4. A 6 B (A全名 C全名)
+	 * 5. B 8 C (A全名)
+	 * 6. B 7 A ()
+	 * </pre>
+	 * 
+	 * /tp mover target:
+	 * 
+	 * <pre>
+	 * A(发起者) B(服务器) C(移动者) D(目标者)
+	 * 1. A 9 B (C名 D全名)
+	 * 2. B 2 C (D全名 D展名 4)
+	 * C msg
+	 * 3. B 2 D (C全名 C展名 5)
+	 * D msg
+	 * 4. B a A (C全名 C展名 D全名 D展名)
+	 * A msg
+	 * 5. A 6 B (C全名 D全名)
+	 * 6. B 8 D (C全名)
+	 * 7. B 7 A ()
+	 * </pre>
+	 * 
+	 * /tpa target:
+	 * 
+	 * <pre>
+	 * A(移动者) B(服务器) C(目标者)
+	 * 1. A 0 B (C全名 1)
+	 * 2. B 2 C (A全名 A展名 1)
+	 * C msg
+	 * 3. B 1 A (C全名 C展名)
+	 * A msg
+	 * 
+	 * C accept
+	 * C msg
+	 * 4. C 3 B (true)
+	 * 5. B 4 C ()
+	 * 6. B 5 A (true)
+	 * A msg accept
+	 * 7. A 6 B (A全名 C全名)
+	 * 8. B 8 C (A全名)
+	 * 9. B 7 A ()
+	 * 
+	 * C deny
+	 * C msg
+	 * 4. C 3 B (false)
+	 * 5. B 4 C ()
+	 * 6. B 5 A (false)
+	 * A msg deny
+	 * 
+	 * </pre>
+	 * 
+	 * /tphere target:(/tp target self)
+	 * 
+	 * <pre>
+	 * A(移动者) B(服务器) C(目标者)
+	 * 1. A 0 B (C名 2)
+	 * 2. B 2 C (A全名 A展名 2)
+	 * C msg
+	 * 3. B 1 A (C全名 C展名)
+	 * A msg
+	 * 4. A 6 B (C全名 A全名)
+	 * 5. B 8 A (C全名)
+	 * 6. B 7 A ()
+	 * </pre>
+	 * 
+	 * /tpahere target:
+	 * 
+	 * <pre>
+	 * A(发起者) B(服务器) C(被移动者)
+	 * 1. A 0 B (C全名 3)
+	 * 2. B 2 C (A全名 A展名 3)
+	 * C msg
+	 * 3. B 1 A (C全名 C展名)
+	 * A msg
+	 * 
+	 * C accept
+	 * C msg
+	 * 4. C 3 B (true)
+	 * 5. B 4 C ()
+	 * 6. B 5 A (true)
+	 * A msg accept
+	 * 7. A 6 B (C全名 A全名)
+	 * 8. B 8 A (C全名)
+	 * 9. B 7 A ()
+	 * 
+	 * C deny
+	 * 4. C 3 B (false)
+	 * 5. B 4 C ()
+	 * 6. B 5 A (false)
+	 * A msg deny
+	 * </pre>
+	 * 
+	 *
+	 */
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Tp extends Package {
-		/** 解析: C1搜索用户 */
-		public static void p0C_search(byte[] buf) {
-
+		/**
+		 * 检查接收到的数据包ID
+		 * 
+		 * @param in 数据流
+		 * @param id 包ID
+		 * @throws IOException IOE
+		 */
+		private static void checkId(DataIn in, int id) throws IOException {
+			val packageId = in.readByte();
+			if (packageId != id) throw new IllegalArgumentException("Bad Package Id: " + packageId + ", expect: " + id);
 		}
 
-		/** 解析: S响应用户 to C1 */
-		public static void p1S_searchResult(byte[] buf) {
-
-		}
-
-		/** 解析: C1传送请求 */
-		public static void p2C_tpReq(byte[] buf) {
-
-		}
-
-		/** 解析: S接收到请求 to C1 */
-		public static void p3S_tpReqReceive(byte[] buf) {
-
-		}
-
-		/** 解析: S传送请求(转发) to C2 */
-		public static void p4S_tpReq(byte[] buf) {
-
-		}
-
-		/** 解析: C2请求响应 */
-		public static void p5C_tpResp(byte[] buf) {
-
-		}
-
-		/** 解析: S接收到响应 to C2 */
-		public static void p6S_tpRespReceive(byte[] buf) {
-
-		}
-
-		/** 解析: S请求响应(转发) to C1 */
-		public static void p7S_tpResp(byte[] buf) {
-
-		}
-
-		/** 解析: C实际传送(二人情况)(谁移动谁发起) */
-		public static void p8C_tpReal(byte[] buf) {
-
-		}
-
-		/** 解析: C实际传送(三人情况) */
-		public static void p9C_tpThird(byte[] buf) {
-
-		}
-
-		//
-
-		/** C1搜索用户 */
-		public static byte[] s0C_search(String target) {
-			try (val out = DataOut.pool(ID)) {
-				out.writeByte(0);
-				out.writeUTF(target);
-				return out.getByte();
-			} catch (Exception e) {
-				throw new InternalError(e);
+		/**
+		 * 解析: C1搜索用户并发送传送请求
+		 * 
+		 * @param buf           数据
+		 * @param targetAndType 搜索内容,传送类型
+		 * 
+		 * @see #s0C_tpReq(String, int)
+		 */
+		public static void p0C_tpReq(byte[] buf, ObjIntConsumer<String> targetAndType) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 0);
+				targetAndType.accept(in.readUTF(), in.readInt());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
 			}
 		}
 
-		/** S响应用户 to C1 */
-		public static byte[] s1S_searchResult(String name, String display) {
+		/**
+		 * 解析: S响应用户 to C1
+		 * 
+		 * @param buf            数据
+		 * @param nameAndDisplay 搜索匹配到的真实名字,其展示名字
+		 * 
+		 * @see #s1S_tpReqReceive(String, String)
+		 */
+		public static void p1S_searchResult(byte[] buf, BiConsumer<String, String> nameAndDisplay) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 1);
+				nameAndDisplay.accept(in.readUTF(), in.readUTF());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: S传送请求(转发) to C2
+		 * 
+		 * @param buf                   数据
+		 * @param nameAndDisplayAndType 传送者真实名字,传送者展示名字,传送类型
+		 * @see #s2S_tpReq(String, String, int)
+		 */
+		public static void p2S_tpReq(byte[] buf, BiIntConsumer<String, String> nameAndDisplayAndType) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 2);
+				nameAndDisplayAndType.accept(in.readUTF(), in.readUTF(), in.readInt());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: C2请求响应
+		 * 
+		 * @param buf   数据
+		 * @param allow 是否允许传送
+		 * @see #s3C_tpResp(boolean)
+		 */
+		public static void p3C_tpResp(byte[] buf, BoolConsumer allow) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 3);
+				allow.accept(in.readBoolean());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: S接收到响应 to C2
+		 * 
+		 * @param buf 数据
+		 * @param r   next
+		 * @see #s4S_tpRespReceive()
+		 */
+		public static void p4S_tpRespReceive(byte[] buf, Runnable r) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 4);
+				r.run();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: S请求响应(转发) to C1
+		 * 
+		 * @param buf   数据
+		 * @param allow 是否允许传送
+		 * @see #s5S_tpResp(boolean)
+		 */
+		public static void p5S_tpResp(byte[] buf, BoolConsumer allow) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 5);
+				allow.accept(in.readBoolean());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: C实际传送
+		 * 
+		 * @param buf            数据
+		 * @param moverAndTarget 被移动者,移动目标
+		 * @see #s6C_tpThird(String, String)
+		 */
+		public static void p6C_tpThird(byte[] buf, BiConsumer<String, String> moverAndTarget) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 6);
+				moverAndTarget.accept(in.readUTF(), in.readUTF());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: S实际传送响应
+		 * 
+		 * @param buf 数据
+		 * @param r   next
+		 * @see #s7S_tpThirdReceive()
+		 */
+		public static void p7S_tpThirdReceive(byte[] buf, Runnable r) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 7);
+				r.run();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: S 被传送(转发)
+		 * 
+		 * @param buf  数据
+		 * @param name 被传送者
+		 * @see #s8S_tpThird(String)
+		 */
+		public static void p8S_tpThird(byte[] buf, Consumer<String> name) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 8);
+				name.accept(in.readUTF());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: C1 搜索用户C2,C3并发送传送请求
+		 * 
+		 * @param buf            数据
+		 * @param moverAndTarget 双方搜索内容
+		 * @see #s9C_tpReqThird(String, String)
+		 */
+		public static void p9C_tpReqThird(byte[] buf, BiConsumer<String, String> moverAndTarget) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 9);
+				moverAndTarget.accept(in.readUTF(), in.readUTF());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: S响应用户 to C1
+		 * 
+		 * @param buf            数据
+		 * @param moverAndTarget 双方名称及展示名
+		 * @see #saS_tpReqThirdReceive(String, String, String, String)
+		 */
+		public static void paS_tpReqThirdReceive(byte[] buf, BiPlayerConsumer moverAndTarget) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 0xa);
+				moverAndTarget.accept(in.readUTF(), in.readUTF(), in.readUTF(), in.readUTF());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		//
+
+		/**
+		 * C1搜索用户并发送传送请求<br>
+		 * 传送类型:
+		 * 
+		 * <pre>
+		 * 0: tp
+		 * 1: tpa
+		 * 2: tphere
+		 * 3: tpahere
+		 * 4: 第三方传送mover
+		 * 5: 第三方传送target
+		 * </pre>
+		 * 
+		 * @param target 搜索内容
+		 * @param type   传送类型
+		 * @return 数据包
+		 */
+		public static byte[] s0C_tpReq(String target, int type) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(0);
+				out.writeUTF(target);
+				out.writeInt(type);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * S响应用户 to C1
+		 * 
+		 * @param name    搜索匹配到的真实名字
+		 * @param display 其展示名字
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] s1S_tpReqReceive(String name, String display) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(1);
 				out.writeUTF(name);
 				out.writeUTF(display);
 				return out.getByte();
 			} catch (Exception e) {
-				throw new InternalError(e);
+				throw new RuntimeException(e);
 			}
 		}
 
-		/** C1传送请求 */
-		public static byte[] s2C_tpReq(String name, int type) {
+		/**
+		 * S传送请求(转发) to C2
+		 * 
+		 * @param name    传送者真实名字
+		 * @param display 传送者展示名字
+		 * @param type    传送类型
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] s2S_tpReq(String name, String display, int type) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(2);
 				out.writeUTF(name);
+				out.writeUTF(display);
 				out.writeInt(type);
 				return out.getByte();
 			} catch (Exception e) {
-				throw new InternalError(e);
+				throw new RuntimeException(e);
 			}
 		}
 
-		/** S接收到请求 to C1 */
-		public static byte[] s3S_tpReqReceive() {
+		/**
+		 * C2请求响应<br>
+		 * 对于传送类型0(tp)和2(tphere), allow必为true
+		 * 
+		 * @param allow 是否允许传送
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] s3C_tpResp(boolean allow) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(3);
+				out.writeBoolean(allow);
 				return out.getByte();
 			} catch (Exception e) {
-				throw new InternalError(e);
+				throw new RuntimeException(e);
 			}
 		}
 
-		/** S传送请求(转发) to C2 */
-		public static byte[] s4S_tpReq(String name, String display) {
+		/**
+		 * S接收到响应 to C2
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] s4S_tpRespReceive() {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(4);
-				out.writeUTF(name);
-				out.writeUTF(display);
 				return out.getByte();
 			} catch (Exception e) {
-				throw new InternalError(e);
+				throw new RuntimeException(e);
 			}
 		}
 
-		/** C2请求响应 */
-		public static byte[] s5C_tpResp(boolean allow) {
+		/**
+		 * S请求响应(转发) to C1
+		 * 
+		 * @param allow 是否允许传送
+		 * @return 数据包
+		 */
+		public static byte[] s5S_tpResp(boolean allow) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(5);
 				out.writeBoolean(allow);
 				return out.getByte();
 			} catch (Exception e) {
-				throw new InternalError(e);
+				throw new RuntimeException(e);
 			}
 		}
 
-		/** S接收到响应 to C2 */
-		public static byte[] s6S_tpRespReceive() {
+		/**
+		 * C实际传送
+		 * 
+		 * @param mover  被移动者
+		 * @param target 移动目标
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] s6C_tpThird(String mover, String target) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(6);
-				return out.getByte();
-			} catch (Exception e) {
-				throw new InternalError(e);
-			}
-		}
-
-		/** S请求响应(转发) to C1 */
-		public static byte[] s7S_tpResp(boolean allow) {
-			try (val out = DataOut.pool(ID)) {
-				out.writeByte(7);
-				out.writeBoolean(allow);
-				return out.getByte();
-			} catch (Exception e) {
-				throw new InternalError(e);
-			}
-		}
-
-		/** C实际传送(二人情况)(谁移动谁发起) */
-		public static byte[] s8C_tpReal(String target) {
-			try (val out = DataOut.pool(ID)) {
-				out.writeByte(8);
+				out.writeUTF(mover);
 				out.writeUTF(target);
 				return out.getByte();
 			} catch (Exception e) {
-				throw new InternalError(e);
+				throw new RuntimeException(e);
 			}
 		}
 
-		/** C实际传送(三人情况) */
-		public static byte[] s9C_tpThird(String mover, String target) {
+		/**
+		 * S实际传送响应
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] s7S_tpThirdReceive() {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(7);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * S 被传送(转发)
+		 * 
+		 * @param name 传送者名称
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] s8S_tpThird(String name) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(8);
+				out.writeUTF(name);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * C1 搜索用户C2,C3并发送传送请求
+		 * 
+		 * @param mover  搜索内容
+		 * @param target 搜索内容
+		 * @return 数据包
+		 */
+		public static byte[] s9C_tpReqThird(String mover, String target) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(9);
 				out.writeUTF(mover);
 				out.writeUTF(target);
 				return out.getByte();
 			} catch (Exception e) {
-				throw new InternalError(e);
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * S响应用户 to C1
+		 * 
+		 * @param mover         被移动者
+		 * @param moverDisplay  其展示名字
+		 * @param target        移动目标
+		 * @param targetDisplay 其展示名字
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] saS_tpReqThirdReceive(String mover, String moverDisplay, String target, String targetDisplay) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(0xa);
+				out.writeUTF(mover);
+				out.writeUTF(moverDisplay);
+				out.writeUTF(target);
+				out.writeUTF(targetDisplay);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
 			}
 		}
 
 	}
 
+	/**
+	 * 版本检查<br>
+	 * 将会比较由 {@link Channel} 枚举项生成的 {@link Channel#VERSION MD5} 值, 确认插件版本是否正确
+	 * 
+	 * @author yuanlu
+	 *
+	 */
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class VersionCheck extends Package {
-		/** 解析Client */
+		/**
+		 * 解析Client
+		 * 
+		 * @param buf 数据
+		 * @return 客户端与服务器版本是否一致
+		 */
 		public static boolean parseC(byte[] buf) {
 			try (DataIn in = DataIn.pool(buf)) {
 				byte	ver[]	= new byte[VERSION.length];
@@ -387,7 +841,12 @@ public enum Channel {
 			}
 		}
 
-		/** 解析Server */
+		/**
+		 * 解析Server
+		 * 
+		 * @param buf 数据
+		 * @return 客户端与服务器版本是否一致
+		 */
 		public static boolean parseS(@NonNull byte[] buf) {
 			try (val in = DataIn.pool(buf)) {
 				return in.readBoolean();
@@ -396,7 +855,12 @@ public enum Channel {
 			}
 		}
 
-		/** 发送至Client */
+		/**
+		 * 发送至Client
+		 * 
+		 * @param equal 客户端与服务器版本是否一致
+		 * @return 数据包
+		 */
 		@NonNull
 		public static byte[] sendC(boolean equal) {
 			try (val out = DataOut.pool(ID)) {
@@ -407,7 +871,24 @@ public enum Channel {
 			}
 		}
 
-		/** 发送至Server */
+		/**
+		 * 发送至Client
+		 * 
+		 * @param buf Client数据
+		 * @return 数据包
+		 * @see #parseC(byte[])
+		 * @see #sendC(boolean)
+		 */
+		@NonNull
+		public static byte[] sendC(byte[] buf) {
+			return sendC(parseC(buf));
+		}
+
+		/**
+		 * 发送至Server
+		 * 
+		 * @return 数据包
+		 */
 		@NonNull
 		public static byte[] sendS() {
 			try (val out = DataOut.pool(ID)) {
@@ -439,21 +920,28 @@ public enum Channel {
 	/**
 	 * 解析数据包
 	 * 
-	 * @param id
+	 * @param id 数据包ID
 	 * @return 数据包类型
 	 */
 	public static final Channel byId(int id) {
 		return id >= 0 && id < CHANNELS.length ? CHANNELS[id] : null;
 	}
 
+	/** 目标类 */
 	public final Class<? extends Package> target;
 
+	/**
+	 * 构造
+	 * 
+	 * @param target 目标类
+	 */
 	private Channel(Class<? extends Package> target) {
 		this.target = target;
 		try {
-			target.getDeclaredField("ID").setInt(target, ordinal());
+			Package.class.getDeclaredField("ID").setInt(target, ordinal());
 		} catch (Exception e) {
 			throw new InternalError(e);
 		}
 	}
+
 }
