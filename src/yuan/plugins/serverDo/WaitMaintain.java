@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -129,6 +130,44 @@ public final class WaitMaintain {
 	 */
 	@Value
 	@EqualsAndHashCode(callSuper = true)
+	@SuppressWarnings("rawtypes")
+	private static final class MutiMapElement extends Element {
+
+		/** 图 */
+		Map		map;
+
+		/** 键 */
+		Object	k;
+
+		/** 值 */
+		Object	old;
+
+		@SuppressWarnings("javadoc")
+		public MutiMapElement(long expire, Map map, Object k, Object old, Runnable clearListener) {
+			super(expire, clearListener);
+			this.map	= map;
+			this.k		= k;
+			this.old	= old;
+		}
+
+		/** 处理 */
+		@Override
+		void handle() {
+			Collection	c		= (Collection) map.get(k);
+			boolean		clear	= c.remove(old);
+			if (c.isEmpty()) map.remove(k, c);
+			if (clear && clearListener != null) clearListener.run();
+		}
+	}
+
+	/**
+	 * 延时监听元素
+	 * 
+	 * @author yuanlu
+	 *
+	 */
+	@Value
+	@EqualsAndHashCode(callSuper = true)
 	private static final class NElement extends Element {
 		/** 原始值 */
 		long	originalLong;
@@ -163,7 +202,7 @@ public final class WaitMaintain {
 	/** 队列 */
 	private static final DelayQueue<Element>	QUEUE	= new DelayQueue<>();
 	static {
-		new Thread("YSH-" + WaitMaintain.class) {
+		new Thread("YSD-" + WaitMaintain.class) {
 			@Override
 			public void run() {
 				while (true) {
@@ -204,6 +243,28 @@ public final class WaitMaintain {
 	public static final <K> boolean add(Collection<K> set, K k, long maxTime, Runnable clearListener) {
 		val r = set.add(k);
 		QUEUE.add(new CElement(System.currentTimeMillis() + maxTime, set, k, clearListener));
+		return r;
+	}
+
+	/**
+	 * 将一对多键值对放入map,并设置最长超时时间, 超时后将被清理
+	 * 
+	 * @param <K>           数据类型
+	 * @param <V>           数据类型
+	 * @param <L>           多值列表类型
+	 * @param map           图
+	 * @param k             键
+	 * @param v             值
+	 * @param maxTime       等待时长
+	 * @param builder       列表构造器
+	 * @param clearListener 清理监听
+	 * @return return
+	 */
+	public static final <K, V, L extends Collection<V>> boolean add(Map<K, L> map, K k, V v, long maxTime, Supplier<L> builder, Runnable clearListener) {
+		L c = map.get(k);
+		if (c == null) map.put(k, c = builder.get());
+		val r = c.add(v);
+		QUEUE.add(new MutiMapElement(System.currentTimeMillis() + maxTime, map, k, v, clearListener));
 		return r;
 	}
 

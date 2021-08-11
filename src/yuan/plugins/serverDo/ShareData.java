@@ -25,12 +25,14 @@ import lombok.Setter;
 public final class ShareData {
 	/** 日志记录器 */
 	private static @Setter @Getter Logger	logger;
+	/** 是否开启DEBUG模式 */
+	private static @Setter @Getter boolean	DEBUG		= false;
 	/** 插件名称 用于信息提示 模板自动生成 */
 	public final static String				SHOW_NAME	= "元路跨服操作插件";
 	/** 配置文件 */
 	public static final Charset				CHARSET		= Charset.forName("UTF-8");
 	/** BC通道名 */
-	public static final String				BC_CHANNEL	= "yuanluSDo";
+	public static final String				BC_CHANNEL	= "yuanlu-SDo".toLowerCase();
 
 	/**
 	 * 读取一个int

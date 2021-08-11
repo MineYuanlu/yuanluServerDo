@@ -1,0 +1,16 @@
+#跨服传送组
+server-group:
+  group1:
+    - server1
+    - server2
+  group2:
+    - server3
+    - server4
+
+#名称获取设置
+setting:
+  #如果设置为true，在允许的情况下，从子服获取玩家名称，否则全由bungeecord获取玩家名称
+  sub-server-display-name: false
+
+#玩家tab替换内容，可任意修改，保持与BUKKIT端一致即可
+player-tab-replace: "%%%yuanlu-tab-player-list"

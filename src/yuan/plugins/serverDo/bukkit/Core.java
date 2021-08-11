@@ -33,11 +33,12 @@ import lombok.NonNull;
 import lombok.Value;
 import lombok.val;
 import yuan.plugins.serverDo.Channel;
-import yuan.plugins.serverDo.Channel.Package.BiIntConsumer;
 import yuan.plugins.serverDo.Channel.Package.BiPlayerConsumer;
-import yuan.plugins.serverDo.Channel.Package.BoolConsumer;
+import yuan.plugins.serverDo.Channel.Package.ObjBoolConsumer;
 import yuan.plugins.serverDo.ShareData;
+import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.WaitMaintain;
+import yuan.plugins.serverDo.bukkit.cmds.CmdTpaccept;
 
 /**
  * Bukkit端的核心组件
@@ -83,6 +84,86 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		Object	handler;
 	}
 
+	/**
+	 * Tp数据包处理
+	 * 
+	 * @author yuanlu
+	 *
+	 */
+	public static final class TpHandler {
+		/** 传送类型接收者消息 */
+		private static final Msg[] tpTypeReceiverMsg;
+		static {
+			String str[] = "tp tpa tphere tpahere mover target".split(" ");
+			tpTypeReceiverMsg = new Msg[str.length];
+			for (int i = 0; i < 4; i++) tpTypeReceiverMsg[i] = Main.getMain().mes("cmd." + str[i] + ".receiver");
+			for (int i = 4; i < 6; i++) tpTypeReceiverMsg[i] = Main.getMain().mes("cmd.tp.third-" + str[i]);
+		}
+
+		/**
+		 * 等待加入服务器后传送<br>
+		 * 被传送者{@code ->}传送目标
+		 */
+		private static final ConcurrentHashMap<String, String> WAIT_JOIN_TP = new ConcurrentHashMap<>();
+
+		/**
+		 * 处理Tp数据包
+		 * 
+		 * @param player 玩家
+		 * @param type   通道类型(必须为Tp)
+		 * @param buf    数据包
+		 */
+		@SuppressWarnings({ "unchecked", "rawtypes" })
+		private static void handleTpMessage(Player player, Channel type, byte[] buf) {
+			if (type != Channel.TP) throw new InternalError("Bad Type");
+			byte		id		= buf[4/* 包头偏移 */];
+			Consumer	handler	= null;
+			switch (id) {
+			case 0x1:
+				handler = h -> Channel.Tp.p1S_searchResult(buf, (BiConsumer<String, String>) h);
+				break;
+			case 0x2:
+				Channel.Tp.p2S_tpReq(buf, (name, display, tpType) -> {
+					tpTypeReceiverMsg[tpType].send(player, name, display);
+					if (tpType == 1 || tpType == 3) {
+						CmdTpaccept.addTpReq(player, name, display, tpType == 3);
+					}
+				});
+				break;
+			case 0x4:
+				handler = h -> Channel.Tp.p4S_tpRespReceive(buf, (Runnable) h);
+				break;
+			case 0x5:
+				handler = h -> Channel.Tp.p5S_tpResp(buf, (ObjBoolConsumer<String>) h);
+				break;
+			case 0x7:
+				handler = h -> Channel.Tp.p7S_tpThirdReceive(buf, (Runnable) h);
+				break;
+			case 0x8:
+				Channel.Tp.p8S_tpThird(buf, name -> {
+					WAIT_JOIN_TP.put(name, player.getName());
+				});
+				break;
+			case 0xa:
+				handler = h -> Channel.Tp.paS_tpReqThirdReceive(buf, (BiPlayerConsumer) h);
+				break;
+			}
+			if (handler != null) callBack(player, type, id, handler);
+		}
+
+		/**
+		 * 远程传送
+		 * 
+		 * @param player 操控玩家
+		 * @param mover  移动者
+		 * @param target 目标
+		 */
+		private static void tpToRemote(Player player, String mover, String target) {
+			listenCallBack(player, Channel.TP, 7, Tool.EMPTY_RUNNABLE);
+			Main.send(player, Channel.Tp.s6C_tpThird(mover, target));
+		}
+	}
+
 	/** 单例 */
 	public static final Core INSTANCE = new Core();
 	/*
@@ -94,30 +175,12 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/** 回调等待 */
 	private static final EnumMap<Channel, Map<UUID, ListenCallBackObj>> CALL_BACK_WAITER = new EnumMap<>(Channel.class);
-
 	static {
 		for (val c : Channel.values()) CALL_BACK_WAITER.put(c, new HashMap<>());
 	}
+
 	/** 版本检查通过的玩家集合 */
 	private static final HashSet<UUID> ALLOW_PLAYERS = new HashSet<>();
-
-	/**
-	 * 监听回调
-	 * 
-	 * @param player  玩家
-	 * @param channel 通道
-	 * @param checker 验证数据
-	 * @param maxTime 等待时间
-	 * @param handler 处理器
-	 */
-	public static void listenCallBack(@NonNull Player player, @NonNull Channel channel, Object checker, long maxTime, @NonNull Object handler) {
-		val map = CALL_BACK_WAITER.get(channel);
-		synchronized (map) {
-			WaitMaintain.put(map, player.getUniqueId(), //
-					new ListenCallBackObj(checker, handler), maxTime, () -> M_TIME_OUT.send(player, channel));
-		}
-
-	}
 
 	/**
 	 * 回调
@@ -136,6 +199,39 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 				if (consumer != null) consumer.accept(obj.handler);
 			} else map.put(player.getUniqueId(), obj);
 		}
+	}
+
+	/**
+	 * 
+	 * @param e 事件
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
+	public static void event(@NonNull PlayerJoinEvent e) {
+		val p = e.getPlayer();
+		if (p == null) return;
+		val to = TpHandler.WAIT_JOIN_TP.remove(p.getName());
+		if (to == null) return;
+		Bukkit.getScheduler().runTask(Main.getMain(), () -> tpTo(p, to));
+	}
+
+	/**
+	 * 监听回调
+	 * 
+	 * @param player  玩家
+	 * @param channel 通道
+	 * @param checker 验证数据
+	 * @param maxTime 等待时间
+	 * @param handler 处理器
+	 */
+	public static void listenCallBack(@NonNull Player player, @NonNull Channel channel, Object checker, long maxTime, @NonNull Object handler) {
+		val map = CALL_BACK_WAITER.get(channel);
+		synchronized (map) {
+			WaitMaintain.put(map, player.getUniqueId(), //
+					new ListenCallBackObj(checker, handler), maxTime, () -> M_TIME_OUT.send(player, channel));
+		}
+
 	}
 
 	/**
@@ -178,7 +274,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		val localTarget = Main.getMain().getServer().getPlayerExact(target);
 		if (localTarget != null) {
 			mover.teleport(localTarget);
-		} else tpToRemote(mover, mover.getName(), target);
+		} else TpHandler.tpToRemote(mover, mover.getName(), target);
 	}
 
 	/**
@@ -194,7 +290,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		val	localTarget	= Main.getMain().getServer().getPlayerExact(target);
 		if (localMover != null && localTarget != null) {
 			localMover.teleport(localTarget);
-		} else tpToRemote(player, mover, target);
+		} else TpHandler.tpToRemote(player, mover, target);
 	}
 
 	/**
@@ -208,19 +304,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		val localMover = Main.getMain().getServer().getPlayerExact(mover);
 		if (localMover != null) {
 			localMover.teleport(target);
-		} else tpToRemote(target, mover, target.getName());
-	}
-
-	/**
-	 * 远程传送
-	 * 
-	 * @param player 操控玩家
-	 * @param mover  移动者
-	 * @param target 目标
-	 */
-	private static void tpToRemote(Player player, String mover, String target) {
-		listenCallBack(player, Channel.TP, 7, null);
-		Main.send(player, Channel.Tp.s6C_tpThird(mover, target));
+		} else TpHandler.tpToRemote(target, mover, target.getName());
 	}
 
 	@Override
@@ -244,7 +328,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			break;
 		}
 		case TP: {
-			handleTpMessage(player, type, message);
+			TpHandler.handleTpMessage(player, type, message);
 			break;
 		}
 		case VERSION_CHECK: {
@@ -255,66 +339,5 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			break;
 
 		}
-	}
-
-	/**
-	 * 处理Tp数据包
-	 * 
-	 * @param player 玩家
-	 * @param type   通道类型(必须为Tp)
-	 * @param buf    数据包
-	 */
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private void handleTpMessage(Player player, Channel type, byte[] buf) {
-		if (type != Channel.TP) throw new InternalError("Bad Type");
-		byte		id		= buf[0];
-		Consumer	handler	= null;
-		switch (id) {
-		case 0x1:
-			handler = h -> Channel.Tp.p1S_searchResult(buf, (BiConsumer<String, String>) h);
-			break;
-		case 0x2:
-			handler = h -> Channel.Tp.p2S_tpReq(buf, (BiIntConsumer<String, String>) h);
-			break;
-		case 0x4:
-			handler = h -> Channel.Tp.p4S_tpRespReceive(buf, (Runnable) h);
-			break;
-		case 0x5:
-			handler = h -> Channel.Tp.p5S_tpResp(buf, (BoolConsumer) h);
-			break;
-		case 0x7:
-			handler = h -> Channel.Tp.p7S_tpThirdReceive(buf, (Runnable) h);
-			break;
-		case 0x8:
-			Channel.Tp.p8S_tpThird(buf, name -> {
-				WAIT_JOIN_TP.put(name, player.getName());
-			});
-			break;
-		case 0xa:
-			handler = h -> Channel.Tp.paS_tpReqThirdReceive(buf, (BiPlayerConsumer) h);
-			break;
-		}
-		if (handler != null) callBack(player, type, id, handler);
-	}
-
-	/**
-	 * 等待加入服务器后传送<br>
-	 * 被传送者{@code ->}传送目标
-	 */
-	private static final ConcurrentHashMap<String, String> WAIT_JOIN_TP = new ConcurrentHashMap<>();
-
-	/**
-	 * 
-	 * @param e 事件
-	 * @deprecated BUKKIT
-	 */
-	@Deprecated
-	@EventHandler(priority = EventPriority.HIGH)
-	public static void event(@NonNull PlayerJoinEvent e) {
-		val p = e.getPlayer();
-		if (p == null) return;
-		val to = WAIT_JOIN_TP.remove(p.getName());
-		if (to == null) return;
-		Bukkit.getScheduler().runTask(Main.getMain(), () -> tpTo(p, to));
 	}
 }

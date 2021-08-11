@@ -17,14 +17,8 @@ import yuan.plugins.serverDo.bukkit.MESSAGE;
  * @author yuanlu
  *
  */
-@NoArgsConstructor (access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class CommandManager implements MESSAGE {
-	/**
-	 * 所有的命令<br>
-	 * {@code 命令名->命令信息}
-	 */
-	static final HashMap<String, CmdInfo> INFOS = new HashMap<>();
-
 	/** 命令信息 */
 	@Value
 	static final class CmdInfo {
@@ -35,4 +29,10 @@ public final class CommandManager implements MESSAGE {
 		/** 所有名称 */
 		List<String>	names;
 	}
+
+	/**
+	 * 所有的命令<br>
+	 * {@code 命令名->命令信息}
+	 */
+	static final HashMap<String, CmdInfo> INFOS = new HashMap<>();
 }

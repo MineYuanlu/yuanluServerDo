@@ -400,9 +400,9 @@ public enum Channel {
 	 * 5. B 4 C ()
 	 * 6. B 5 A (true)
 	 * A msg accept
-	 * 7. A 6 B (C全名 A全名)
+	 * 7. C 6 B (C全名 A全名)
 	 * 8. B 8 A (C全名)
-	 * 9. B 7 A ()
+	 * 9. B 7 C ()
 	 * 
 	 * C deny
 	 * 4. C 3 B (false)
@@ -480,14 +480,14 @@ public enum Channel {
 		/**
 		 * 解析: C2请求响应
 		 * 
-		 * @param buf   数据
-		 * @param allow 是否允许传送
-		 * @see #s3C_tpResp(boolean)
+		 * @param buf         数据
+		 * @param whoAndAllow 目标全名,是否允许传送
+		 * @see #s3C_tpResp(String, boolean)
 		 */
-		public static void p3C_tpResp(byte[] buf, BoolConsumer allow) {
+		public static void p3C_tpResp(byte[] buf, ObjBoolConsumer<String> whoAndAllow) {
 			try (val in = DataIn.pool(buf)) {
 				checkId(in, 3);
-				allow.accept(in.readBoolean());
+				whoAndAllow.accept(in.readUTF(), in.readBoolean());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -514,12 +514,12 @@ public enum Channel {
 		 * 
 		 * @param buf   数据
 		 * @param allow 是否允许传送
-		 * @see #s5S_tpResp(boolean)
+		 * @see #s5S_tpResp(String, boolean)
 		 */
-		public static void p5S_tpResp(byte[] buf, BoolConsumer allow) {
+		public static void p5S_tpResp(byte[] buf, ObjBoolConsumer<String> allow) {
 			try (val in = DataIn.pool(buf)) {
 				checkId(in, 5);
-				allow.accept(in.readBoolean());
+				allow.accept(in.readUTF(), in.readBoolean());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -678,13 +678,15 @@ public enum Channel {
 		 * C2请求响应<br>
 		 * 对于传送类型0(tp)和2(tphere), allow必为true
 		 * 
+		 * @param who   C1玩家全名
 		 * @param allow 是否允许传送
 		 * 
 		 * @return 数据包
 		 */
-		public static byte[] s3C_tpResp(boolean allow) {
+		public static byte[] s3C_tpResp(String who, boolean allow) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(3);
+				out.writeUTF(who);
 				out.writeBoolean(allow);
 				return out.getByte();
 			} catch (Exception e) {
@@ -709,12 +711,14 @@ public enum Channel {
 		/**
 		 * S请求响应(转发) to C1
 		 * 
+		 * @param who   C2玩家全名
 		 * @param allow 是否允许传送
 		 * @return 数据包
 		 */
-		public static byte[] s5S_tpResp(boolean allow) {
+		public static byte[] s5S_tpResp(String who, boolean allow) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(5);
+				out.writeUTF(who);
 				out.writeBoolean(allow);
 				return out.getByte();
 			} catch (Exception e) {

@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -19,7 +20,8 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-
+import lombok.NonNull;
+import lombok.val;
 
 /**
  * 工具类<br>
@@ -91,6 +93,10 @@ public final class Tool {
 		 */
 		void run() throws Throwable;
 	}
+
+	/** 空的运行体 */
+	public static final Runnable EMPTY_RUNNABLE = () -> {
+	};
 
 	/**
 	 * 反序列化(list)
@@ -283,6 +289,34 @@ public final class Tool {
 	}
 
 	/**
+	 * 模糊搜索
+	 * 
+	 * 
+	 * @param text 给定字符串
+	 * @param itr  内容
+	 * @return 搜索结果
+	 */
+	public static <T> T search(@NonNull Object text, Iterator<T> itr) {
+		T		found		= null;
+		String	lowerName	= text.toString().toLowerCase(Locale.ENGLISH);
+		int		delta		= Integer.MAX_VALUE;
+
+		while (itr.hasNext()) {
+			val	t	= itr.next();
+			val	now	= t.toString();
+			if (now.toLowerCase(Locale.ENGLISH).startsWith(lowerName)) {
+				int curDelta = Math.abs(now.length() - lowerName.length());
+				if (curDelta < delta) {
+					found	= t;
+					delta	= curDelta;
+					if (curDelta == 0) break;
+				}
+			}
+		}
+		return found;
+	}
+
+	/**
 	 * 序列化
 	 * 
 	 * @param <E>       序列化集合元素类型
@@ -472,5 +506,4 @@ public final class Tool {
 	 */
 	private Tool() {
 	}
-
 }

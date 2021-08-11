@@ -53,7 +53,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 		return list;
 	}
 
-	/** 此 */
+	/** 此命令名称 */
 	protected final String cmdName;
 
 	/**
@@ -71,6 +71,35 @@ public abstract class Cmd extends Command implements MESSAGE {
 		if (cname.startsWith("cmd")) cname = cname.substring(3);
 		cmdName = cname;
 	}
+
+	/**
+	 * 检查CommandSender状态
+	 * 
+	 * @param sender CommandSender
+	 * @param next   回调
+	 */
+	protected void checkPlayer(CommandSender sender, Runnable next) {
+		if (sender instanceof Player) next.run();
+		else NOT_PLAYER.send(sender);
+	}
+
+	@Override
+	public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+		val cq = new CallbackQueue();
+		cq.task(() -> checkPlayer(sender, cq), //
+				() -> Core.permissionCheck(sender, getPermission(), cq), //
+				() -> execute0(sender, args));
+		return true;
+	}
+
+	/**
+	 * 实际执行
+	 * 
+	 * @param sender Source object which is executing this command
+	 * @param args   All arguments passed to the command, split via ' '
+	 * @return true if the command was successful, otherwise false
+	 */
+	protected abstract boolean execute0(CommandSender sender, String[] args);
 
 	/**
 	 * 返回此命令的某个消息
@@ -110,35 +139,6 @@ public abstract class Cmd extends Command implements MESSAGE {
 		msg(type).send(sender, args);
 		return true;
 	}
-
-	@Override
-	public boolean execute(CommandSender sender, String commandLabel, String[] args) {
-		val cq = new CallbackQueue();
-		cq.task(() -> checkPlayer(sender, cq), //
-				() -> Core.permissionCheck(sender, getPermission(), cq), //
-				() -> execute0(sender, args));
-		return true;
-	}
-
-	/**
-	 * 检查CommandSender状态
-	 * 
-	 * @param sender CommandSender
-	 * @param next   回调
-	 */
-	protected void checkPlayer(CommandSender sender, Runnable next) {
-		if (sender instanceof Player) next.run();
-		else NOT_PLAYER.send(sender);
-	}
-
-	/**
-	 * 实际执行
-	 * 
-	 * @param sender Source object which is executing this command
-	 * @param args   All arguments passed to the command, split via ' '
-	 * @return true if the command was successful, otherwise false
-	 */
-	protected abstract boolean execute0(CommandSender sender, String[] args);
 
 	/**
 	 * 返回此命令的某个消息
