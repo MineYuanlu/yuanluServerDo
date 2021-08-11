@@ -37,7 +37,7 @@ public final class CmdTphere extends Cmd {
 				if (name.isEmpty()) msg("not-found", player, args[0]);
 				else {
 					msg("success", player, name, display);
-					Core.tpTo(name, player);
+					Core.tpTo(name, player, false);
 				}
 			});
 			Main.send(player, Channel.Tp.s0C_tpReq(args[0], 2));

@@ -25,13 +25,16 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 import lombok.AccessLevel;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.val;
+import lombok.experimental.FieldDefaults;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.Channel.Package.BiBoolConsumer;
 import yuan.plugins.serverDo.Channel.Package.BiPlayerConsumer;
@@ -76,6 +79,16 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 
 	}
+
+	@Data
+	@FieldDefaults(level = AccessLevel.PRIVATE)
+	@NoArgsConstructor(access = AccessLevel.PRIVATE)
+	private static final class ConfDatas {
+		String	noCooldownPermission;
+		long	cooldown;
+	}
+
+	private static final ConfDatas Conf = new ConfDatas();
 
 	/** 监听回调的对象 */
 	@Value
@@ -147,7 +160,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			case 0x8:
 				Channel.Tp.p8S_tpThird(buf, name -> {
 					val mover = Bukkit.getPlayerExact(name);
-					if (mover != null) toToLocal(mover, player);
+					if (mover != null) toToLocal(mover, player, false);
 					else WAIT_JOIN_TP.put(name, player.getName());
 				});
 				break;
@@ -161,27 +174,52 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		/**
 		 * 本地传送
 		 * 
-		 * @param mover  移动者
-		 * @param target 目标
+		 * @param mover      移动者
+		 * @param target     目标
+		 * @param checkDelay 是否检查用户的延时传送
 		 */
-		private static void toToLocal(Player mover, Player target) {
+		private static void toToLocal(@NonNull Player mover, @NonNull Player target, boolean checkDelay) {
+			if (checkDelay) {
+				checkDelay(mover, Conf.cooldown, () -> toToLocal(mover, target, false));
+				return;
+			}
 			mover.teleport(target);
 		}
 
 		/**
 		 * 远程传送
 		 * 
-		 * @param player 操控玩家
-		 * @param mover  移动者
-		 * @param target 目标
+		 * @param player     操控玩家
+		 * @param mover      移动者
+		 * @param target     目标
+		 * @param checkDelay 是否检查用户的延时传送
 		 */
-		private static void tpToRemote(Player player, String mover, String target) {
+		private static void tpToRemote(@NonNull Player player, @NonNull String mover, @NonNull String target, boolean checkDelay) {
+			if (checkDelay) {
+				checkDelay(player, Conf.cooldown, () -> tpToRemote(player, mover, target, false));
+				return;
+			}
 			listenCallBack(player, Channel.TP, 7, (BiBoolConsumer) (success, error) -> {
 				if (error) BC_ERROR.send(player);
 				else if (!success) BC_PLAYER_OFF.send(player);
 			});
 			Main.send(player, Channel.Tp.s6C_tpThird(mover, target));
 		}
+
+		/**
+		 * 检查延时传送
+		 * 
+		 * @param player 玩家
+		 * @param time   延时时长
+		 * @param r      检查完成
+		 */
+		private static void checkDelay(@NonNull Player player, long time, Runnable r) {
+			if (Conf.noCooldownPermission != null && player.hasPermission(Conf.noCooldownPermission)) r.run();
+			else WaitMaintain.add(BAN_MOVE, player.getUniqueId(), time, r);
+		}
+
+		/** 禁止移动的玩家 */
+		private static final HashSet<UUID> BAN_MOVE = new HashSet<>();
 	}
 
 	/** 单例 */
@@ -225,21 +263,6 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 				}
 			} else map.put(player.getUniqueId(), obj);
 		}
-	}
-
-	/**
-	 * 
-	 * @param e 事件
-	 * @deprecated BUKKIT
-	 */
-	@Deprecated
-	@EventHandler(priority = EventPriority.HIGH)
-	public static void event(@NonNull PlayerJoinEvent e) {
-		val p = e.getPlayer();
-		if (p == null) return;
-		val to = TpHandler.WAIT_JOIN_TP.remove(p.getName());
-		if (to == null) return;
-		Bukkit.getScheduler().runTask(Main.getMain(), () -> tpTo(p, to));
 	}
 
 	/**
@@ -293,43 +316,78 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 * 传送玩家<br>
 	 * 将会先检查本地玩家, 若不存在则向BC请求
 	 * 
-	 * @param mover  移动者
-	 * @param target 目标
+	 * @param mover      移动者
+	 * @param target     目标
+	 * @param checkDelay 是否检查用户的延时传送
 	 */
-	public static void tpTo(Player mover, String target) {
+	public static void tpTo(Player mover, String target, boolean checkDelay) {
 		val localTarget = Main.getMain().getServer().getPlayerExact(target);
-		if (localTarget != null) TpHandler.toToLocal(mover, localTarget);
-		else TpHandler.tpToRemote(mover, mover.getName(), target);
+		if (localTarget != null) TpHandler.toToLocal(mover, localTarget, checkDelay);
+		else TpHandler.tpToRemote(mover, mover.getName(), target, checkDelay);
 	}
 
 	/**
 	 * 传送玩家<br>
 	 * 将会先检查本地玩家, 若不存在则向BC请求
 	 * 
-	 * @param player 操控玩家
-	 * @param mover  移动者
-	 * @param target 目标
+	 * @param player     操控玩家
+	 * @param mover      移动者
+	 * @param target     目标
+	 * @param checkDelay 是否检查用户的延时传送
 	 */
-	public static void tpTo(Player player, String mover, String target) {
+	public static void tpTo(Player player, String mover, String target, boolean checkDelay) {
 		val	localMover	= Main.getMain().getServer().getPlayerExact(mover);
 		val	localTarget	= Main.getMain().getServer().getPlayerExact(target);
-		if (localMover != null && localTarget != null) TpHandler.toToLocal(localMover, localTarget);
-		else TpHandler.tpToRemote(player, mover, target);
+		if (localMover != null && localTarget != null) TpHandler.toToLocal(localMover, localTarget, checkDelay);
+		else TpHandler.tpToRemote(player, mover, target, checkDelay);
 	}
 
 	/**
 	 * 传送玩家<br>
 	 * 将会先检查本地玩家, 若不存在则向BC请求
 	 * 
-	 * @param mover  移动者
-	 * @param target 目标
+	 * @param mover      移动者
+	 * @param target     目标
+	 * @param checkDelay 是否检查用户的延时传送
 	 */
-	public static void tpTo(String mover, Player target) {
+	public static void tpTo(String mover, Player target, boolean checkDelay) {
 		val localMover = Main.getMain().getServer().getPlayerExact(mover);
-		if (localMover != null) TpHandler.toToLocal(localMover, target);
-		else TpHandler.tpToRemote(target, mover, target.getName());
+		if (localMover != null) TpHandler.toToLocal(localMover, target, checkDelay);
+		else TpHandler.tpToRemote(target, mover, target.getName(), checkDelay);
 	}
 
+	/**
+	 * 
+	 * @param e 事件
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.LOWEST)
+	public void onPlayerMove(@NonNull PlayerMoveEvent e) {
+		val uid = e.getPlayer().getUniqueId();
+		if (!TpHandler.BAN_MOVE.contains(uid)) return;
+		val distance = e.getFrom().distanceSquared(e.getTo());
+		if (distance < 0.05) return;
+		TpHandler.BAN_MOVE.remove(uid);
+	}
+
+	/**
+	 * 
+	 * @param e 事件
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerJoin(@NonNull PlayerJoinEvent e) {
+		val p = e.getPlayer();
+		if (p == null) return;
+		val to = TpHandler.WAIT_JOIN_TP.remove(p.getName());
+		if (to == null) return;
+		Bukkit.getScheduler().runTask(Main.getMain(), () -> tpTo(p, to, false));
+	}
+
+	/** @deprecated BUKKIT */
+	@Deprecated
 	@Override
 	public void onPluginMessageReceived(String c, Player player, byte[] message) {
 		if (!ShareData.BC_CHANNEL.equals(c)) return;

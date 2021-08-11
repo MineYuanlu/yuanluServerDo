@@ -95,7 +95,7 @@ public final class CmdTpaccept extends Cmd {
 			else {
 				Core.listenCallBack(player, Channel.TP, 4, (BoolConsumer) success -> {
 					if (success) {
-						if (accept && tar.isThere()) Core.tpTo(player, tar.getSender());
+						if (accept && tar.isThere()) Core.tpTo(player, tar.getSender(), true);
 					} else cmd.msg("offline", player);
 				});
 				cmd.msg("success", player, tar.getSender(), tar.getDisplay());

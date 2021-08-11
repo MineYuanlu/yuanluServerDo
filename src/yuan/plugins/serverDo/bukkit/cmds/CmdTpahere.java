@@ -42,7 +42,6 @@ public final class CmdTpahere extends Cmd {
 					msg("send", player);
 					Core.listenCallBack(player, Channel.TP, "5-" + name, WaitMaintain.T_User, (BoolConsumer) allow -> {
 						msg(allow ? "accept" : "deny", player, name, display);
-//					if (allow) Core.tpTo(name, player);
 					});
 				}
 			});

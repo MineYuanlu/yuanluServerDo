@@ -43,25 +43,44 @@ message:
   cmd:
     help: '模板内容'
     tp:
-      receiver: message.cmd.tp.receiver
-      third-mover: message.cmd.tp.third-mover
-      third-target: message.cmd.tp.third-target
-      tp: message.cmd.tp.tp
-      tp-third: message.cmd.tp.tp-third
+      receiver: ""
+      third-mover: ""
+      third-target: ""
+      tp: "&7正在传送至 &2%2$s"
+      tp-third: "&7正在将 &2%2$s &7传送至 &2%4$s"
+      help: "&7输入指令： &2/tp <玩家> &7传送到某玩家的位置"
+      not-found: "&7未找到玩家 &2%s"
     tpa:
-      receiver: message.cmd.tpa.receiver
-      send: message.cmd.tpa.send
+      receiver: 
+        #一个高级语言节点, 接受json文本
+        json: '["",{"text":"&2%s &7请求传送到您这里\n"},{"text":"&7若想接受传送，输入 &2/tpaccept\n","clickEvent":{"action":"run_command","value":"/tpaccept"},"hoverEvent":{"action":"show_text","value":["",{"text":"点击运行","bold":true}]}},{"text":"&7若想拒绝传送，输入 &2/tpdeny\n","clickEvent":{"action":"run_command","value":"/tpdeny"},"hoverEvent":{"action":"show_text","value":["",{"text":"点击运行","bold":true}]}},{"text":"&7此传送请求将在 &2%s &7秒后自动超时"}]'
+        msg:
+          #备用信息, 对于一些不支持json的版本/模块显示的信息
+          - "&2%s &7请求传送到您这里"
+          - "&7若想接受传送，输入 &2/tpaccept"
+          - "&7若想拒绝传送，输入 &2/tpdeny"
+          - "&7此传送请求将在 &2%s &7秒后自动超时"
+      send: 
+        #一个高级语言节点, 接受json文本
+        json: '["",{"text":"&7请求已发送给 &2%2$s\n"},{"text":"&7想要取消这个传送请求，请输入 &2/tpacancel","clickEvent":{"action":"run_command","value":"/tpacancel"},"hoverEvent":{"action":"show_text","value":["",{"text":"点击运行","bold":true}]}}]'
+        msg:
+          #备用信息, 对于一些不支持json的版本/模块显示的信息
+          - "请求已发送给 &2%2$s"
+          - "&7想要取消这个传送请求，请输入 &2/tpacancel"
       accept: message.cmd.tpa.accept
       deny: message.cmd.tpa.deny
       self-tp: message.cmd.tpa.self-tp
+      help: "&7输入指令： &2/tpa <玩家> &7请求传到送某玩家的位置"
     tphere:
       receiver: message.cmd.tphere.receiver
       success: message.cmd.tphere.success
+      help: "&7输入指令： &2/tphere <玩家> &7传送某玩家到您的位置"
     tpahere:
       receiver: message.cmd.tpahere.receiver
       send: message.cmd.tpahere.send
       accept: message.cmd.tpahere.accept
       deny: message.cmd.tpahere.deny
+      help: "&7输入指令： &2/tpahere <玩家> &7请求某玩家传送到您的位置"
     tpaccept:
       success: message.cmd.tpaccept.success
       no-request: message.cmd.tpaccept.no-request

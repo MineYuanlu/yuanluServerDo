@@ -41,7 +41,7 @@ public final class CmdTp extends Cmd {
 				if (name.isEmpty()) msg("not-found", player, args[0]);
 				else {
 					msg("tp", player, name, display);
-					Core.tpTo(player, name);
+					Core.tpTo(player, name, false);
 				}
 			});
 			Main.send(player, Channel.Tp.s0C_tpReq(args[0], 0));
@@ -52,7 +52,7 @@ public final class CmdTp extends Cmd {
 				else if (tn.isEmpty()) msg("not-found", player, args[1]);
 				else {
 					msg("tp-third", player, mn, md, tn, td);
-					Core.tpTo(player, mn, tn);
+					Core.tpTo(player, mn, tn, false);
 				}
 			});
 			Main.send(player, Channel.Tp.s9C_tpReqThird(args[0], args[1]));

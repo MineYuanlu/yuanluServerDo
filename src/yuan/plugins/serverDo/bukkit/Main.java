@@ -260,7 +260,7 @@ public class Main extends JavaPlugin implements Listener {
 		config		= loadFile("config.yml");
 		prefix		= config.getString("Prefix", "");
 		langLost	= config.getString("message.LanguageFileIsLost", LANG_LOST);
-//		getServer().getPluginManager().registerEvents(this, this); // 注册监听器
+		getServer().getPluginManager().registerEvents(Core.INSTANCE, this); // 注册监听器
 		CommandManager.init(config.getConfigurationSection("cmd"));
 		getServer().getMessenger().registerOutgoingPluginChannel(this, ShareData.BC_CHANNEL);
 		getServer().getMessenger().registerIncomingPluginChannel(this, ShareData.BC_CHANNEL, Core.INSTANCE);
