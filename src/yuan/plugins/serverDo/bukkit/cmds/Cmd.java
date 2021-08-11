@@ -66,6 +66,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 		val info = CommandManager.INFOS.get(name);
 		setDescription(info.getDescription());
 		setUsage(info.getUsageMessage());
+		setPermission(info.getPermission());
 
 		String cname = getClass().getSimpleName().toLowerCase();
 		if (cname.startsWith("cmd")) cname = cname.substring(3);

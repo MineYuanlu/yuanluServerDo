@@ -20,6 +20,7 @@ import lombok.NonNull;
 import lombok.Value;
 import lombok.val;
 import yuan.plugins.serverDo.Channel;
+import yuan.plugins.serverDo.Channel.Package.BoolConsumer;
 import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.WaitMaintain;
 import yuan.plugins.serverDo.bukkit.Core;
@@ -92,10 +93,11 @@ public final class CmdTpaccept extends Cmd {
 
 			if (tar == null) cmd.msg("not-found", player, who);
 			else {
-				Runnable r = accept && tar.isThere() ? () -> {
-					Core.tpTo(player, tar.getSender());
-				} : Tool.EMPTY_RUNNABLE;
-				Core.listenCallBack(player, Channel.TP, 4, r);
+				Core.listenCallBack(player, Channel.TP, 4, (BoolConsumer) success -> {
+					if (success) {
+						if (accept && tar.isThere()) Core.tpTo(player, tar.getSender());
+					} else cmd.msg("offline", player);
+				});
 				cmd.msg("success", player, tar.getSender(), tar.getDisplay());
 				Main.send(player, Channel.Tp.s3C_tpResp(tar.getSender(), accept));
 			}

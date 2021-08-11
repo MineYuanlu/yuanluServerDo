@@ -142,6 +142,8 @@ public interface MESSAGE {
 
 	Msg	M_TIME_OUT		= mes("basic.message-time-out");
 	Msg	BAD_VERSION		= mes("basic.version-bad");
+	Msg	BC_ERROR		= mes("basic.bungee-error");
+	Msg	BC_PLAYER_OFF	= mes("basic.bungee-player-offline");
 
 	static Msg mes(String node) {
 		return Main.getMain().mes(node);

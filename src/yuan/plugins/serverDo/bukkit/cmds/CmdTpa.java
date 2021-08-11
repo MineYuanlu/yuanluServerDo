@@ -35,11 +35,16 @@ public final class CmdTpa extends Cmd {
 		Player player = (Player) sender;
 		if (args.length > 0) {
 			Core.listenCallBack(player, Channel.TP, 1, (BiConsumer<String, String>) (name, display) -> {
-				msg("send", player, name, display);
-				Core.listenCallBack(player, Channel.TP, 5, WaitMaintain.T_User, (BoolConsumer) allow -> {
-					msg(allow ? "accept" : "deny", player, name, display);
-					if (allow) Core.tpTo(player, name);
-				});
+				if (name.isEmpty()) msg("not-found", player, args[0]);
+				else if (name.equals(player.getName())) {
+					msg("self-tp", player);
+				} else {
+					msg("send", player, name, display);
+					Core.listenCallBack(player, Channel.TP, "5-" + name, WaitMaintain.T_User, (BoolConsumer) allow -> {
+						msg(allow ? "accept" : "deny", player, name, display);
+						if (allow) Core.tpTo(player, name);
+					});
+				}
 			});
 			Main.send(player, Channel.Tp.s0C_tpReq(args[0], 1));
 			return true;

@@ -119,6 +119,23 @@ public final class Tool {
 	}
 
 	/**
+	 * 比较两个对象是否一致<br>
+	 * 特别的, 当对象均为Number时, 将会比较器long与double值, 其中double值误差范围为{@code 0x1.0p-1021}
+	 * 
+	 * @param a 对象
+	 * @param b 对象
+	 * @return 是否一致
+	 */
+	public static boolean equals(Object a, Object b) {
+		if (Objects.equals(a, b)) return true;
+		if (a instanceof Number && b instanceof Number) {
+			Number A = (Number) a, B = (Number) b;
+			if (A.longValue() == B.longValue() && Math.abs(A.doubleValue() - B.doubleValue()) < 0x1.0p-1021) return true;
+		}
+		return false;
+	}
+
+	/**
 	 * 迭代<br>
 	 * 对映射图进行深度迭代
 	 * 

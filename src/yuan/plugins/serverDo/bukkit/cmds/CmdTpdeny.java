@@ -18,10 +18,10 @@ import lombok.NonNull;
  * @author yuanlu
  *
  */
-public final class Tpdeny extends Cmd {
+public final class CmdTpdeny extends Cmd {
 
 	/** @param name 命令名 */
-	protected Tpdeny(String name) {
+	protected CmdTpdeny(String name) {
 		super(name);
 	}
 

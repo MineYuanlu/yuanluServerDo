@@ -1,7 +1,79 @@
 Prefix: ''
+cmd:
+ tp:
+  names:
+   - tp
+  permission: 'yuanlu.serverDo.tp'
+  description: 'tp cmd'
+  usageMessage: '/tp <target>'
+ tpa:
+  names:
+   - tpa
+  permission: 'yuanlu.serverDo.tpa'
+  description: 'tpa cmd'
+  usageMessage: '/tpa <target>'
+ tphere:
+  names:
+   - tphere
+  permission: 'yuanlu.serverDo.tphere'
+  description: 'tphere cmd'
+  usageMessage: '/tphere <target>'
+ tpahere:
+  names:
+   - tpahere
+  permission: 'yuanlu.serverDo.tpahere'
+  description: 'tpahere cmd'
+  usageMessage: '/tpahere <target>'
+ tpaccept:
+  names:
+   - tpaccept
+  permission: 'yuanlu.serverDo.tpaccept'
+  description: 'tpaccept cmd'
+  usageMessage: '/tpaccept <target>'
+ tpdeny:
+  names:
+   - tpdeny
+  permission: 'yuanlu.serverDo.tpdeny'
+  description: 'tpdenycmd'
+  usageMessage: '/tpdeny <target>'
 message:
- LanguageFileIsLost: '&c&l[语言文件缺失]节点:%node%'
- not-player: "&c您不是玩家!"
- no-permission: "&c您没有权限"
- cmd:
-  help: '模板内容'
+  LanguageFileIsLost: '&c&l[语言文件缺失]节点:%node%'
+  not-player: "&c您不是玩家!"
+  no-permission: "&c您没有权限"
+  cmd:
+    help: '模板内容'
+    tp:
+      receiver: message.cmd.tp.receiver
+      third-mover: message.cmd.tp.third-mover
+      third-target: message.cmd.tp.third-target
+      tp: message.cmd.tp.tp
+      tp-third: message.cmd.tp.tp-third
+    tpa:
+      receiver: message.cmd.tpa.receiver
+      send: message.cmd.tpa.send
+      accept: message.cmd.tpa.accept
+      deny: message.cmd.tpa.deny
+      self-tp: message.cmd.tpa.self-tp
+    tphere:
+      receiver: message.cmd.tphere.receiver
+      success: message.cmd.tphere.success
+    tpahere:
+      receiver: message.cmd.tpahere.receiver
+      send: message.cmd.tpahere.send
+      accept: message.cmd.tpahere.accept
+      deny: message.cmd.tpahere.deny
+    tpaccept:
+      success: message.cmd.tpaccept.success
+      no-request: message.cmd.tpaccept.no-request
+      not-found: message.cmd.tpaccept.not-found
+      timeout: message.cmd.tpaccept.timeout
+    tpdeny:
+      success: message.cmd.tpdeny.success
+      no-request: message.cmd.tpdeny.no-request
+      not-found: message.cmd.tpdeny.not-found
+      timeout: message.cmd.tpdeny.timeout
+  basic:
+    message-time-out: message.basic.message-time-out
+    version-bad: message.basic.version-bad
+    bungee-error: message.basic.bungee-error
+    bungee-player-offline: message.basic.bungee-player-offline

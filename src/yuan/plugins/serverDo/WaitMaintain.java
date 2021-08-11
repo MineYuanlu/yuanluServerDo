@@ -153,8 +153,9 @@ public final class WaitMaintain {
 		/** 处理 */
 		@Override
 		void handle() {
-			Collection	c		= (Collection) map.get(k);
-			boolean		clear	= c.remove(old);
+			Collection c = (Collection) map.get(k);
+			if (c == null) return;
+			boolean clear = c.remove(old);
 			if (c.isEmpty()) map.remove(k, c);
 			if (clear && clearListener != null) clearListener.run();
 		}

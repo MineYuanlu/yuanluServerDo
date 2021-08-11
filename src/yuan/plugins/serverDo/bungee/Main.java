@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -19,6 +20,8 @@ import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.PluginMessageEvent;
+import net.md_5.bungee.api.event.ServerConnectEvent.Reason;
+import net.md_5.bungee.api.event.ServerConnectedEvent;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
@@ -94,6 +97,7 @@ public class Main extends Plugin implements Listener {
 	 */
 	public static void send(Server server, @NonNull byte[] buf) {
 		server.sendData(ShareData.BC_CHANNEL, buf);
+		if (isDEBUG()) getMain().getLogger().info("发送: " + server.getInfo().getName() + " " + Arrays.toString(buf));
 	}
 
 	/**
@@ -104,6 +108,7 @@ public class Main extends Plugin implements Listener {
 	 */
 	public static void send(ServerInfo server, @NonNull byte[] buf) {
 		server.sendData(ShareData.BC_CHANNEL, buf);
+		if (isDEBUG()) getMain().getLogger().info("发送: " + server.getName() + " " + Arrays.toString(buf));
 	}
 
 	/** */
@@ -111,7 +116,7 @@ public class Main extends Plugin implements Listener {
 		// All you have to do is adding the following two lines in your onEnable method.
 		// You can find the plugin ids of your plugins on the page
 		// https://bstats.org/what-is-my-plugin-id
-		int		pluginId	= 7158;							// <-- Replace with the id of your plugin!
+		int		pluginId	= 12396;						// <-- Replace with the id of your plugin!
 		Metrics	metrics		= new Metrics(this, pluginId);
 
 		// Optional: Add custom charts
@@ -193,6 +198,7 @@ public class Main extends Plugin implements Listener {
 	@Deprecated
 	@EventHandler
 	public void onPluginMessage(PluginMessageEvent e) {
+		System.out.println("CHANNEL:" + e.getTag() + ", " + ShareData.BC_CHANNEL.equals(e.getTag()) + ", " + (e.getSender() instanceof Server));
 		if (!ShareData.BC_CHANNEL.equals(e.getTag())) return;
 		e.setCancelled(true);
 		if (!(e.getSender() instanceof Server)) return;
@@ -200,11 +206,12 @@ public class Main extends Plugin implements Listener {
 		Server			server	= (Server) e.getSender();
 		val				message	= e.getData();
 		val				type	= Channel.byId(ShareData.readInt(message, 0, -1));
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] receive: " + type + ": " + Arrays.toString(message));
 		switch (type) {
 		case PERMISSION: {
 			val	permission	= Channel.Permission.parseC(message);
 			val	allow		= player.hasPermission(permission);
-			send(server, Channel.Permission.sendC(permission, allow));
+			send(player, Channel.Permission.sendC(permission, allow));
 			break;
 		}
 		case TP: {
@@ -231,45 +238,70 @@ public class Main extends Plugin implements Listener {
 	 */
 	private void onPluginTpMessage(ProxiedPlayer player, Server server, byte[] buf) {
 		byte id = buf[4/* 包头偏移 */ ];
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] TP:" + id);
 		switch (id) {
 		case 0x0:
 			Channel.Tp.p0C_tpReq(buf, (target, type) -> {
 				val targetPlayer = getPlayer(target);
-				// TODO 搜索不到玩家
-				send(targetPlayer, Channel.Tp.s2S_tpReq(player.getName(), player.getDisplayName(), type));
-				send(player, Channel.Tp.s1S_tpReqReceive(targetPlayer.getName(), targetPlayer.getDisplayName()));
+				if (targetPlayer == null) {
+					send(player, Channel.Tp.s1S_tpReqReceive("", ""));
+				} else if (targetPlayer.equals(player)) {
+					send(player, Channel.Tp.s1S_tpReqReceive(player.getName(), player.getDisplayName()));
+				} else {
+					send(targetPlayer, Channel.Tp.s2S_tpReq(player.getName(), player.getDisplayName(), type));
+					send(player, Channel.Tp.s1S_tpReqReceive(targetPlayer.getName(), targetPlayer.getDisplayName()));
+				}
 			});
 			break;
 		case 0x3:
 			Channel.Tp.p3C_tpResp(buf, (who, allow) -> {
 				val targetPlayer = getProxy().getPlayer(who);
-				// TODO 搜索不到玩家
-				send(player, Channel.Tp.s4S_tpRespReceive());
-				send(targetPlayer, Channel.Tp.s5S_tpResp(player.getName(), allow));
+				send(player, Channel.Tp.s4S_tpRespReceive(targetPlayer != null));
+				if (targetPlayer != null) send(targetPlayer, Channel.Tp.s5S_tpResp(player.getName(), allow));
 			});
 			break;
 		case 0x6:
 			Channel.Tp.p6C_tpThird(buf, (mover, target) -> {
 				val	m	= getProxy().getPlayer(mover);
 				val	t	= getProxy().getPlayer(target);
-				// TODO 搜索不到玩家
-				send(t, Channel.Tp.s8S_tpThird(m.getName()));
-				send(player, Channel.Tp.s7S_tpThirdReceive());
+				if (m == null || t == null) {
+					send(player, Channel.Tp.s7S_tpThirdReceive(false, false));
+				} else {
+					send(t, Channel.Tp.s8S_tpThird(m.getName()));
+					m.connect(t.getServer().getInfo(), (success, e) -> {
+						if (e != null) e.printStackTrace();
+						send(player, Channel.Tp.s7S_tpThirdReceive(success, e != null));
+					}, Reason.COMMAND);
+				}
 			});
 			break;
 		case 0x9:
 			Channel.Tp.p9C_tpReqThird(buf, (mover, target) -> {
-				val	m	= getProxy().getPlayer(mover);
-				val	t	= getProxy().getPlayer(target);
-				// TODO 搜索不到玩家
-				send(m, Channel.Tp.s2S_tpReq(t.getName(), t.getDisplayName(), 4));
-				send(t, Channel.Tp.s2S_tpReq(m.getName(), m.getDisplayName(), 5));
-				send(player, Channel.Tp.saS_tpReqThirdReceive(m.getName(), m.getDisplayName(), t.getName(), t.getDisplayName()));
+				val	m	= getPlayer(mover);
+				val	t	= getPlayer(target);
+				if (m != null && t != null) {
+					send(m, Channel.Tp.s2S_tpReq(t.getName(), t.getDisplayName(), 4));
+					send(t, Channel.Tp.s2S_tpReq(m.getName(), m.getDisplayName(), 5));
+				}
+				send(player, Channel.Tp.saS_tpReqThirdReceive(m == null ? "" : m.getName(), m == null ? "" : m.getDisplayName(), //
+						t == null ? "" : t.getName(), t == null ? "" : t.getDisplayName()));
 			});
 			break;
 		default:
 			ShareData.getLogger().warning("[PACKAGE]Bad Tp sub id:" + id + ", from: " + server.getInfo().getName());
 			break;
 		}
+	}
+
+	/**
+	 * EVENT
+	 * 
+	 * @param e 服务器连接
+	 * @deprecated BUNGEE
+	 */
+	@Deprecated
+	@EventHandler
+	public void onServerConnected(ServerConnectedEvent e) {
+		send(e.getServer(), Channel.VersionCheck.sendS());
 	}
 }

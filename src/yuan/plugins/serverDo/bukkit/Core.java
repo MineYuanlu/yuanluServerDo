@@ -7,11 +7,11 @@
  */
 package yuan.plugins.serverDo.bukkit;
 
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
@@ -33,8 +33,9 @@ import lombok.NonNull;
 import lombok.Value;
 import lombok.val;
 import yuan.plugins.serverDo.Channel;
+import yuan.plugins.serverDo.Channel.Package.BiBoolConsumer;
 import yuan.plugins.serverDo.Channel.Package.BiPlayerConsumer;
-import yuan.plugins.serverDo.Channel.Package.ObjBoolConsumer;
+import yuan.plugins.serverDo.Channel.Package.BoolConsumer;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.WaitMaintain;
@@ -57,8 +58,9 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		@Override
 		public synchronized void run() {
-			runnables[index++].run();
+			val r = runnables[index++];
 			if (index == runnables.length) runnables = null;
+			r.run();
 		}
 
 		/**
@@ -118,6 +120,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			if (type != Channel.TP) throw new InternalError("Bad Type");
 			byte		id		= buf[4/* 包头偏移 */];
 			Consumer	handler	= null;
+			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] TP: " + id);
 			switch (id) {
 			case 0x1:
 				handler = h -> Channel.Tp.p1S_searchResult(buf, (BiConsumer<String, String>) h);
@@ -131,17 +134,21 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 				});
 				break;
 			case 0x4:
-				handler = h -> Channel.Tp.p4S_tpRespReceive(buf, (Runnable) h);
+				handler = h -> Channel.Tp.p4S_tpRespReceive(buf, (BoolConsumer) h);
 				break;
 			case 0x5:
-				handler = h -> Channel.Tp.p5S_tpResp(buf, (ObjBoolConsumer<String>) h);
+				Channel.Tp.p5S_tpResp(buf, (who, allow) -> {
+					callBack(player, type, id + "-" + who, h -> ((BoolConsumer) h).accept(allow));
+				});
 				break;
 			case 0x7:
-				handler = h -> Channel.Tp.p7S_tpThirdReceive(buf, (Runnable) h);
+				handler = h -> Channel.Tp.p7S_tpThirdReceive(buf, (BiBoolConsumer) h);
 				break;
 			case 0x8:
 				Channel.Tp.p8S_tpThird(buf, name -> {
-					WAIT_JOIN_TP.put(name, player.getName());
+					val mover = Bukkit.getPlayerExact(name);
+					if (mover != null) toToLocal(mover, player);
+					else WAIT_JOIN_TP.put(name, player.getName());
 				});
 				break;
 			case 0xa:
@@ -152,6 +159,16 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 
 		/**
+		 * 本地传送
+		 * 
+		 * @param mover  移动者
+		 * @param target 目标
+		 */
+		private static void toToLocal(Player mover, Player target) {
+			mover.teleport(target);
+		}
+
+		/**
 		 * 远程传送
 		 * 
 		 * @param player 操控玩家
@@ -159,7 +176,10 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param target 目标
 		 */
 		private static void tpToRemote(Player player, String mover, String target) {
-			listenCallBack(player, Channel.TP, 7, Tool.EMPTY_RUNNABLE);
+			listenCallBack(player, Channel.TP, 7, (BiBoolConsumer) (success, error) -> {
+				if (error) BC_ERROR.send(player);
+				else if (!success) BC_PLAYER_OFF.send(player);
+			});
 			Main.send(player, Channel.Tp.s6C_tpThird(mover, target));
 		}
 	}
@@ -195,8 +215,14 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		val map = CALL_BACK_WAITER.get(channel);
 		synchronized (map) {
 			val obj = map.remove(player.getUniqueId());
-			if (Objects.equals(obj.checker, checker)) {
-				if (consumer != null) consumer.accept(obj.handler);
+			if (ShareData.isDEBUG()) ShareData.getLogger().info("[callback] obj:" + obj + ", checker: " + checker);
+			if (Tool.equals(obj.checker, checker)) {
+				if (ShareData.isDEBUG()) ShareData.getLogger().info("[callback] call:" + obj.handler + ", consumer: " + consumer);
+				if (consumer != null) try {
+					consumer.accept(obj.handler);
+				} catch (Throwable e) {
+					throw new RuntimeException("回调函数执行失败, 玩家: " + player.getName() + ", 频道: " + channel + ", 标记: " + checker);
+				}
 			} else map.put(player.getUniqueId(), obj);
 		}
 	}
@@ -272,9 +298,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 */
 	public static void tpTo(Player mover, String target) {
 		val localTarget = Main.getMain().getServer().getPlayerExact(target);
-		if (localTarget != null) {
-			mover.teleport(localTarget);
-		} else TpHandler.tpToRemote(mover, mover.getName(), target);
+		if (localTarget != null) TpHandler.toToLocal(mover, localTarget);
+		else TpHandler.tpToRemote(mover, mover.getName(), target);
 	}
 
 	/**
@@ -288,9 +313,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	public static void tpTo(Player player, String mover, String target) {
 		val	localMover	= Main.getMain().getServer().getPlayerExact(mover);
 		val	localTarget	= Main.getMain().getServer().getPlayerExact(target);
-		if (localMover != null && localTarget != null) {
-			localMover.teleport(localTarget);
-		} else TpHandler.tpToRemote(player, mover, target);
+		if (localMover != null && localTarget != null) TpHandler.toToLocal(localMover, localTarget);
+		else TpHandler.tpToRemote(player, mover, target);
 	}
 
 	/**
@@ -302,9 +326,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 */
 	public static void tpTo(String mover, Player target) {
 		val localMover = Main.getMain().getServer().getPlayerExact(mover);
-		if (localMover != null) {
-			localMover.teleport(target);
-		} else TpHandler.tpToRemote(target, mover, target.getName());
+		if (localMover != null) TpHandler.toToLocal(localMover, target);
+		else TpHandler.tpToRemote(target, mover, target.getName());
 	}
 
 	@Override
@@ -319,6 +342,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			Main.send(player, Channel.VersionCheck.sendC(allow));
 			return;
 		}
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] receive: " + type + ": " + Arrays.toString(message));
 		switch (type) {
 		case PERMISSION: {
 			Channel.Permission.parseS(message, (permission, allow) -> //

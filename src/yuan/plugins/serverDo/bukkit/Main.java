@@ -23,6 +23,7 @@ import lombok.Getter;
 import lombok.val;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.bukkit.MESSAGE.Msg;
+import yuan.plugins.serverDo.bukkit.cmds.CommandManager;
 
 /**
  * 主类
@@ -33,21 +34,24 @@ import yuan.plugins.serverDo.bukkit.MESSAGE.Msg;
 public class Main extends JavaPlugin implements Listener {
 
 	/** 语言文件丢失时显示的信息 模板自动生成 */
-	public static final String		LANG_LOST	= "§c§l[语言文件缺失]§4§l(完全损坏)§c§l节点:%node%";
+	public static final String				LANG_LOST			= "§c§l[语言文件缺失]§4§l(完全损坏)§c§l节点:%node%";
 
 	/** 语言文件丢失时显示的信息 模板自动生成 */
-	private static String			langLost;
+	private static String					langLost;
 
 	/** 插件前缀 模板自动生成 */
-	private static String			prefix		= "";
+	private static String					prefix				= "";
 
 	/** 插件主体 */
-	private static @Getter Main		main;
+	private static @Getter Main				main;
 
 	/** 调试模式 */
-	private static @Getter boolean	DEBUG;
+	private static @Getter boolean			DEBUG;
 	/** 强制替换文件 */
-	private static @Getter boolean	FORECE_OUT_FILE;
+	private static @Getter boolean			FORECE_OUT_FILE;
+
+	/** 语言缺失的节点 */
+	private static final YamlConfiguration	MESSAGE_LOST_NODE	= new YamlConfiguration();
 
 	/**
 	 * 向玩家(BC端)发送数据
@@ -230,7 +234,7 @@ public class Main extends JavaPlugin implements Listener {
 			String message = config.getString(node);
 			return checkEmpty && message.isEmpty() ? null : new MESSAGE.StrMsg(t(nop ? message : (prefix + message)));
 		}
-
+		MESSAGE_LOST_NODE.set(node, node);
 		getLogger().warning("§d[LMES] §c§lcan not find message in config: " + node);
 		if (nop) return new MESSAGE.StrMsg(t(langLost.replace("%node%", node)));
 		return new MESSAGE.StrMsg(t(prefix + langLost.replace("%node%", node)));
@@ -240,11 +244,14 @@ public class Main extends JavaPlugin implements Listener {
 	public void onDisable() {
 		// 关闭插件时自动发出
 		getLogger().info("§a" + ShareData.SHOW_NAME + "-关闭");
+		if (!MESSAGE_LOST_NODE.getKeys(false).isEmpty()) saveFile(MESSAGE_LOST_NODE, "lang-lost.yml");
 	}
 
 	@Override
 	public void onEnable() {
+		ShareData.setLogger(getLogger());
 		checkYuanluConfig();
+		ShareData.setDEBUG(DEBUG);
 		bstats();
 
 		// 启用插件时自动发出
@@ -254,7 +261,7 @@ public class Main extends JavaPlugin implements Listener {
 		prefix		= config.getString("Prefix", "");
 		langLost	= config.getString("message.LanguageFileIsLost", LANG_LOST);
 //		getServer().getPluginManager().registerEvents(this, this); // 注册监听器
-//		CommandManager.init();
+		CommandManager.init(config.getConfigurationSection("cmd"));
 		getServer().getMessenger().registerOutgoingPluginChannel(this, ShareData.BC_CHANNEL);
 		getServer().getMessenger().registerIncomingPluginChannel(this, ShareData.BC_CHANNEL, Core.INSTANCE);
 

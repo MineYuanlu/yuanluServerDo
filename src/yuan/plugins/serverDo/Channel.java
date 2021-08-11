@@ -210,6 +210,12 @@ public enum Channel {
 	public static abstract class Package {
 		@SuppressWarnings("javadoc")
 		@FunctionalInterface
+		public interface BiBoolConsumer {
+			void accept(boolean t, boolean u);
+		}
+
+		@SuppressWarnings("javadoc")
+		@FunctionalInterface
 		public interface BiIntConsumer<T, U> {
 			void accept(T t, U u, int x);
 		}
@@ -231,10 +237,6 @@ public enum Channel {
 		public interface ObjBoolConsumer<T> {
 			void accept(T t, boolean u);
 		}
-
-		/** 此数据包ID */
-		protected static @Getter int ID;
-
 	}
 
 	/**
@@ -245,6 +247,9 @@ public enum Channel {
 	 */
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Permission extends Package {
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
 		/**
 		 * 解析Client
 		 * 
@@ -415,6 +420,9 @@ public enum Channel {
 	 */
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Tp extends Package {
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
 		/**
 		 * 检查接收到的数据包ID
 		 * 
@@ -496,14 +504,14 @@ public enum Channel {
 		/**
 		 * 解析: S接收到响应 to C2
 		 * 
-		 * @param buf 数据
-		 * @param r   next
-		 * @see #s4S_tpRespReceive()
+		 * @param buf     数据
+		 * @param success 是否成功处理
+		 * @see #s4S_tpRespReceive(boolean)
 		 */
-		public static void p4S_tpRespReceive(byte[] buf, Runnable r) {
+		public static void p4S_tpRespReceive(byte[] buf, BoolConsumer success) {
 			try (val in = DataIn.pool(buf)) {
 				checkId(in, 4);
-				r.run();
+				success.accept(in.readBoolean());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -512,14 +520,14 @@ public enum Channel {
 		/**
 		 * 解析: S请求响应(转发) to C1
 		 * 
-		 * @param buf   数据
-		 * @param allow 是否允许传送
+		 * @param buf         数据
+		 * @param whoAndAllow C2玩家全名,是否允许传送
 		 * @see #s5S_tpResp(String, boolean)
 		 */
-		public static void p5S_tpResp(byte[] buf, ObjBoolConsumer<String> allow) {
+		public static void p5S_tpResp(byte[] buf, ObjBoolConsumer<String> whoAndAllow) {
 			try (val in = DataIn.pool(buf)) {
 				checkId(in, 5);
-				allow.accept(in.readUTF(), in.readBoolean());
+				whoAndAllow.accept(in.readUTF(), in.readBoolean());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -544,14 +552,14 @@ public enum Channel {
 		/**
 		 * 解析: S实际传送响应
 		 * 
-		 * @param buf 数据
-		 * @param r   next
-		 * @see #s7S_tpThirdReceive()
+		 * @param buf             数据
+		 * @param successAndError 是否成功传送,是否有错误
+		 * @see #s7S_tpThirdReceive(boolean, boolean)
 		 */
-		public static void p7S_tpThirdReceive(byte[] buf, Runnable r) {
+		public static void p7S_tpThirdReceive(byte[] buf, BiBoolConsumer successAndError) {
 			try (val in = DataIn.pool(buf)) {
 				checkId(in, 7);
-				r.run();
+				successAndError.accept(in.readBoolean(), in.readBoolean());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -697,11 +705,13 @@ public enum Channel {
 		/**
 		 * S接收到响应 to C2
 		 * 
+		 * @param success 是否成功处理
 		 * @return 数据包
 		 */
-		public static byte[] s4S_tpRespReceive() {
+		public static byte[] s4S_tpRespReceive(boolean success) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(4);
+				out.writeBoolean(success);
 				return out.getByte();
 			} catch (Exception e) {
 				throw new RuntimeException(e);
@@ -748,11 +758,15 @@ public enum Channel {
 		/**
 		 * S实际传送响应
 		 * 
+		 * @param success 是否成功传送
+		 * @param error   是否有错误
 		 * @return 数据包
 		 */
-		public static byte[] s7S_tpThirdReceive() {
+		public static byte[] s7S_tpThirdReceive(boolean success, boolean error) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(7);
+				out.writeBoolean(success);
+				out.writeBoolean(error);
 				return out.getByte();
 			} catch (Exception e) {
 				throw new RuntimeException(e);
@@ -828,6 +842,9 @@ public enum Channel {
 	 */
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class VersionCheck extends Package {
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
 		/**
 		 * 解析Client
 		 * 
@@ -942,7 +959,7 @@ public enum Channel {
 	private Channel(Class<? extends Package> target) {
 		this.target = target;
 		try {
-			Package.class.getDeclaredField("ID").setInt(target, ordinal());
+			target.getDeclaredField("ID").setInt(target, ordinal());
 		} catch (Exception e) {
 			throw new InternalError(e);
 		}

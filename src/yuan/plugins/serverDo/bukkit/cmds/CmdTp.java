@@ -38,15 +38,22 @@ public final class CmdTp extends Cmd {
 			return msg("help", player);
 		case 1:// tp target
 			Core.listenCallBack(player, Channel.TP, 1, (BiConsumer<String, String>) (name, display) -> {
-				msg("tp", player, name, display);
-				Core.tpTo(player, name);
+				if (name.isEmpty()) msg("not-found", player, args[0]);
+				else {
+					msg("tp", player, name, display);
+					Core.tpTo(player, name);
+				}
 			});
 			Main.send(player, Channel.Tp.s0C_tpReq(args[0], 0));
 			return true;
 		case 2:// tp mover target
 			Core.listenCallBack(player, Channel.TP, 0xa, (BiPlayerConsumer) (mn, md, tn, td) -> {
-				msg("tp-third", player, mn, md, tn, td);
-				Core.tpTo(player, mn, tn);
+				if (mn.isEmpty()) msg("not-found", player, args[0]);
+				else if (tn.isEmpty()) msg("not-found", player, args[1]);
+				else {
+					msg("tp-third", player, mn, md, tn, td);
+					Core.tpTo(player, mn, tn);
+				}
 			});
 			Main.send(player, Channel.Tp.s9C_tpReqThird(args[0], args[1]));
 		}

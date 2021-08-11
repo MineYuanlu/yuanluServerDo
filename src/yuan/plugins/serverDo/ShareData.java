@@ -32,7 +32,7 @@ public final class ShareData {
 	/** 配置文件 */
 	public static final Charset				CHARSET		= Charset.forName("UTF-8");
 	/** BC通道名 */
-	public static final String				BC_CHANNEL	= "yuanlu-SDo".toLowerCase();
+	public static final String				BC_CHANNEL	= "bc:yuanlu-SDo".toLowerCase();
 
 	/**
 	 * 读取一个int
