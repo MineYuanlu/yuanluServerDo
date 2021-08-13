@@ -181,7 +181,7 @@ public class Main extends Plugin implements Listener {
 				request	= str.substring(tabAll.length()).toLowerCase();
 				isAll	= true;
 			} else if (str.startsWith(tabNor)) {
-				request = str.substring(tabNor.length()).toLowerCase();
+				request	= str.substring(tabNor.length()).toLowerCase();
 				isAll	= false;
 			} else return;
 			list.clear();

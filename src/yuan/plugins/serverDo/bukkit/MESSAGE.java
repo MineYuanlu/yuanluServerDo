@@ -164,18 +164,18 @@ public interface MESSAGE {
 		}
 	}
 
-	Msg	NO_PERMISSION	= mes("no-permission");
+	Msg	NO_PERMISSION		= mes("no-permission");
 
-	Msg	CMD_HELP		= mes("cmd.help");
+	Msg	CMD_HELP			= mes("cmd.help");
 
-	Msg	NOT_PLAYER		= mes("not-player");
+	Msg	NOT_PLAYER			= mes("not-player");
 
-	Msg	M_TIME_OUT		= mes("basic.message-time-out");
-	Msg	BAD_VERSION		= mes("basic.version-bad");
-	Msg	BC_ERROR		= mes("basic.bungee-error");
-	Msg	BC_PLAYER_OFF	= mes("basic.bungee-player-offline");
+	Msg	M_TIME_OUT			= mes("basic.message-time-out");
+	Msg	BAD_VERSION			= mes("basic.version-bad");
+	Msg	BC_ERROR			= mes("basic.bungee-error");
+	Msg	BC_PLAYER_OFF		= mes("basic.bungee-player-offline");
 
-	Msg	TPCANCEL_MOVE	= mes("tpcancel-move");
+	Msg	TPCANCEL_MOVE		= mes("tpcancel-move");
 	Msg	VER_NO_RECOMMEND	= mes("version-no-recommend");
 
 	static Msg mes(String node) {

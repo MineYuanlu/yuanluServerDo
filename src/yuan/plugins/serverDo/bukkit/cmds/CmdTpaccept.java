@@ -69,31 +69,11 @@ public final class CmdTpaccept extends Cmd {
 		}
 	}
 
-	@Override
-	public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
-		return getReqList(sender);
-	}
-
-	/**
-	 * 获取玩家请求列表
-	 * 
-	 * @param sender 目标
-	 * @return 对此目标请求的玩家列表
-	 */
-	static final List<String> getReqList(CommandSender sender) {
-		if (sender instanceof Player) {
-			Player	player	= (Player) sender;
-			val		list	= TP_WAIT.get(player.getUniqueId());
-			if (list != null && !list.isEmpty()) return Tool.translate(list, i -> i.sender);
-		}
-		return null;
-	}
 	/** 传送等待 */
 	private static final Map<UUID, ArrayList<TpWaitInfo>>	TP_WAIT			= new ConcurrentHashMap<>();
 
 	/** 传送等待超时的玩家 */
 	private static final HashMap<UUID, Long>				TP_WAIT_TIMEOUT	= new HashMap<>();
-
 	/** message */
 	private static final Msg								M_R_F			= msg(CmdTpcancel.class, "remote-fail");
 
@@ -137,6 +117,21 @@ public final class CmdTpaccept extends Cmd {
 		}
 		M_R_F.send(player, sender);
 		return false;
+	}
+
+	/**
+	 * 获取玩家请求列表
+	 * 
+	 * @param sender 目标
+	 * @return 对此目标请求的玩家列表
+	 */
+	static final List<String> getReqList(CommandSender sender) {
+		if (sender instanceof Player) {
+			Player	player	= (Player) sender;
+			val		list	= TP_WAIT.get(player.getUniqueId());
+			if (list != null && !list.isEmpty()) return Tool.translate(list, i -> i.sender);
+		}
+		return null;
 	}
 
 	/**
@@ -185,6 +180,11 @@ public final class CmdTpaccept extends Cmd {
 	protected boolean execute0(CommandSender sender, String[] args) {
 		handleRequest((Player) sender, args.length > 0 ? args[0] : null, true, this);
 		return true;
+	}
+
+	@Override
+	public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
+		return getReqList(sender);
 	}
 
 }

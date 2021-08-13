@@ -29,11 +29,20 @@ import yuan.plugins.serverDo.Tool;
 public final class ConfigManager {
 
 	/** 配置文件 */
-	private static @Getter Configuration	config;
+	private static @Getter Configuration					config;
 	/** tab替换 */
-	private static @Getter @Setter String	tabReplaceNor;
+	private static @Getter @Setter String					tabReplaceNor;
 	/** tab替换 */
-	private static @Getter @Setter String	tabReplaceAll;
+	private static @Getter @Setter String					tabReplaceAll;
+
+	/** 服务器信息 */
+	private static byte[]									serverInfo;
+
+	/** 出错 */
+	private static @Getter boolean							errorGroup;
+
+	/** 服务器组 */
+	private static final HashMap<String, HashSet<String>>	GROUPS	= new HashMap<>();
 
 	/**
 	 * 检测是否可以传送
@@ -51,37 +60,6 @@ public final class ConfigManager {
 		val group = GROUPS.get(s1);
 		return group != null && group.contains(s2);
 	}
-
-	/** 服务器信息 */
-	private static byte[] serverInfo;
-
-	/**
-	 * 发送BC信息给子服务器
-	 * 
-	 * @param server 服务器
-	 */
-	public static void sendBungeeInfoToServer(Server server) {
-		Main.send(server, serverInfo);
-	}
-	/**
-	 * 设置conf
-	 * 
-	 * @param config 要设置的 config
-	 */
-	public static void setConfig(Configuration config) {
-		ConfigManager.config = config;
-		val tabReplace = config.getString("player-tab-replace", "yl★:" + Tool.randomString(8));
-		setTabReplaceNor(tabReplace + "-nor");
-		setTabReplaceAll(tabReplace + "-all");
-		loadGroup(config);
-
-		serverInfo = Channel.ServerInfo.sendS(tabReplaceAll, tabReplaceNor, Main.getMain().getDescription().getVersion());
-	}
-
-	/** 出错 */
-	private static @Getter boolean							errorGroup;
-	/** 服务器组 */
-	private static final HashMap<String, HashSet<String>>	GROUPS	= new HashMap<>();
 
 	/**
 	 * 加载组
@@ -104,5 +82,29 @@ public final class ConfigManager {
 			}
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("加载组 " + key + ": " + group);
 		}
+	}
+
+	/**
+	 * 发送BC信息给子服务器
+	 * 
+	 * @param server 服务器
+	 */
+	public static void sendBungeeInfoToServer(Server server) {
+		Main.send(server, serverInfo);
+	}
+
+	/**
+	 * 设置conf
+	 * 
+	 * @param config 要设置的 config
+	 */
+	public static void setConfig(Configuration config) {
+		ConfigManager.config = config;
+		val tabReplace = config.getString("player-tab-replace", "yl★:" + Tool.randomString(8));
+		setTabReplaceNor(tabReplace + "-nor");
+		setTabReplaceAll(tabReplace + "-all");
+		loadGroup(config);
+
+		serverInfo = Channel.ServerInfo.sendS(tabReplaceAll, tabReplaceNor, Main.getMain().getDescription().getVersion());
 	}
 }

@@ -125,6 +125,28 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 	}
 
+	/** tab处理器 */
+	public static final class TabHandler {
+		/** tab替换内容 */
+		private static final HashMap<UUID, String>	TAB_REPLACE_ALL	= new HashMap<>();
+		/** tab替换内容 */
+		private static final HashMap<UUID, String>	TAB_REPLACE_NOR	= new HashMap<>();
+
+		/**
+		 * 获取补全列表
+		 * 
+		 * @param player 玩家
+		 * @param arg    输入
+		 * @param all    全部列表
+		 * @return tabReplace 补全列表(由BC解析)
+		 */
+		public static List<String> getTabReplace(Player player, String arg, boolean all) {
+			val tab = (all ? TabHandler.TAB_REPLACE_ALL : TabHandler.TAB_REPLACE_NOR).get(player.getUniqueId());
+			if (tab == null) return Collections.singletonList(arg);
+			return Collections.singletonList(tab + arg);
+		}
+	}
+
 	/**
 	 * Tp数据包处理
 	 * 
@@ -285,37 +307,15 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/** 回调等待 */
 	private static final EnumMap<Channel, Map<UUID, ArrayList<ListenCallBackObj>>> CALL_BACK_WAITER = new EnumMap<>(Channel.class);
-
 	static {
 		for (val c : Channel.values()) CALL_BACK_WAITER.put(c, new HashMap<>());
 	}
+
 	/** 版本检查通过的玩家集合 */
 	private static final HashSet<UUID>			ALLOW_PLAYERS	= new HashSet<>();
 
 	/** 传送冷却 */
 	private static final HashMap<UUID, Long>	COOLDOWN		= new HashMap<UUID, Long>();
-
-	/** tab处理器 */
-	public static final class TabHandler {
-		/** tab替换内容 */
-		private static final HashMap<UUID, String>	TAB_REPLACE_ALL	= new HashMap<>();
-		/** tab替换内容 */
-		private static final HashMap<UUID, String>	TAB_REPLACE_NOR	= new HashMap<>();
-
-		/**
-		 * 获取补全列表
-		 * 
-		 * @param player 玩家
-		 * @param arg    输入
-		 * @param all    全部列表
-		 * @return tabReplace 补全列表(由BC解析)
-		 */
-		public static List<String> getTabReplace(Player player, String arg, boolean all) {
-			val tab = (all ? TabHandler.TAB_REPLACE_ALL : TabHandler.TAB_REPLACE_NOR).get(player.getUniqueId());
-			if (tab == null) return Collections.singletonList(arg);
-			return Collections.singletonList(tab + arg);
-		}
-	}
 
 	/**
 	 * 回调

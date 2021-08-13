@@ -68,6 +68,21 @@ public final class CmdTpa extends Cmd {
 	}
 
 	/**
+	 * 获取玩家请求列表
+	 * 
+	 * @param sender 目标
+	 * @return 对此目标请求的玩家列表
+	 */
+	static final List<String> getReqList(CommandSender sender) {
+		if (sender instanceof Player) {
+			Player	player	= (Player) sender;
+			val		list	= TP_WAIT.get(player.getUniqueId());
+			if (list != null && !list.isEmpty()) return Tool.translate(list, i -> i.sender);
+		}
+		return null;
+	}
+
+	/**
 	 * 移除请求
 	 * 
 	 * @param player         发起玩家
@@ -84,21 +99,6 @@ public final class CmdTpa extends Cmd {
 			if (tar == null) nameAndDisplay.accept("", "");
 			else nameAndDisplay.accept(tar.getSender(), tar.getDisplay());
 		}
-	}
-
-	/**
-	 * 获取玩家请求列表
-	 * 
-	 * @param sender 目标
-	 * @return 对此目标请求的玩家列表
-	 */
-	static final List<String> getReqList(CommandSender sender) {
-		if (sender instanceof Player) {
-			Player	player	= (Player) sender;
-			val		list	= TP_WAIT.get(player.getUniqueId());
-			if (list != null && !list.isEmpty()) return Tool.translate(list, i -> i.sender);
-		}
-		return null;
 	}
 
 	/** @param name 命令名 */

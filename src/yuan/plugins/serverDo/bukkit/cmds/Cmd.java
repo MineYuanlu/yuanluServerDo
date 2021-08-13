@@ -82,7 +82,13 @@ public abstract class Cmd extends Command implements MESSAGE {
 	}
 
 	/** 此命令名称 */
-	protected final String cmdName;
+	protected final String	cmdName;
+
+	/** bc tab */
+	private boolean			tab_useBC;
+
+	/** bc tab */
+	private boolean			tab_useBC_all;
 
 	/**
 	 * 构造一个命令
@@ -167,22 +173,6 @@ public abstract class Cmd extends Command implements MESSAGE {
 		return true;
 	}
 
-	/** bc tab */
-	private boolean	tab_useBC;
-	/** bc tab */
-	private boolean	tab_useBC_all;
-
-	/**
-	 * 设置使用BC tab 补全数据
-	 * 
-	 * @param use   是否使用BC tab
-	 * @param isAll 是否显示全部数据
-	 */
-	protected void setUseBCtab(boolean use, boolean isAll) {
-		tab_useBC		= use;
-		tab_useBC_all	= isAll;
-	}
-
 	/**
 	 * 返回此命令的某个消息
 	 * 
@@ -194,6 +184,17 @@ public abstract class Cmd extends Command implements MESSAGE {
 	protected final boolean msg(String type, CommandSender sender, Object... args) {
 		msg(type).send(sender, args);
 		return true;
+	}
+
+	/**
+	 * 设置使用BC tab 补全数据
+	 * 
+	 * @param use   是否使用BC tab
+	 * @param isAll 是否显示全部数据
+	 */
+	protected void setUseBCtab(boolean use, boolean isAll) {
+		tab_useBC		= use;
+		tab_useBC_all	= isAll;
 	}
 
 	@Override
