@@ -28,6 +28,7 @@ public final class CmdTp extends Cmd {
 	/** @param name 命令名 */
 	protected CmdTp(String name) {
 		super(name);
+		setUseBCtab(true, true);
 	}
 
 	@Override
@@ -59,5 +60,6 @@ public final class CmdTp extends Cmd {
 		}
 		return false;
 	}
+
 
 }

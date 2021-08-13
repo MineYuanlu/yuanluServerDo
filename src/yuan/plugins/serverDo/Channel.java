@@ -441,7 +441,7 @@ public enum Channel {
 		 */
 		public static ServerInfo parseS(byte[] buf) {
 			try (val in = DataIn.pool(buf)) {
-				return new ServerInfo(in.readUTF(), in.readUTF());
+				return new ServerInfo(in.readUTF(), in.readUTF(), in.readUTF());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -450,14 +450,16 @@ public enum Channel {
 		/**
 		 * 发送至Server
 		 * 
-		 * @param tab     tab名称
+		 * @param tabAll  tab名称(全部)
+		 * @param tabNor  tab名称(检测组)
 		 * @param version BC版本
 		 * @return 数据包
 		 */
 		@NonNull
-		public static byte[] sendS(@NonNull String tab, @NonNull String version) {
+		public static byte[] sendS(@NonNull String tabAll, @NonNull String tabNor, @NonNull String version) {
 			try (val out = DataOut.pool(ID)) {
-				out.writeUTF(tab);
+				out.writeUTF(tabAll);
+				out.writeUTF(tabNor);
 				out.writeUTF(version);
 				return out.getByte();
 			} catch (IOException e) {
@@ -465,8 +467,10 @@ public enum Channel {
 			}
 		}
 
-		/** tab名称 */
-		String	tab;
+		/** tab名称(全部) */
+		String	tabAll;
+		/** tab名称(检测组) */
+		String	tabNor;
 
 		/** BC版本 */
 		String	version;

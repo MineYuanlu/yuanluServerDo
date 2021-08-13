@@ -7,6 +7,8 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
+import java.util.List;
+
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -24,7 +26,10 @@ public final class CmdTpdeny extends Cmd {
 	protected CmdTpdeny(String name) {
 		super(name);
 	}
-
+	@Override
+	public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
+		return CmdTpaccept.getReqList(sender);
+	}
 	@Override
 	protected boolean execute0(CommandSender sender, String[] args) {
 		CmdTpaccept.handleRequest((@NonNull Player) sender, args.length > 0 ? args[0] : null, false, this);

@@ -31,6 +31,7 @@ import net.md_5.bungee.config.YamlConfiguration;
 import net.md_5.bungee.event.EventHandler;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.ShareData;
+import yuan.plugins.serverDo.Tool;
 
 /**
  * BC端
@@ -170,10 +171,19 @@ public class Main extends Plugin implements Listener {
 	public void event(TabCompleteResponseEvent e) {
 		val list = e.getSuggestions();
 		if (list.size() != 1) return;
-		val	str	= list.get(0);
-		val	tab	= ConfigManager.getTabReplace();
-		if (str != null && str.startsWith(tab)) {
-			val request = str.substring(tab.length()).toLowerCase();
+		val	str		= list.get(0);
+		val	tabAll	= ConfigManager.getTabReplaceAll();
+		val	tabNor	= ConfigManager.getTabReplaceNor();
+		if (str != null) {
+			final String	request;
+			final boolean	isAll;
+			if (str.startsWith(tabAll)) {
+				request	= str.substring(tabAll.length()).toLowerCase();
+				isAll	= true;
+			} else if (str.startsWith(tabNor)) {
+				request = str.substring(tabNor.length()).toLowerCase();
+				isAll	= false;
+			} else return;
 			list.clear();
 			val server = (Server) e.getSender();
 			if (server == null) return;
@@ -182,9 +192,10 @@ public class Main extends Plugin implements Listener {
 				val	info	= p.getServer().getInfo().getName();
 				val	name	= p.getName();
 				if (name.toLowerCase().startsWith(request) && //
-						ConfigManager.canTp(info, target)) //
+						(isAll || ConfigManager.canTp(info, target))) //
 					list.add(name);
 			}
+			if (list.isEmpty()) list.add(request);
 		}
 	}
 
@@ -227,6 +238,7 @@ public class Main extends Plugin implements Listener {
 
 		checkYuanluConfig();
 
+		Tool.load(Channel.class);
 		ConfigManager.setConfig(loadFile("bc-config.yml"));
 		// 注册信道
 		getProxy().registerChannel(ShareData.BC_CHANNEL);
@@ -370,6 +382,7 @@ public class Main extends Plugin implements Listener {
 	@EventHandler
 	public void onServerConnected(ServerConnectedEvent e) {
 		send(e.getServer(), Channel.VersionCheck.sendS());
+		ConfigManager.sendBungeeInfoToServer(e.getServer());
 	}
 
 	/**

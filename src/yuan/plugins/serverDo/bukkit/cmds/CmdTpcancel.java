@@ -3,6 +3,8 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
+import java.util.List;
+
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -37,4 +39,8 @@ public final class CmdTpcancel extends Cmd {
 		return false;
 	}
 
+	@Override
+	public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
+		return CmdTpa.getReqList(sender);
+	}
 }

@@ -28,6 +28,7 @@ public final class CmdTpahere extends Cmd {
 	/** @param name 命令名 */
 	protected CmdTpahere(String name) {
 		super(name);
+		setUseBCtab(true, false);
 	}
 
 	@Override

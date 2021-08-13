@@ -17,6 +17,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import lombok.val;
+import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Core.CallbackQueue;
 import yuan.plugins.serverDo.bukkit.MESSAGE;
@@ -166,6 +167,22 @@ public abstract class Cmd extends Command implements MESSAGE {
 		return true;
 	}
 
+	/** bc tab */
+	private boolean	tab_useBC;
+	/** bc tab */
+	private boolean	tab_useBC_all;
+
+	/**
+	 * 设置使用BC tab 补全数据
+	 * 
+	 * @param use   是否使用BC tab
+	 * @param isAll 是否显示全部数据
+	 */
+	protected void setUseBCtab(boolean use, boolean isAll) {
+		tab_useBC		= use;
+		tab_useBC_all	= isAll;
+	}
+
 	/**
 	 * 返回此命令的某个消息
 	 * 
@@ -181,7 +198,14 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	@Override
 	public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
-		if (sender instanceof Player) return Core.getTabReplace((Player) sender, args.length > 0 ? args[args.length - 1] : "");
+		if (tab_useBC) {
+			if (sender instanceof Player) {
+				val l = Core.TabHandler.getTabReplace((Player) sender, args.length > 0 ? args[args.length - 1] : "", tab_useBC_all);
+				if (ShareData.isDEBUG()) ShareData.getLogger().info("[TAB] " + l);
+				return l;
+			}
+		}
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[TAB] none");
 		return null;
 	}
 }

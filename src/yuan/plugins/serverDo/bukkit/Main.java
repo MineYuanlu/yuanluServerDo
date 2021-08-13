@@ -21,7 +21,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import lombok.Getter;
 import lombok.val;
+import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.ShareData;
+import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.bukkit.MESSAGE.Msg;
 import yuan.plugins.serverDo.bukkit.cmds.CommandManager;
 
@@ -259,6 +261,7 @@ public class Main extends JavaPlugin implements Listener {
 			MESSAGE_LOST_NODE.set("message", loadFile("config.yml").getConfigurationSection("message"));
 		}
 
+		Tool.load(Channel.class);
 		// 启用插件时自动发出
 		main = this;
 		getLogger().info("§a" + ShareData.SHOW_NAME + "-启动");

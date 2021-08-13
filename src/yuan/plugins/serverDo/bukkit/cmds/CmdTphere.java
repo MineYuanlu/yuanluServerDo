@@ -27,6 +27,7 @@ public final class CmdTphere extends Cmd {
 	/** @param name 命令名 */
 	protected CmdTphere(String name) {
 		super(name);
+		setUseBCtab(true, true);
 	}
 
 	@Override

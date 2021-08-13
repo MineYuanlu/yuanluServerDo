@@ -294,8 +294,28 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/** 传送冷却 */
 	private static final HashMap<UUID, Long>	COOLDOWN		= new HashMap<UUID, Long>();
-	/** tab替换内容 */
-	private static final HashMap<UUID, String>	TAB_REPLACE		= new HashMap<>();
+
+	/** tab处理器 */
+	public static final class TabHandler {
+		/** tab替换内容 */
+		private static final HashMap<UUID, String>	TAB_REPLACE_ALL	= new HashMap<>();
+		/** tab替换内容 */
+		private static final HashMap<UUID, String>	TAB_REPLACE_NOR	= new HashMap<>();
+
+		/**
+		 * 获取补全列表
+		 * 
+		 * @param player 玩家
+		 * @param arg    输入
+		 * @param all    全部列表
+		 * @return tabReplace 补全列表(由BC解析)
+		 */
+		public static List<String> getTabReplace(Player player, String arg, boolean all) {
+			val tab = (all ? TabHandler.TAB_REPLACE_ALL : TabHandler.TAB_REPLACE_NOR).get(player.getUniqueId());
+			if (tab == null) return Collections.singletonList(arg);
+			return Collections.singletonList(tab + arg);
+		}
+	}
 
 	/**
 	 * 回调
@@ -538,7 +558,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 		case SERVER_INFO: {
 			val info = Channel.ServerInfo.parseS(message);
-			TAB_REPLACE.put(player.getUniqueId(), info.getTab().intern());
+			TabHandler.TAB_REPLACE_ALL.put(player.getUniqueId(), info.getTabAll().intern());
+			TabHandler.TAB_REPLACE_NOR.put(player.getUniqueId(), info.getTabNor().intern());
 			val meVer = Main.getMain().getDescription().getVersion();
 			if (!meVer.equals(info.getVersion())) VER_NO_RECOMMEND.send(player, meVer, info.getVersion());
 			break;
@@ -547,17 +568,4 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 	}
 
-	/**
-	 * 获取补全列表
-	 * 
-	 * @param player 玩家
-	 * @param arg    输入
-	 * @return tabReplace 补全列表(由BC解析)
-	 */
-	public static List<String> getTabReplace(Player player, String arg) {
-		val tab = TAB_REPLACE.get(player.getUniqueId());
-		if (tab == null) return Collections.singletonList(arg);
-		return Collections.singletonList(tab + arg);
-
-	}
 }

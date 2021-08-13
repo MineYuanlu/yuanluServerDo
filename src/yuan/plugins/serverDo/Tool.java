@@ -175,7 +175,6 @@ public final class Tool {
 	 * @param c 类
 	 */
 	public static final void load(Class<?> c) {
-		// byh zzm bkx wyl
 		if (c != null) load(c.getTypeName());
 	}
 

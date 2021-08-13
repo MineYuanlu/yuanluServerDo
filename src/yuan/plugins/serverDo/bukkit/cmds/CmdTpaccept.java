@@ -10,6 +10,7 @@ package yuan.plugins.serverDo.bukkit.cmds;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,6 +69,25 @@ public final class CmdTpaccept extends Cmd {
 		}
 	}
 
+	@Override
+	public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
+		return getReqList(sender);
+	}
+
+	/**
+	 * 获取玩家请求列表
+	 * 
+	 * @param sender 目标
+	 * @return 对此目标请求的玩家列表
+	 */
+	static final List<String> getReqList(CommandSender sender) {
+		if (sender instanceof Player) {
+			Player	player	= (Player) sender;
+			val		list	= TP_WAIT.get(player.getUniqueId());
+			if (list != null && !list.isEmpty()) return Tool.translate(list, i -> i.sender);
+		}
+		return null;
+	}
 	/** 传送等待 */
 	private static final Map<UUID, ArrayList<TpWaitInfo>>	TP_WAIT			= new ConcurrentHashMap<>();
 
