@@ -27,7 +27,7 @@
 			</resource>
 		</resources>
 		<plugins>
-			<!-- <plugin>
+			<!----> <plugin>
 				<artifactId>maven-antrun-plugin</artifactId>
 				<executions>
 					<execution>
@@ -42,7 +42,7 @@
 											name="${project.artifactId}-${project.version}.jar" />
 									</fileset>
 								</copy>
-								<copy todir="D:\game\mc-server\1.16.4 - 副本\plugins"
+								<copy todir="D:\game\mc-server\1.16.4-2\plugins"
 									overwrite="true">
 									<fileset dir="${project.build.directory}">
 										<include
@@ -63,7 +63,7 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>-->
+			</plugin><!-- -->
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>

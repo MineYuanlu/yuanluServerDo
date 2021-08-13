@@ -28,6 +28,36 @@ import yuan.plugins.serverDo.Tool;
 @SuppressWarnings("javadoc")
 public interface MESSAGE {
 
+	/**
+	 * @author yuanlu
+	 *
+	 */
+	@NoArgsConstructor(access = AccessLevel.PRIVATE)
+	public final class EmptyMsg extends Msg {
+		public static final EmptyMsg INSTANCE = new EmptyMsg();
+
+		@Override
+		public String getMsg() {
+			return "";
+		}
+
+		@Override
+		public Msg replace(String target, String replacement) {
+			return "".equals(target) ? new StrMsg(replacement) : this;
+		}
+
+		@Override
+		public void send(CommandSender sender, Map<String, Object> args) {
+
+		}
+
+		@Override
+		public void send(CommandSender sender, Object... args) {
+
+		}
+
+	}
+
 	@Value
 	@EqualsAndHashCode(callSuper = false)
 	final class JsonMsg extends Msg {
@@ -144,6 +174,9 @@ public interface MESSAGE {
 	Msg	BAD_VERSION		= mes("basic.version-bad");
 	Msg	BC_ERROR		= mes("basic.bungee-error");
 	Msg	BC_PLAYER_OFF	= mes("basic.bungee-player-offline");
+
+	Msg	TPCANCEL_MOVE	= mes("tpcancel-move");
+	Msg	VER_NO_RECOMMEND	= mes("version-no-recommend");
 
 	static Msg mes(String node) {
 		return Main.getMain().mes(node);

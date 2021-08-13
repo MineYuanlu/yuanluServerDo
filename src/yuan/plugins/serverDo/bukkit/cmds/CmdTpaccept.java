@@ -8,7 +8,8 @@
 package yuan.plugins.serverDo.bukkit.cmds;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.val;
@@ -40,6 +42,7 @@ public final class CmdTpaccept extends Cmd {
 	 *
 	 */
 	@Value
+	@AllArgsConstructor
 	private static final class TpWaitInfo {
 		/** 发起请求的玩家全名 */
 		@NonNull String	sender;
@@ -47,6 +50,17 @@ public final class CmdTpaccept extends Cmd {
 		@NonNull String	display;
 		/** 是否是需要传送到对方位置 */
 		boolean			isThere;
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj instanceof TpWaitInfo) return sender.equals(((TpWaitInfo) obj).sender);
+			return sender.equals(obj);
+		}
+
+		@Override
+		public int hashCode() {
+			return sender.hashCode();
+		}
 
 		@Override
 		public String toString() {
@@ -58,7 +72,13 @@ public final class CmdTpaccept extends Cmd {
 	private static final Map<UUID, ArrayList<TpWaitInfo>>	TP_WAIT			= new ConcurrentHashMap<>();
 
 	/** 传送等待超时的玩家 */
-	private static final HashSet<UUID>						TP_WAIT_TIMEOUT	= new HashSet<>();
+	private static final HashMap<UUID, Long>				TP_WAIT_TIMEOUT	= new HashMap<>();
+
+	/** message */
+	private static final Msg								M_R_F			= msg(CmdTpcancel.class, "remote-fail");
+
+	/** message */
+	private static final Msg								M_R_S			= msg(CmdTpcancel.class, "remote-success");
 
 	/**
 	 * 增加传送请求
@@ -72,8 +92,31 @@ public final class CmdTpaccept extends Cmd {
 		val uid = player.getUniqueId();
 		TP_WAIT_TIMEOUT.remove(uid);
 		WaitMaintain.add(TP_WAIT, uid, new TpWaitInfo(sender, display, isThere), WaitMaintain.T_User, ArrayList::new, () -> {
-			if (player.isOnline()) TP_WAIT_TIMEOUT.add(uid);
+			if (player.isOnline()) TP_WAIT_TIMEOUT.put(uid, System.currentTimeMillis());
 		});
+	}
+
+	/**
+	 * 取消传送请求
+	 * 
+	 * @param player 指向玩家
+	 * @param sender 发起者
+	 * @return 是否成功取消
+	 */
+	public static boolean cancelReq(@NonNull Player player, @NonNull String sender) {
+		val list = TP_WAIT.get(player.getUniqueId());
+		if (list != null) {
+			for (Iterator<TpWaitInfo> itr = list.iterator(); itr.hasNext();) {
+				TpWaitInfo info = itr.next();
+				if (sender.equals(info.getSender())) {
+					M_R_S.send(player, sender, info.display);
+					itr.remove();
+					return true;
+				}
+			}
+		}
+		M_R_F.send(player, sender);
+		return false;
 	}
 
 	/**
@@ -93,16 +136,24 @@ public final class CmdTpaccept extends Cmd {
 
 			if (tar == null) cmd.msg("not-found", player, who);
 			else {
+				val wait = Core.getWaitTime(player);
+				if (tar.isThere() && accept && wait < 0) {
+					msg(CmdTpahere.class, "cooldown").send(player, -wait / 1000.0);
+					return;
+				}
 				Core.listenCallBack(player, Channel.TP, 4, (BoolConsumer) success -> {
 					if (success) {
-						if (accept && tar.isThere()) Core.tpTo(player, tar.getSender(), true);
+						cmd.msg(tar.isThere() && wait > 0 ? "success-wait" : "success", player, tar.getSender(), tar.getDisplay(), wait);
+						if (accept && tar.isThere()) Core.tpTo(player, tar.getSender(), wait, true);
 					} else cmd.msg("offline", player);
 				});
-				cmd.msg("success", player, tar.getSender(), tar.getDisplay());
 				Main.send(player, Channel.Tp.s3C_tpResp(tar.getSender(), accept));
 			}
-		} else if (TP_WAIT_TIMEOUT.remove(player.getUniqueId())) cmd.msg("timeout", player);
-		else cmd.msg("no-request", player);
+		} else {
+			val timeout = TP_WAIT_TIMEOUT.remove(player.getUniqueId());
+			if (timeout != null) cmd.msg("timeout", player, (System.currentTimeMillis() - timeout) / 1000.0);
+			else cmd.msg("no-request", player);
+		}
 	}
 
 	/** @param name 命令名 */

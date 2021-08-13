@@ -1,4 +1,12 @@
 Prefix: ''
+setting:
+  permission:
+    no-delay: 'yuanlu.serverDo.no-delay'
+    no-cooldown: 'yuanlu.serverDo.no-cooldown'
+  teleport-delay: 3
+  teleport-cooldown: 100
+  request-overtime: 120
+  use-safeLocation: false
 cmd:
  tp:
   names:
@@ -29,70 +37,99 @@ cmd:
    - tpaccept
   permission: 'yuanlu.serverDo.tpaccept'
   description: 'tpaccept cmd'
-  usageMessage: '/tpaccept <target>'
+  usageMessage: '/tpaccept [target]'
  tpdeny:
   names:
    - tpdeny
   permission: 'yuanlu.serverDo.tpdeny'
   description: 'tpdenycmd'
-  usageMessage: '/tpdeny <target>'
+  usageMessage: '/tpdeny [target]'
+ tpcancel:
+  names:
+   - tpcancel
+  permission: 'yuanlu.serverDo.tpcancel'
+  description: 'tpcancelcmd'
+  usageMessage: '/tpcancel [target]'
 message:
   LanguageFileIsLost: '&c&l[语言文件缺失]节点:%node%'
-  not-player: "&c您不是玩家!"
-  no-permission: "&c您没有权限"
+  not-player: '&c您不是玩家!'
+  no-permission: '&c您没有权限'
+  version-no-recommend: '&c服务器版本不一致: %s <-> %s'
   cmd:
-    help: '模板内容'
+    help: '&7yuanluServerDo'
     tp:
-      receiver: ""
-      third-mover: ""
-      third-target: ""
-      tp: "&7正在传送至 &2%2$s"
-      tp-third: "&7正在将 &2%2$s &7传送至 &2%4$s"
-      help: "&7输入指令： &2/tp <玩家> &7传送到某玩家的位置"
-      not-found: "&7未找到玩家 &2%s"
+      receiver: ''
+      third-mover: ''
+      third-target: ''
+      sender: '&7正在传送至 &2%2$s'
+      third-tp: '&7正在将 &2%2$s &7传送至 &2%4$s'
+      help:
+        - '&7输入指令： &2/tp <玩家> &7传送到某玩家的位置'
+        - '&7输入指令： &2/tp <玩家1> <玩家2> &7将&2玩家1&7传送到&2玩家2&7的位置'
+      not-found: '&7未找到玩家 &2%s'
     tpa:
-      receiver: 
-        #一个高级语言节点, 接受json文本
-        json: '["",{"text":"&2%s &7请求传送到您这里\n"},{"text":"&7若想接受传送，输入 &2/tpaccept\n","clickEvent":{"action":"run_command","value":"/tpaccept"},"hoverEvent":{"action":"show_text","value":["",{"text":"点击运行","bold":true}]}},{"text":"&7若想拒绝传送，输入 &2/tpdeny\n","clickEvent":{"action":"run_command","value":"/tpdeny"},"hoverEvent":{"action":"show_text","value":["",{"text":"点击运行","bold":true}]}},{"text":"&7此传送请求将在 &2%s &7秒后自动超时"}]'
+      receiver:
+        json: '["",{"text":"&2%2$s &7请求传送到您这里\n"},{"text":"&7若想接受传送，输入 &2/tpaccept\n","clickEvent":{"action":"run_command","value":"/tpaccept %1$s"},"hoverEvent":{"action":"show_text","value":["",{"text":"接受传送","bold":true}]}},{"text":"&7若想拒绝传送，输入 &2/tpdeny\n","clickEvent":{"action":"run_command","value":"/tpdeny %1$s"},"hoverEvent":{"action":"show_text","value":["",{"text":"拒绝传送","bold":true}]}},{"text":"&7此传送请求将在 &2%3$s &7秒后自动超时"}]'
         msg:
-          #备用信息, 对于一些不支持json的版本/模块显示的信息
-          - "&2%s &7请求传送到您这里"
-          - "&7若想接受传送，输入 &2/tpaccept"
-          - "&7若想拒绝传送，输入 &2/tpdeny"
-          - "&7此传送请求将在 &2%s &7秒后自动超时"
-      send: 
-        #一个高级语言节点, 接受json文本
-        json: '["",{"text":"&7请求已发送给 &2%2$s\n"},{"text":"&7想要取消这个传送请求，请输入 &2/tpacancel","clickEvent":{"action":"run_command","value":"/tpacancel"},"hoverEvent":{"action":"show_text","value":["",{"text":"点击运行","bold":true}]}}]'
+        - '&2%2$s &7请求传送到您这里'
+        - '&7若想接受传送，输入 &2/tpaccept'
+        - '&7若想拒绝传送，输入 &2/tpdeny'
+        - '&7此传送请求将在 &2%3$s &7秒后自动超时'
+      sender:
+        json: '["",{"text":"&7请求已发送给 &2%2$s\n"},{"text":"&7想要取消这个传送请求，请输入 &2/tpacancel","clickEvent":{"action":"run_command","value":"/tpcancel %1$s"},"hoverEvent":{"action":"show_text","value":["",{"text":"取消传送","bold":true}]}}]'
+        msg:
+        - 请求已发送给 &2%2$s
+        - '&7想要取消这个传送请求，请输入 &2/tpacancel'
+      accept-wait: "&2%2$s &7接受了您的传送请求, 将在 &2%3$s &7秒后启动"
+      accept: "&7正在传送至 &2%2$s"
+      deny: "&2%2$s &7拒绝了您的传送请求"
+      self-tp: "&7您不能向自己发送传送请求"
+      help: '&7输入指令： &2/tpa <玩家> &7请求传到送某玩家的位置'
+      cooldown: "&7您还需要等待 &2%.3f &7秒"
+      not-found: '&7未找到玩家 &2%s&7, 或所在服务器无法传送'
+    tphere:
+      receiver: ''
+      sender: "&7正在将 &2%2$s &7传送到您的位置"
+      help: '&7输入指令： &2/tphere <玩家> &7传送某玩家到您的位置'
+      not-found: '&7未找到玩家 &2%s'
+    tpahere:
+      sender:
+        json: '["",{"text":"&7请求已发送给 &2%2$s\n"},{"text":"&7想要取消这个传送请求，请输入 &2/tpacancel","clickEvent":{"action":"run_command","value":"/tpcancel %1$s"},"hoverEvent":{"action":"show_text","value":["",{"text":"点击运行","bold":true}]}}]'
         msg:
           #备用信息, 对于一些不支持json的版本/模块显示的信息
           - "请求已发送给 &2%2$s"
           - "&7想要取消这个传送请求，请输入 &2/tpacancel"
-      accept: message.cmd.tpa.accept
-      deny: message.cmd.tpa.deny
-      self-tp: message.cmd.tpa.self-tp
-      help: "&7输入指令： &2/tpa <玩家> &7请求传到送某玩家的位置"
-    tphere:
-      receiver: message.cmd.tphere.receiver
-      success: message.cmd.tphere.success
-      help: "&7输入指令： &2/tphere <玩家> &7传送某玩家到您的位置"
-    tpahere:
-      receiver: message.cmd.tpahere.receiver
-      send: message.cmd.tpahere.send
-      accept: message.cmd.tpahere.accept
-      deny: message.cmd.tpahere.deny
-      help: "&7输入指令： &2/tpahere <玩家> &7请求某玩家传送到您的位置"
+      receiver:
+        json: '["",{"text":"&2%2$s &7请求传送您到他那里n"},{"text":"&7若想接受传送，输入 &2/tpaccept\n","clickEvent":{"action":"run_command","value":"/tpaccept %1$s"},"hoverEvent":{"action":"show_text","value":["",{"text":"接受传送","bold":true}]}},{"text":"&7若想拒绝传送，输入 &2/tpdeny\n","clickEvent":{"action":"run_command","value":"/tpdeny %1$s"},"hoverEvent":{"action":"show_text","value":["",{"text":"拒绝传送","bold":true}]}},{"text":"&7此传送请求将在 &2%3$s &7秒后自动超时"}]'
+        msg:
+          - "&2%2$s &7请求传送您到他那里"
+          - "&7若想接受传送，输入 &2/tpaccept"
+          - "&7若想拒绝传送，输入 &2/tpdeny"
+          - "&7此传送请求将在 &2%3$s &7秒后自动超时"
+      accept: "&2%2$s &7已接受请求"
+      deny: "&2%2$s &7拒绝了您的传送请求"
+      help: '&7输入指令： &2/tpahere <玩家> &7请求某玩家传送到您的位置'
+      self-tp: "&7您不能向自己发送传送请求"
+      cooldown: "&7您还需要等待 &2%.3f &7秒"
+      not-found: '&7未找到玩家 &2%s&7, 或所在服务器无法传送'
     tpaccept:
-      success: message.cmd.tpaccept.success
-      no-request: message.cmd.tpaccept.no-request
-      not-found: message.cmd.tpaccept.not-found
-      timeout: message.cmd.tpaccept.timeout
+      success: "&7已接受 &2%2$s &7的请求"
+      success-wait: "&7您接受了 &2%2$s &7的传送请求, 将在 &2%3$s &7秒后启动"
+      no-request: "&7您没有要接受的请求"
+      not-found: "&7找不到 &2%s &7的请求"
+      timeout: "&7最后一个请求已超时 &2%.3f &7秒"
     tpdeny:
-      success: message.cmd.tpdeny.success
-      no-request: message.cmd.tpdeny.no-request
-      not-found: message.cmd.tpdeny.not-found
-      timeout: message.cmd.tpdeny.timeout
+      success: "&7您拒绝了 &2%2$s &7的传送请求"
+      no-request: "&7您没有要接受的请求"
+      not-found: "&7找不到 &2%s &7的请求"
+      timeout: "&7最后一个请求已超时 &2%.3f &7秒"
+    tpcancel:
+      remote-fail: "&c由于未知原因, &2%s &c试图取消一个不存在的请求"
+      remote-success: "&2%2$s &7取消了传送"
+      success: "&7你取消了发送给 &2%2$s &7的传送请求"
   basic:
-    message-time-out: message.basic.message-time-out
-    version-bad: message.basic.version-bad
-    bungee-error: message.basic.bungee-error
-    bungee-player-offline: message.basic.bungee-player-offline
+    message-time-out: "&c服务器通讯超时, 请联系管理员"
+    version-bad: "&c服务器版本检查失败, 请联系管理员"
+    bungee-error: "&cBC服务器发生错误, 请联系管理员"
+    bungee-player-offline: "&7对方已离线"
+  tpcancel-move: "&7由于移动，传送任务被取消"

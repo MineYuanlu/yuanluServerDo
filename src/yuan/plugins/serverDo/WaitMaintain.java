@@ -131,6 +131,48 @@ public final class WaitMaintain {
 	@Value
 	@EqualsAndHashCode(callSuper = true)
 	@SuppressWarnings("rawtypes")
+	private static final class MapMapElement extends Element {
+
+		/** 图 */
+		Map		map;
+
+		/** 主键 */
+		Object	t;
+		/** 副键 */
+		Object	k;
+
+		/** 值 */
+		Object	v;
+
+		@SuppressWarnings("javadoc")
+		public MapMapElement(long expire, Map map, Object t, Object k, Object v, Runnable clearListener) {
+			super(expire, clearListener);
+			this.map	= map;
+			this.t		= t;
+			this.k		= k;
+			this.v		= v;
+		}
+
+		/** 处理 */
+		@Override
+		void handle() {
+			Map m = (Map) map.get(t);
+			if (m == null) return;
+			boolean clear = m.remove(k, v);
+			if (m.isEmpty()) map.remove(t, m);
+			if (clear && clearListener != null) clearListener.run();
+		}
+	}
+
+	/**
+	 * 延时监听元素
+	 * 
+	 * @author yuanlu
+	 *
+	 */
+	@Value
+	@EqualsAndHashCode(callSuper = true)
+	@SuppressWarnings("rawtypes")
 	private static final class MutiMapElement extends Element {
 
 		/** 图 */
@@ -313,4 +355,29 @@ public final class WaitMaintain {
 		QUEUE.add(new MapElement(System.currentTimeMillis() + maxTime, map, k, v, clearListener));
 		return old;
 	}
+
+	/**
+	 * 将一对多键值对放入map,并设置最长超时时间, 超时后将被清理
+	 * 
+	 * @param <T>           数据类型
+	 * @param <K>           数据类型
+	 * @param <V>           数据类型
+	 * @param <M>           值Map类型
+	 * @param map           图
+	 * @param t             键1
+	 * @param k             键2
+	 * @param v             值
+	 * @param maxTime       等待时长
+	 * @param builder       列表构造器
+	 * @param clearListener 清理监听
+	 * @return return
+	 */
+	public static final <T, K, V, M extends Map<K, V>> V put(Map<T, M> map, T t, K k, V v, long maxTime, Supplier<M> builder, Runnable clearListener) {
+		M m = map.get(t);
+		if (m == null) map.put(t, m = builder.get());
+		val r = m.put(k, v);
+		QUEUE.add(new MapMapElement(System.currentTimeMillis() + maxTime, map, t, k, v, clearListener));
+		return r;
+	}
+
 }

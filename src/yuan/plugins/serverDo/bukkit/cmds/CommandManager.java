@@ -75,6 +75,7 @@ public final class CommandManager implements MESSAGE {
 			init(conf, "tpahere", CmdTpahere.class);
 			init(conf, "tpaccept", CmdTpaccept.class);
 			init(conf, "tpdeny", CmdTpdeny.class);
+			init(conf, "tpcancel", CmdTpcancel.class);
 		}
 	}
 
@@ -116,7 +117,7 @@ public final class CommandManager implements MESSAGE {
 			CommandMap	cmdm	= (CommandMap) method.invoke(Bukkit.getServer());
 			val			b		= cmdm.register(Main.getMain().getName(), cmd);
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[D] cmdm: " + cmdm);
-			if (ShareData.isDEBUG()) ShareData.getLogger().info("[D] register cmd: " + b + ", fbn:" + Main.getMain().getName());
+			if (ShareData.isDEBUG()) ShareData.getLogger().info("[D] register cmd: " + b + ", fbn:" + Main.getMain().getName() + ": " + cmd.getName());
 		} catch (Exception e2) {
 			System.err.println("CAN NOT REGISTER COMMAND: " + e2.toString());
 			Main.getMain().getLogger().warning("CAN NOT REGISTER COMMAND: " + e2.toString());

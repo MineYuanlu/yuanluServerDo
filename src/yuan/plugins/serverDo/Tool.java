@@ -95,8 +95,11 @@ public final class Tool {
 	}
 
 	/** 空的运行体 */
-	public static final Runnable EMPTY_RUNNABLE = () -> {
-	};
+	public static final Runnable	EMPTY_RUNNABLE	= () -> {
+													};
+
+	/** 随机字符串 */
+	private static final char[]		RANDOM			= "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM!@#$%^&*()".toCharArray();
 
 	/**
 	 * 反序列化(list)
@@ -303,6 +306,18 @@ public final class Tool {
 			e.printStackTrace();
 			return msg;
 		}
+	}
+
+	/**
+	 * 随机字符串
+	 * 
+	 * @param len 长度
+	 * @return 字符串
+	 */
+	public static String randomString(int len) {
+		char[] cs = new char[len];
+		for (int i = 0; i < len; i++) cs[i] = RANDOM[(int) (Math.random() * RANDOM.length)];
+		return new String(cs);
 	}
 
 	/**

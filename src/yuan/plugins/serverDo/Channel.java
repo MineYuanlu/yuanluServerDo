@@ -13,14 +13,19 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.ObjIntConsumer;
 
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
+import lombok.Value;
 import lombok.val;
 
 /**
@@ -37,7 +42,87 @@ public enum Channel {
 	/** 权限检查 */
 	PERMISSION(Permission.class),
 	/** 传送 */
-	TP(Tp.class);
+	TP(Tp.class),
+	/** 冷却广播 */
+	COOLDOWN(Cooldown.class),
+	/** 时间修正 */
+	TIME_AMEND(TimeAmend.class),
+	/** 返回服务器信息 */
+	SERVER_INFO(ServerInfo.class);
+
+	/**
+	 * 传送冷却数据包
+	 * 
+	 * @author yuanlu
+	 * @see Channel#PERMISSION
+	 */
+	@NoArgsConstructor(access = AccessLevel.PRIVATE)
+	public static final class Cooldown extends Package {
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
+		/**
+		 * 发送至Client
+		 * 
+		 * @param player 玩家
+		 * @param end    冷却结束时间
+		 * @return 数据包
+		 */
+		public static byte[] broadcast(UUID player, long end) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeUUID(player);
+				out.writeLong(end);
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析Client
+		 * 
+		 * @param buf 数据
+		 * @return 冷却结束时间
+		 */
+		public static long parseC(byte[] buf) {
+			try (val in = DataIn.pool(buf)) {
+				return in.readLong();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析Client
+		 * 
+		 * @param buf 数据
+		 * @param map 冷却数据映射
+		 */
+		public static void parseS(byte[] buf, Map<UUID, Long> map) {
+			try (val in = DataIn.pool(buf)) {
+				val	player	= in.readUUID();
+				val	end		= in.readLong();
+				WaitMaintain.put(map, player, end, end - System.currentTimeMillis());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Server
+		 * 
+		 * @param end 冷却结束时间
+		 * @return 数据包
+		 */
+		public static byte[] sendS(long end) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeLong(end);
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
 
 	/** 数据输入 */
 	private static final class DataIn extends DataInputStream {
@@ -114,6 +199,16 @@ public enum Channel {
 				if (pool < POOL.length) POOL[pool++] = this;
 				release = true;
 			}
+		}
+
+		/**
+		 * 读取一个UUID
+		 * 
+		 * @return UUID
+		 * @throws IOException IOE
+		 */
+		public UUID readUUID() throws IOException {
+			return new UUID(readLong(), readLong());
 		}
 
 		/**
@@ -197,6 +292,17 @@ public enum Channel {
 			((ByteArrayOutputStream) super.out).reset();
 			writeInt(ID);
 			return this;
+		}
+
+		/**
+		 * 写入UUID
+		 * 
+		 * @param u uuid
+		 * @throws IOException IOE
+		 */
+		public void writeUUID(UUID u) throws IOException {
+			writeLong(u.getMostSignificantBits());
+			writeLong(u.getLeastSignificantBits());
 		}
 
 	}
@@ -307,6 +413,111 @@ public enum Channel {
 		public static byte[] sendS(@NonNull String permission) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeUTF(permission);
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
+
+	/**
+	 * 权限检查数据包
+	 * 
+	 * @author yuanlu
+	 * @see Channel#PERMISSION
+	 */
+	@Value
+	@EqualsAndHashCode(callSuper = false)
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	public static final class ServerInfo extends Package {
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
+		/**
+		 * 解析Server
+		 * 
+		 * @param buf 数据
+		 * @return 权限节点
+		 */
+		public static ServerInfo parseS(byte[] buf) {
+			try (val in = DataIn.pool(buf)) {
+				return new ServerInfo(in.readUTF(), in.readUTF());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Server
+		 * 
+		 * @param tab     tab名称
+		 * @param version BC版本
+		 * @return 数据包
+		 */
+		@NonNull
+		public static byte[] sendS(@NonNull String tab, @NonNull String version) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeUTF(tab);
+				out.writeUTF(version);
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/** tab名称 */
+		String	tab;
+
+		/** BC版本 */
+		String	version;
+	}
+
+	/**
+	 * 权限检查数据包
+	 * 
+	 * @author yuanlu
+	 * @see Channel#PERMISSION
+	 */
+	@NoArgsConstructor(access = AccessLevel.PRIVATE)
+	public static final class TimeAmend extends Package {
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
+		/**
+		 * 解析Client
+		 * 
+		 * @param buf 数据
+		 * @return 客户端时间戳
+		 */
+		public static long parseC(byte[] buf) {
+			try (val in = DataIn.pool(buf)) {
+				return in.readLong();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Client
+		 * 
+		 * @return 数据包(可复用)
+		 */
+		public static byte[] sendC() {
+			try (val out = DataOut.pool(ID)) {
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Server
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] sendS() {
+			try (val out = DataOut.pool(ID)) {
+				out.writeLong(System.currentTimeMillis());
 				return out.getByte();
 			} catch (IOException e) {
 				throw new RuntimeException(e);
@@ -612,6 +823,38 @@ public enum Channel {
 				throw new RuntimeException(e);
 			}
 		}
+
+		/**
+		 * 解析: C 取消传送
+		 * 
+		 * @param buf    数据
+		 * @param target 目标名称
+		 * @see #sbC_cancel(String)
+		 */
+		public static void pbC_cancel(byte[] buf, Consumer<String> target) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 0xb);
+				target.accept(in.readUTF());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: C 取消传送
+		 * 
+		 * @param buf  数据
+		 * @param from 目标名称
+		 * @see #scS_cancel(String)
+		 */
+		public static void pcS_cancel(byte[] buf, Consumer<String> from) {
+			try (val in = DataIn.pool(buf)) {
+				checkId(in, 0xc);
+				from.accept(in.readUTF());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
 		//
 
 		/**
@@ -825,6 +1068,38 @@ public enum Channel {
 				out.writeUTF(moverDisplay);
 				out.writeUTF(target);
 				out.writeUTF(targetDisplay);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * C 取消传送
+		 * 
+		 * @param target 目标名称
+		 * @return 数据包
+		 */
+		public static final byte[] sbC_cancel(String target) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(0xb);
+				out.writeUTF(target);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * S 取消传送
+		 * 
+		 * @param from 请求名称
+		 * @return 数据包
+		 */
+		public static final byte[] scS_cancel(String from) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeByte(0xc);
+				out.writeUTF(from);
 				return out.getByte();
 			} catch (Exception e) {
 				throw new RuntimeException(e);

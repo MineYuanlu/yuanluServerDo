@@ -40,8 +40,8 @@ public final class CmdTp extends Cmd {
 			Core.listenCallBack(player, Channel.TP, 1, (BiConsumer<String, String>) (name, display) -> {
 				if (name.isEmpty()) msg("not-found", player, args[0]);
 				else {
-					msg("tp", player, name, display);
-					Core.tpTo(player, name, false);
+					msg("sender", player, name, display);
+					Core.tpTo(player, name, -1, false);
 				}
 			});
 			Main.send(player, Channel.Tp.s0C_tpReq(args[0], 0));
@@ -51,8 +51,8 @@ public final class CmdTp extends Cmd {
 				if (mn.isEmpty()) msg("not-found", player, args[0]);
 				else if (tn.isEmpty()) msg("not-found", player, args[1]);
 				else {
-					msg("tp-third", player, mn, md, tn, td);
-					Core.tpTo(player, mn, tn, false);
+					msg("third-tp", player, mn, md, tn, td);
+					Core.tpTo(player, mn, tn, -1);
 				}
 			});
 			Main.send(player, Channel.Tp.s9C_tpReqThird(args[0], args[1]));

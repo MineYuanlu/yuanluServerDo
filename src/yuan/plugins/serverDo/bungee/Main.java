@@ -22,6 +22,7 @@ import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.PluginMessageEvent;
 import net.md_5.bungee.api.event.ServerConnectEvent.Reason;
 import net.md_5.bungee.api.event.ServerConnectedEvent;
+import net.md_5.bungee.api.event.TabCompleteResponseEvent;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.config.Configuration;
@@ -49,25 +50,31 @@ public class Main extends Plugin implements Listener {
 	/** 数据包统计 */
 	private static final AtomicInteger	PACK_COUNT	= new AtomicInteger(0);
 
+	/** 时间修正循环器 */
+	private static Thread				timeAmendLooper;
+
 	/**
 	 * 获取玩家<br>
 	 * 模糊搜索, 借鉴Bukkit
 	 * 
-	 * @param name 玩家名
+	 * @param sender 发起者, 当其不为null时, 会检查服务器组
+	 * @param name   玩家名
 	 * @return 玩家
 	 */
-	public static ProxiedPlayer getPlayer(@NonNull String name) {
+	public static ProxiedPlayer getPlayer(ProxiedPlayer sender, @NonNull String name) {
 		ProxiedPlayer found = getMain().getProxy().getPlayer(name);
 		if (found != null) return found;
 
 		String	lowerName	= name.toLowerCase(Locale.ENGLISH);
 		int		delta		= Integer.MAX_VALUE;
 		val		var6		= getMain().getProxy().getPlayers().iterator();
-
+		val		server		= sender == null ? null : sender.getServer().getInfo().getName();
 		while (var6.hasNext()) {
-			val player = var6.next();
-			if (player.getName().toLowerCase(Locale.ENGLISH).startsWith(lowerName)) {
-				int curDelta = Math.abs(player.getName().length() - lowerName.length());
+			val	player	= var6.next();
+			val	pn		= player.getName();
+			if (pn.toLowerCase(Locale.ENGLISH).startsWith(lowerName)
+					&& (server == null || ConfigManager.canTp(player.getServer().getInfo().getName(), server))) {
+				int curDelta = Math.abs(pn.length() - lowerName.length());
 				if (curDelta < delta) {
 					found	= player;
 					delta	= curDelta;
@@ -105,10 +112,13 @@ public class Main extends Plugin implements Listener {
 	 * 
 	 * @param server 服务器
 	 * @param buf    数据
+	 * @return true if the message was sent immediately, false otherwise if queue is
+	 *         true, it has been queued, if itis false it has been discarded.
 	 */
-	public static void send(ServerInfo server, @NonNull byte[] buf) {
-		server.sendData(ShareData.BC_CHANNEL, buf);
+	public static boolean send(ServerInfo server, @NonNull byte[] buf) {
+		val result = server.sendData(ShareData.BC_CHANNEL, buf, false);
 		if (isDEBUG()) getMain().getLogger().info("发送: " + server.getName() + " " + Arrays.toString(buf));
+		return result;
 	}
 
 	/** */
@@ -150,6 +160,35 @@ public class Main extends Plugin implements Listener {
 	}
 
 	/**
+	 * EVENT
+	 * 
+	 * @param e 补全响应
+	 * @deprecated BUNGEE
+	 */
+	@Deprecated
+	@EventHandler
+	public void event(TabCompleteResponseEvent e) {
+		val list = e.getSuggestions();
+		if (list.size() != 1) return;
+		val	str	= list.get(0);
+		val	tab	= ConfigManager.getTabReplace();
+		if (str != null && str.startsWith(tab)) {
+			val request = str.substring(tab.length()).toLowerCase();
+			list.clear();
+			val server = (Server) e.getSender();
+			if (server == null) return;
+			val target = server.getInfo().getName();
+			for (val p : getProxy().getPlayers()) {
+				val	info	= p.getServer().getInfo().getName();
+				val	name	= p.getName();
+				if (name.toLowerCase().startsWith(request) && //
+						ConfigManager.canTp(info, target)) //
+					list.add(name);
+			}
+		}
+	}
+
+	/**
 	 * 加载配置
 	 * 
 	 * @param fileName 配置文件名，例如{@code "config.yml"}
@@ -177,16 +216,24 @@ public class Main extends Plugin implements Listener {
 	}
 
 	@Override
+	public void onDisable() {
+		if (timeAmendLooper != null) timeAmendLooper = null;
+	}
+
+	@Override
 	public void onEnable() {
 		main = this;
 		bstats();
 
 		checkYuanluConfig();
 
+		ConfigManager.setConfig(loadFile("bc-config.yml"));
 		// 注册信道
 		getProxy().registerChannel(ShareData.BC_CHANNEL);
 		getProxy().getPluginManager().registerListener(this, this);
 		getLogger().info(SHOW_NAME + "-启动(bungee)");
+
+		startTimeAmendLoop();
 	}
 
 	/**
@@ -206,7 +253,7 @@ public class Main extends Plugin implements Listener {
 		Server			server	= (Server) e.getSender();
 		val				message	= e.getData();
 		val				type	= Channel.byId(ShareData.readInt(message, 0, -1));
-		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] receive: " + type + ": " + Arrays.toString(message));
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] receive: " + player.getName() + "-" + type + ": " + Arrays.toString(message));
 		switch (type) {
 		case PERMISSION: {
 			val	permission	= Channel.Permission.parseC(message);
@@ -223,7 +270,21 @@ public class Main extends Plugin implements Listener {
 			if (!allow) Core.BAD_SERVER.add(server.getInfo());
 			break;
 		}
+		case COOLDOWN: {
+			val	end		= Channel.Cooldown.parseC(message) + Core.getTimeAmend(server.getInfo());
+			val	uuid	= player.getUniqueId();
+			for (val s : getProxy().getServers().values()) {
+				send(s, Channel.Cooldown.broadcast(uuid, end - Core.getTimeAmend(s)));
+			}
+		}
+		case TIME_AMEND: {
+			val time = Channel.TimeAmend.parseC(message);
+			Core.timeAmendCallback(server.getInfo(), time);
+			break;
+		}
+		case SERVER_INFO:
 		default:
+			ShareData.getLogger().warning("[channel] BAD PACKAGE: " + type);
 			break;
 
 		}
@@ -242,7 +303,7 @@ public class Main extends Plugin implements Listener {
 		switch (id) {
 		case 0x0:
 			Channel.Tp.p0C_tpReq(buf, (target, type) -> {
-				val targetPlayer = getPlayer(target);
+				val targetPlayer = getPlayer(type == 1 || type == 3 ? player : null, target);
 				if (targetPlayer == null) {
 					send(player, Channel.Tp.s1S_tpReqReceive("", ""));
 				} else if (targetPlayer.equals(player)) {
@@ -277,14 +338,20 @@ public class Main extends Plugin implements Listener {
 			break;
 		case 0x9:
 			Channel.Tp.p9C_tpReqThird(buf, (mover, target) -> {
-				val	m	= getPlayer(mover);
-				val	t	= getPlayer(target);
+				val	m	= getPlayer(null, mover);
+				val	t	= getPlayer(null, target);
 				if (m != null && t != null) {
 					send(m, Channel.Tp.s2S_tpReq(t.getName(), t.getDisplayName(), 4));
 					send(t, Channel.Tp.s2S_tpReq(m.getName(), m.getDisplayName(), 5));
 				}
 				send(player, Channel.Tp.saS_tpReqThirdReceive(m == null ? "" : m.getName(), m == null ? "" : m.getDisplayName(), //
 						t == null ? "" : t.getName(), t == null ? "" : t.getDisplayName()));
+			});
+			break;
+		case 0xb:
+			Channel.Tp.pbC_cancel(buf, target -> {
+				val t = getProxy().getPlayer(target);
+				send(t, Channel.Tp.scS_cancel(player.getName()));
 			});
 			break;
 		default:
@@ -304,4 +371,33 @@ public class Main extends Plugin implements Listener {
 	public void onServerConnected(ServerConnectedEvent e) {
 		send(e.getServer(), Channel.VersionCheck.sendS());
 	}
+
+	/**
+	 * 
+	 */
+	private void startTimeAmendLoop() {
+		val timeAmend = ConfigManager.getConfig().getLong("timeAmend", 1000 * 60 * 5);
+		if (timeAmend > 0) {
+
+			timeAmendLooper = new Thread("yuanluServerDo-timeAmend") {
+				Thread thread;
+
+				@Override
+				public void run() {
+					thread = timeAmendLooper;
+					while (true) {
+						if (thread != timeAmendLooper) return;
+						try {
+							Core.startTimeAmend();
+							sleep(timeAmend);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
+				}
+			};
+			timeAmendLooper.start();
+		}
+	}
+
 }

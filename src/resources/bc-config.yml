@@ -12,5 +12,7 @@ setting:
   #如果设置为true，在允许的情况下，从子服获取玩家名称，否则全由bungeecord获取玩家名称
   sub-server-display-name: false
 
-#玩家tab替换内容，可任意修改，保持与BUKKIT端一致即可
+#玩家tab替换内容，可任意修改
 player-tab-replace: "%%%yuanlu-tab-player-list"
+
+timeAmend: 300000

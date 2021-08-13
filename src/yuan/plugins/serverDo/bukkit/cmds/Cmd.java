@@ -53,6 +53,33 @@ public abstract class Cmd extends Command implements MESSAGE {
 		return list;
 	}
 
+	/**
+	 * 获取cmd名称
+	 * 
+	 * @param cmd 命令
+	 * @return 命令名称
+	 */
+	private static final String getCmdName(Class<? extends Cmd> cmd) {
+		String cname = cmd.getSimpleName().toLowerCase();
+		if (cname.startsWith("cmd")) cname = cname.substring(3);
+		return cname;
+	}
+
+	/**
+	 * 返回此命令的某个消息
+	 * 
+	 * @param cmd  命令
+	 * @param type 消息类型
+	 * @return 消息
+	 */
+	protected static final Msg msg(Class<? extends Cmd> cmd, String type) {
+		val	key	= getCmdName(cmd) + "." + type;
+		Msg	msg	= MSGS.get(key);
+		if (msg != null) return msg;
+		MSGS.put(key, msg = Main.getMain().mes("cmd." + key));
+		return msg;
+	}
+
 	/** 此命令名称 */
 	protected final String cmdName;
 
@@ -61,16 +88,14 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * 
 	 * @param name 名称
 	 */
-	protected Cmd(String name) {
+	Cmd(String name) {
 		super(name);
 		val info = CommandManager.INFOS.get(name);
 		setDescription(info.getDescription());
 		setUsage(info.getUsageMessage());
 		setPermission(info.getPermission());
 
-		String cname = getClass().getSimpleName().toLowerCase();
-		if (cname.startsWith("cmd")) cname = cname.substring(3);
-		cmdName = cname;
+		cmdName = getCmdName(getClass());
 	}
 
 	/**
@@ -152,5 +177,11 @@ public abstract class Cmd extends Command implements MESSAGE {
 	protected final boolean msg(String type, CommandSender sender, Object... args) {
 		msg(type).send(sender, args);
 		return true;
+	}
+
+	@Override
+	public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
+		if (sender instanceof Player) return Core.getTabReplace((Player) sender, args.length > 0 ? args[args.length - 1] : "");
+		return null;
 	}
 }

@@ -36,8 +36,8 @@ public final class CmdTphere extends Cmd {
 			Core.listenCallBack(player, Channel.TP, 1, (BiConsumer<String, String>) (name, display) -> {
 				if (name.isEmpty()) msg("not-found", player, args[0]);
 				else {
-					msg("success", player, name, display);
-					Core.tpTo(name, player, false);
+					msg("sender", player, name, display);
+					Core.tpTo(name, player, -1);
 				}
 			});
 			Main.send(player, Channel.Tp.s0C_tpReq(args[0], 2));

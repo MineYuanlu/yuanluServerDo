@@ -39,7 +39,8 @@ public final class CmdTpahere extends Cmd {
 				else if (name.equals(player.getName())) {
 					msg("self-tp", player);
 				} else {
-					msg("send", player);
+					msg("sender", player, name, display);
+					CmdTpa.addTpReq(player, name, display);
 					Core.listenCallBack(player, Channel.TP, "5-" + name, WaitMaintain.T_User, (BoolConsumer) allow -> {
 						msg(allow ? "accept" : "deny", player, name, display);
 					});
