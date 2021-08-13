@@ -32,6 +32,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 import lombok.AccessLevel;
@@ -537,6 +538,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			Channel.Permission.parseS(message, (permission, allow) -> //
 			callBack(player, type, permission, handler -> {
 				if (allow) ((Runnable) handler).run();
+				else NO_PERMISSION.send(player, permission);
 			}));
 			break;
 		}
@@ -568,4 +570,42 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 	}
 
+	/** 清理监听器 */
+	private static final ArrayList<Consumer<Player>> CLEAR_LISTENER = new ArrayList<>();
+
+	/** @param c 玩家下线时的清理监听器 */
+	static final void registerClearListener(Consumer<Player> c) {
+		synchronized (CLEAR_LISTENER) {
+			CLEAR_LISTENER.add(c);
+		}
+	}
+
+	static {
+		registerClearListener(p -> {
+			val u = p.getUniqueId();
+			TabHandler.TAB_REPLACE_ALL.remove(u);
+			TabHandler.TAB_REPLACE_NOR.remove(u);
+			TpHandler.BAN_MOVE.remove(u);
+			CALL_BACK_WAITER.values().forEach(m -> m.remove(u));
+			ALLOW_PLAYERS.remove(u);
+		});
+	}
+	/** @param player 唤起清理 */
+	public static void callClear(Player player) {
+		synchronized (CLEAR_LISTENER) {
+			for (val consumer : CLEAR_LISTENER) {
+				consumer.accept(player);
+			}
+		}
+	}
+	/**
+	 * 
+	 * @param e 事件
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerQuit(@NonNull PlayerQuitEvent e) {
+		callClear(e.getPlayer());
+	}
 }

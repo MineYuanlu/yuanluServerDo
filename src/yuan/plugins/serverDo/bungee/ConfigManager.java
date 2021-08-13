@@ -42,7 +42,9 @@ public final class ConfigManager {
 	private static @Getter boolean							errorGroup;
 
 	/** 服务器组 */
-	private static final HashMap<String, HashSet<String>>	GROUPS	= new HashMap<>();
+	private static final HashMap<String, HashSet<String>>	GROUPS		= new HashMap<>();
+	/** 禁用的服务器 */
+	private static final HashSet<String>					BAN_SERVER	= new HashSet<>();
 
 	/**
 	 * 检测是否可以传送
@@ -52,6 +54,7 @@ public final class ConfigManager {
 	 * @return 是否可以传送
 	 */
 	public static boolean canTp(String s1, String s2) {
+		if (BAN_SERVER.contains(s1) || BAN_SERVER.contains(s2)) return false;
 		if (Objects.equal(s1, s2)) return true;
 		if (errorGroup) {
 			if (Main.isDEBUG()) Main.getMain().getLogger().warning("error: 服务器组不存在");
@@ -82,6 +85,9 @@ public final class ConfigManager {
 			}
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("加载组 " + key + ": " + group);
 		}
+
+		BAN_SERVER.clear();
+		BAN_SERVER.addAll(config.getStringList("server-ban"));
 	}
 
 	/**
@@ -107,4 +113,15 @@ public final class ConfigManager {
 
 		serverInfo = Channel.ServerInfo.sendS(tabReplaceAll, tabReplaceNor, Main.getMain().getDescription().getVersion());
 	}
+
+	/**
+	 * 检测是否启用服务器
+	 * 
+	 * @param server 服务器
+	 * @return 此服务器是否启用本插件
+	 */
+	public static boolean allowServer(String server) {
+		return !BAN_SERVER.contains(server);
+	}
+
 }

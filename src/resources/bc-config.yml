@@ -1,11 +1,16 @@
 #跨服传送组
 server-group:
+  #同一组内可以使用/tpa, /tpahere等命令
   group1:
     - server1
     - server2
   group2:
     - server3
     - server4
+#禁用的服务器, 例如登录服务器
+server-ban:
+ - 'auth'
+ - 'lobby'
 
 #名称获取设置
 setting:

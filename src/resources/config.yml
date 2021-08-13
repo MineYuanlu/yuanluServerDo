@@ -53,7 +53,7 @@ cmd:
 message:
   LanguageFileIsLost: '&c&l[语言文件缺失]节点:%node%'
   not-player: '&c您不是玩家!'
-  no-permission: '&c您没有权限'
+  no-permission: '&c您没有权限: &7%s'
   version-no-recommend: '&c服务器版本不一致: %s <-> %s'
   cmd:
     help: '&7yuanluServerDo'

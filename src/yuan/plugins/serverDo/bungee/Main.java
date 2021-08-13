@@ -188,11 +188,11 @@ public class Main extends Plugin implements Listener {
 			val server = (Server) e.getSender();
 			if (server == null) return;
 			val target = server.getInfo().getName();
-			for (val p : getProxy().getPlayers()) {
+			if (ConfigManager.allowServer(target)) for (val p : getProxy().getPlayers()) {
 				val	info	= p.getServer().getInfo().getName();
 				val	name	= p.getName();
 				if (name.toLowerCase().startsWith(request) && //
-						(isAll || ConfigManager.canTp(info, target))) //
+				(isAll ? ConfigManager.allowServer(info) : ConfigManager.canTp(info, target))) //
 					list.add(name);
 			}
 			if (list.isEmpty()) list.add(request);
