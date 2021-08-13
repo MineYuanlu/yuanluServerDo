@@ -257,7 +257,6 @@ public class Main extends Plugin implements Listener {
 	@Deprecated
 	@EventHandler
 	public void onPluginMessage(PluginMessageEvent e) {
-		System.out.println("CHANNEL:" + e.getTag() + ", " + ShareData.BC_CHANNEL.equals(e.getTag()) + ", " + (e.getSender() instanceof Server));
 		if (!ShareData.BC_CHANNEL.equals(e.getTag())) return;
 		e.setCancelled(true);
 		if (!(e.getSender() instanceof Server)) return;
