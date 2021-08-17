@@ -9,7 +9,7 @@ setting:
   use-safeLocation: false
 cmd:
  reload:
-  names: 'yserverdo-reload'
+  names: 'ysd-reload'
  tp:
   names:
    - tp
@@ -58,7 +58,6 @@ cmd:
   permission: 'yuanlu.serverDo.vanish'
   description: 'vanish cmd'
   usageMessage: '/ysd-v [always]'
-
 
 permissions:
   tp-senior: "yuanlu.serverDo.tpSenior" #高级传送, 包括传送隐身玩家, 跨组传送
@@ -149,6 +148,9 @@ message:
       help:
        - '&7输入指令： &2/ysd-v &7切换YSD隐身状态'
        - '&7输入指令： &2/ysd-v always &7切换YSD自动隐身状态'
+    reload:
+      success: '&c成功重载(此功能为实验性功能, 若出现任何错误请使用服务器重载指令或重启服务器)'
+      only-console: '&7请在控制台使用此指令'
   basic:
     message-time-out: "&c服务器通讯超时, 请联系管理员"
     version-bad: "&c服务器版本检查失败, 请联系管理员"

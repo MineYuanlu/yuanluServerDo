@@ -20,7 +20,7 @@ public final class CmdReload extends Cmd {
 	}
 
 	@Override
-	protected boolean execute0(CommandSender sender, String[] args) {
+	public boolean execute(CommandSender sender, String commandLabel, String[] args) {
 		if (sender instanceof ConsoleCommandSender) {
 			Main.getMain().reload();
 			msg("success", sender);
@@ -28,6 +28,11 @@ public final class CmdReload extends Cmd {
 			msg("only-console", sender);
 		}
 		return false;
+	}
+
+	@Override
+	protected boolean execute0(CommandSender sender, String[] args) {
+		throw new InternalError();
 	}
 
 }
