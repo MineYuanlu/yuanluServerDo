@@ -5,18 +5,20 @@
  */
 package yuan.plugins.serverDo.bukkit;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
-import lombok.Value;
+import lombok.val;
 import yuan.plugins.serverDo.Tool;
 
 /**
@@ -27,23 +29,13 @@ import yuan.plugins.serverDo.Tool;
  */
 @SuppressWarnings("javadoc")
 public interface MESSAGE {
-
-	/**
-	 * @author yuanlu
-	 *
-	 */
-	@NoArgsConstructor(access = AccessLevel.PRIVATE)
-	public final class EmptyMsg extends Msg {
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	final class EmptyMsg extends MsgReal {
 		public static final EmptyMsg INSTANCE = new EmptyMsg();
 
 		@Override
 		public String getMsg() {
 			return "";
-		}
-
-		@Override
-		public Msg replace(String target, String replacement) {
-			return "".equals(target) ? new StrMsg(replacement) : this;
 		}
 
 		@Override
@@ -58,19 +50,12 @@ public interface MESSAGE {
 
 	}
 
-	@Value
-	@EqualsAndHashCode(callSuper = false)
-	final class JsonMsg extends Msg {
-		@NonNull String json, msg;
+	final class JsonMsg extends MsgReal {
+		private final @NonNull @Getter String json, msg;
 
-		public JsonMsg(@NonNull String json, String metaMsg) {
+		private JsonMsg(@NonNull String json, String metaMsg) {
 			this.json	= " "/* 减少字符串拼接次数 */ + json;
 			msg			= metaMsg;
-		}
-
-		@Override
-		public JsonMsg replace(String target, String replacement) {
-			return new JsonMsg(json.substring(1).replace(target, replacement), msg.replace(target, replacement));
 		}
 
 		@Override
@@ -89,6 +74,7 @@ public interface MESSAGE {
 			}
 			Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "tellraw " + sender.getName() + cmd);
 		}
+
 	}
 
 	/**
@@ -97,19 +83,104 @@ public interface MESSAGE {
 	 * @see StrMsg
 	 * @see JsonMsg
 	 */
-	@NoArgsConstructor(access = AccessLevel.PRIVATE)
-	abstract class Msg {
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	@Getter
+	final class Msg {
+		private static final Map<String, MsgReal>	MSG_REALS	= new ConcurrentHashMap<>();
 
-		public abstract String getMsg();
+		private static final Map<String, Msg>		MSGS		= new ConcurrentHashMap<>();
+
+		private static Msg cache(String node, int type, MsgReal instance) {
+			val key = type + "-" + node;
+			MSG_REALS.put(key, instance);
+			return MSGS.computeIfAbsent(key, Msg::new);
+		}
+
+		static Msg get(String node, int type) {
+			return cache(node, type, EmptyMsg.INSTANCE);
+		}
+
+		static Msg get(@NonNull String node, int type, @NonNull String msg) {
+			return cache(node, type, new StrMsg(msg));
+		}
+
+		static Msg get(@NonNull String node, int type, @NonNull String json, String metaMsg) {
+			return cache(node, type, new JsonMsg(json, metaMsg));
+		}
+
+		static final void reload() {
+			val	msgs	= new ArrayList<>(MSGS.values());
+			val	m		= Main.getMain();
+			for (val msg : msgs) {
+				val arg = msg.key.split("-", 2);
+				m.mes(arg[1], Integer.parseInt(arg[0]));
+			}
+		}
+
+		private @NonNull final String key;
+
+		@Override
+		public final boolean equals(Object obj) {
+			if (this == obj) return true;
+			if (obj == null) return false;
+			if (getClass() != obj.getClass()) return false;
+			Msg other = (Msg) obj;
+			if (key == null) {
+				if (other.key != null) return false;
+			} else if (!key.equals(other.key)) return false;
+			return true;
+		}
+
+		public String getMsg() {
+			return getReal().getMsg();
+		}
+
+		@NonNull
+		private MsgReal getReal() {
+			val real = MSG_REALS.get(key);
+			if (real == null) throw new InternalError("Bad node:" + key);
+			return real;
+		}
+
+		@Override
+		public final int hashCode() {
+			final int	prime	= 31;
+			int			result	= 1;
+			result = prime * result + ((key == null) ? 0 : key.hashCode());
+			return result;
+		}
 
 		/**
-		 * 替换部分内容
+		 * 发送一条消息
 		 * 
-		 * @param target      替换部分
-		 * @param replacement 新内容
-		 * @return
+		 * @param sender 发送的对象
+		 * @param msg    信息
+		 * @param args   参数
 		 */
-		public abstract Msg replace(String target, String replacement);
+		public void send(CommandSender sender, Map<String, Object> args) {
+			getReal().send(sender, args);
+		}
+
+		/**
+		 * 发送一条消息
+		 * 
+		 * @param sender 发送的对象
+		 * @param msg    信息
+		 * @param args   参数
+		 */
+		public void send(CommandSender sender, Object... args) {
+			getReal().send(sender, args);
+		}
+
+		@Override
+		public String toString() {
+			return getMsg();
+		}
+	}
+
+	@NoArgsConstructor(access = AccessLevel.PRIVATE)
+	abstract class MsgReal {
+		public abstract String getMsg();
 
 		/**
 		 * 发送一条消息
@@ -133,18 +204,12 @@ public interface MESSAGE {
 		public String toString() {
 			return getMsg();
 		}
+
 	}
 
-	@AllArgsConstructor
-	@Value
-	@EqualsAndHashCode(callSuper = false)
-	final class StrMsg extends Msg {
-		@NonNull String msg;
-
-		@Override
-		public StrMsg replace(String target, String replacement) {
-			return new StrMsg(msg.replace(target, replacement));
-		}
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	final class StrMsg extends MsgReal {
+		private final @NonNull @Getter String msg;
 
 		@Override
 		public void send(CommandSender sender, @NonNull Map<String, Object> args) {
@@ -162,6 +227,7 @@ public interface MESSAGE {
 			}
 			sender.sendMessage(msg);
 		}
+
 	}
 
 	Msg	NO_PERMISSION		= mes("no-permission");

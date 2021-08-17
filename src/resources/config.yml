@@ -8,6 +8,8 @@ setting:
   request-overtime: 120
   use-safeLocation: false
 cmd:
+ reload:
+  names: 'yserverdo-reload'
  tp:
   names:
    - tp
@@ -42,14 +44,26 @@ cmd:
   names:
    - tpdeny
   permission: 'yuanlu.serverDo.tpdeny'
-  description: 'tpdenycmd'
+  description: 'tpdeny cmd'
   usageMessage: '/tpdeny [target]'
  tpcancel:
   names:
    - tpcancel
   permission: 'yuanlu.serverDo.tpcancel'
-  description: 'tpcancelcmd'
+  description: 'tpcancel cmd'
   usageMessage: '/tpcancel [target]'
+ vanish:
+  names:
+   - 'ysd-v'
+  permission: 'yuanlu.serverDo.vanish'
+  description: 'vanish cmd'
+  usageMessage: '/ysd-v [always]'
+
+
+permissions:
+  tp-senior: "yuanlu.serverDo.tpSenior" #高级传送, 包括传送隐身玩家, 跨组传送
+  tp-other: "yuanlu.serverDo.tpOther" #第三方传送
+
 message:
   LanguageFileIsLost: '&c&l[语言文件缺失]节点:%node%'
   not-player: '&c您不是玩家!'
@@ -127,6 +141,14 @@ message:
       remote-fail: "&c由于未知原因, &2%s &c试图取消一个不存在的请求"
       remote-success: "&2%2$s &7取消了传送"
       success: "&7你取消了发送给 &2%2$s &7的传送请求"
+    vanish:
+      always-hide: '&7已 &2开启 &7自动隐藏您的身份'
+      always-show: '&7已 &2关闭 &7自动隐藏您的身份'
+      hide: '&7已在列表中 &2隐藏 &7您的身份'
+      show: '&7已在列表中 &2显示 &7您的身份'
+      help:
+       - '&7输入指令： &2/ysd-v &7切换YSD隐身状态'
+       - '&7输入指令： &2/ysd-v always &7切换YSD自动隐身状态'
   basic:
     message-time-out: "&c服务器通讯超时, 请联系管理员"
     version-bad: "&c服务器版本检查失败, 请联系管理员"

@@ -220,7 +220,7 @@ public class Main extends JavaPlugin implements Listener {
 			if (notSenior) return msg;
 			else {
 				String json = config.getString(node + ".json", null);
-				if (json != null) return new MESSAGE.JsonMsg(t(json), msg.getMsg());
+				if (json != null) return Msg.get(node, type, t(json), msg.getMsg());
 			}
 		} else if (config.isList(node)) {
 			List<String>		l	= config.getStringList(node);
@@ -231,15 +231,15 @@ public class Main extends JavaPlugin implements Listener {
 			});
 			if (sb.length() > 0) sb.setLength(sb.length() - 1);
 
-			return sb.length() < 1 ? (checkEmpty ? null : MESSAGE.EmptyMsg.INSTANCE) : new MESSAGE.StrMsg(t(sb.toString()));
+			return sb.length() < 1 ? (checkEmpty ? null : Msg.get(node, type)) : Msg.get(node, type, t(sb.toString()));
 		} else if (config.isString(node)) {
 			String message = config.getString(node);
-			return message.isEmpty() ? (checkEmpty ? null : MESSAGE.EmptyMsg.INSTANCE) : new MESSAGE.StrMsg(t(nop ? message : (prefix + message)));
+			return message.isEmpty() ? (checkEmpty ? null : Msg.get(node, type)) : Msg.get(node, type, t(nop ? message : (prefix + message)));
 		}
 		MESSAGE_LOST_NODE.set(node, node);
 		getLogger().warning("§d[LMES] §c§lcan not find message in config: " + node);
-		if (nop) return new MESSAGE.StrMsg(t(langLost.replace("%node%", node)));
-		return new MESSAGE.StrMsg(t(prefix + langLost.replace("%node%", node)));
+		if (nop) return Msg.get(node, type, t(langLost.replace("%node%", node)));
+		return Msg.get(node, type, t(prefix + langLost.replace("%node%", node)));
 	}
 
 	@Override
@@ -273,6 +273,14 @@ public class Main extends JavaPlugin implements Listener {
 		getServer().getMessenger().registerOutgoingPluginChannel(this, ShareData.BC_CHANNEL);
 		getServer().getMessenger().registerIncomingPluginChannel(this, ShareData.BC_CHANNEL, Core.INSTANCE);
 
+	}
+
+	/** 重载插件 */
+	public void reload() {
+		val m = this;
+		m.getServer().getPluginManager().disablePlugin(m);
+		m.getServer().getPluginManager().enablePlugin(m);
+		Msg.reload();
 	}
 
 	/**

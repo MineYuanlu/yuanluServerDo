@@ -126,6 +126,70 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 	}
 
+	/**
+	 * 权限管理器
+	 * 
+	 * @author yuanlu
+	 *
+	 */
+	public static final class Permissions {
+		/** 所有权限 */
+		private static final HashMap<String, String> permissions = new HashMap<>();
+
+		/**
+		 * 检测对象是否有权限
+		 * 
+		 * @param sender 检测对象
+		 * @param node   权限节点
+		 * @param silent 静默检查
+		 * @return 是否有权限
+		 */
+		public static boolean hasPermission(CommandSender sender, String node, boolean silent) {
+			if (sender.isOp()) return true;
+			val	p	= Permissions.permissions.get(node);
+			val	has	= p != null && (p.isEmpty() || sender.hasPermission(p));
+			if (!has && !silent) {
+				NO_PERMISSION.send(sender, p == null ? "§4OP§r" : p);
+			}
+			return has;
+
+		}
+
+		/**
+		 * 初始化权限
+		 * 
+		 * @param conf 权限节点
+		 */
+		private static void init(ConfigurationSection conf) {
+			if (conf == null) return;
+			for (val k : conf.getKeys(false)) {
+				val p = conf.getString(k, null);
+				if (p != null) permissions.put(k, p);
+			}
+		}
+
+		/**
+		 * 检测对象是否有权限<br>
+		 * <b>非静默</b>
+		 * 
+		 * @param sender 检测对象
+		 * @return 是否有权限
+		 */
+		public static boolean tpOther_(CommandSender sender) {
+			return Permissions.hasPermission(sender, "tp-other", false);
+		}
+
+		/**
+		 * 检测对象是否有权限
+		 * 
+		 * @param sender 检测对象
+		 * @return 是否有权限
+		 */
+		public static boolean tpSenior(CommandSender sender) {
+			return Permissions.hasPermission(sender, "tp-senior", true);
+		}
+	}
+
 	/** tab处理器 */
 	public static final class TabHandler {
 		/** tab替换内容 */
@@ -308,15 +372,29 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/** 回调等待 */
 	private static final EnumMap<Channel, Map<UUID, ArrayList<ListenCallBackObj>>> CALL_BACK_WAITER = new EnumMap<>(Channel.class);
+
 	static {
 		for (val c : Channel.values()) CALL_BACK_WAITER.put(c, new HashMap<>());
 	}
-
 	/** 版本检查通过的玩家集合 */
-	private static final HashSet<UUID>			ALLOW_PLAYERS	= new HashSet<>();
+	private static final HashSet<UUID>					ALLOW_PLAYERS	= new HashSet<>();
 
 	/** 传送冷却 */
-	private static final HashMap<UUID, Long>	COOLDOWN		= new HashMap<UUID, Long>();
+	private static final HashMap<UUID, Long>			COOLDOWN		= new HashMap<UUID, Long>();
+
+	/** 清理监听器 */
+	private static final ArrayList<Consumer<Player>>	CLEAR_LISTENER	= new ArrayList<>();
+
+	static {
+		registerClearListener(p -> {
+			val u = p.getUniqueId();
+			TabHandler.TAB_REPLACE_ALL.remove(u);
+			TabHandler.TAB_REPLACE_NOR.remove(u);
+			TpHandler.BAN_MOVE.remove(u);
+			CALL_BACK_WAITER.values().forEach(m -> m.remove(u));
+			ALLOW_PLAYERS.remove(u);
+		});
+	}
 
 	/**
 	 * 回调
@@ -347,6 +425,15 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			}
 		}
 		return false;
+	}
+
+	/** @param player 唤起清理 */
+	public static void callClear(Player player) {
+		synchronized (CLEAR_LISTENER) {
+			for (val consumer : CLEAR_LISTENER) {
+				consumer.accept(player);
+			}
+		}
 	}
 
 	/**
@@ -381,6 +468,9 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		Conf.safeLocation			= conf.getBoolean("setting.use-safeLocation", Conf.safeLocation);
 
 		WaitMaintain.setT_User(Conf.getOvertime() * 1000);
+
+		// init Permission
+		Permissions.init(conf.getConfigurationSection("permissions"));
 	}
 
 	/**
@@ -430,6 +520,13 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 	}
 
+	/** @param c 玩家下线时的清理监听器 */
+	static final void registerClearListener(Consumer<Player> c) {
+		synchronized (CLEAR_LISTENER) {
+			CLEAR_LISTENER.add(c);
+		}
+	}
+
 	/**
 	 * 移除回调
 	 * 
@@ -440,6 +537,18 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 */
 	public static boolean removeCallBack(@NonNull Player player, @NonNull Channel channel, Object checker) {
 		return callBack(player, channel, checker, null);
+	}
+
+	/**
+	 * 传送请求码转换
+	 * 
+	 * @param player   玩家
+	 * @param realCode 真实的请求码
+	 * @return 转换后的请求码
+	 */
+	public static int tpReqCode(Player player, int realCode) {
+		if (realCode < 0) return realCode;
+		return Permissions.tpSenior(player) ? -realCode : realCode;
 	}
 
 	/**
@@ -518,6 +627,17 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		TPCANCEL_MOVE.send(e.getPlayer());
 	}
 
+	/**
+	 * 
+	 * @param e 事件
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerQuit(@NonNull PlayerQuitEvent e) {
+		callClear(e.getPlayer());
+	}
+
 	/** @deprecated BUKKIT */
 	@Deprecated
 	@Override
@@ -566,46 +686,11 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			if (!meVer.equals(info.getVersion())) VER_NO_RECOMMEND.send(player, meVer, info.getVersion());
 			break;
 		}
-
+		case VANISH: {
+			val isHide = Channel.Vanish.parse(message);
+			callBack(player, type, null, h -> ((BoolConsumer) h).accept(isHide));
+			break;
 		}
-	}
-
-	/** 清理监听器 */
-	private static final ArrayList<Consumer<Player>> CLEAR_LISTENER = new ArrayList<>();
-
-	/** @param c 玩家下线时的清理监听器 */
-	static final void registerClearListener(Consumer<Player> c) {
-		synchronized (CLEAR_LISTENER) {
-			CLEAR_LISTENER.add(c);
 		}
-	}
-
-	static {
-		registerClearListener(p -> {
-			val u = p.getUniqueId();
-			TabHandler.TAB_REPLACE_ALL.remove(u);
-			TabHandler.TAB_REPLACE_NOR.remove(u);
-			TpHandler.BAN_MOVE.remove(u);
-			CALL_BACK_WAITER.values().forEach(m -> m.remove(u));
-			ALLOW_PLAYERS.remove(u);
-		});
-	}
-	/** @param player 唤起清理 */
-	public static void callClear(Player player) {
-		synchronized (CLEAR_LISTENER) {
-			for (val consumer : CLEAR_LISTENER) {
-				consumer.accept(player);
-			}
-		}
-	}
-	/**
-	 * 
-	 * @param e 事件
-	 * @deprecated BUKKIT
-	 */
-	@Deprecated
-	@EventHandler(priority = EventPriority.HIGH)
-	public void onPlayerQuit(@NonNull PlayerQuitEvent e) {
-		callClear(e.getPlayer());
 	}
 }

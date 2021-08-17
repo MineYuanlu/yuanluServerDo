@@ -73,8 +73,7 @@ public class Main extends Plugin implements Listener {
 		while (var6.hasNext()) {
 			val	player	= var6.next();
 			val	pn		= player.getName();
-			if (pn.toLowerCase(Locale.ENGLISH).startsWith(lowerName)
-					&& (server == null || ConfigManager.canTp(player.getServer().getInfo().getName(), server))) {
+			if (pn.toLowerCase(Locale.ENGLISH).startsWith(lowerName) && Core.canTp(server == null, server, player)) {
 				int curDelta = Math.abs(pn.length() - lowerName.length());
 				if (curDelta < delta) {
 					found	= player;
@@ -189,10 +188,8 @@ public class Main extends Plugin implements Listener {
 			if (server == null) return;
 			val target = server.getInfo().getName();
 			if (ConfigManager.allowServer(target)) for (val p : getProxy().getPlayers()) {
-				val	info	= p.getServer().getInfo().getName();
-				val	name	= p.getName();
-				if (name.toLowerCase().startsWith(request) && //
-				(isAll ? ConfigManager.allowServer(info) : ConfigManager.canTp(info, target))) //
+				val name = p.getName();
+				if (name.toLowerCase().startsWith(request) && Core.canTp(isAll, target, p)) //
 					list.add(name);
 			}
 			if (list.isEmpty()) list.add(request);
@@ -229,6 +226,7 @@ public class Main extends Plugin implements Listener {
 	@Override
 	public void onDisable() {
 		if (timeAmendLooper != null) timeAmendLooper = null;
+		ConfigManager.closeSave();
 	}
 
 	@Override
@@ -239,7 +237,7 @@ public class Main extends Plugin implements Listener {
 		checkYuanluConfig();
 
 		Tool.load(Channel.class);
-		ConfigManager.setConfig(loadFile("bc-config.yml"));
+		ConfigManager.init(loadFile("bc-config.yml"));
 		// 注册信道
 		getProxy().registerChannel(ShareData.BC_CHANNEL);
 		getProxy().getPluginManager().registerListener(this, this);
@@ -293,6 +291,12 @@ public class Main extends Plugin implements Listener {
 			Core.timeAmendCallback(server.getInfo(), time);
 			break;
 		}
+		case VANISH: {
+			val	always	= Channel.Vanish.parse(message);
+			val	inHide	= Core.switchVanish(player, always);
+			send(player, Channel.Vanish.sendC(inHide));
+			break;
+		}
 		case SERVER_INFO:
 		default:
 			ShareData.getLogger().warning("[channel] BAD PACKAGE: " + type);
@@ -314,7 +318,9 @@ public class Main extends Plugin implements Listener {
 		switch (id) {
 		case 0x0:
 			Channel.Tp.p0C_tpReq(buf, (target, type) -> {
-				val targetPlayer = getPlayer(type == 1 || type == 3 ? player : null, target);
+				val isSenior = type < 0;
+				if (isSenior) type = -type;
+				val targetPlayer = getPlayer(isSenior ? null : player, target);
 				if (targetPlayer == null) {
 					send(player, Channel.Tp.s1S_tpReqReceive("", ""));
 				} else if (targetPlayer.equals(player)) {
@@ -348,9 +354,9 @@ public class Main extends Plugin implements Listener {
 			});
 			break;
 		case 0x9:
-			Channel.Tp.p9C_tpReqThird(buf, (mover, target) -> {
-				val	m	= getPlayer(null, mover);
-				val	t	= getPlayer(null, target);
+			Channel.Tp.p9C_tpReqThird(buf, (mover, target, code) -> {
+				val	m	= getPlayer((code & 1) > 0 ? null : player, mover);
+				val	t	= getPlayer((code & 1) > 0 ? null : player, target);
 				if (m != null && t != null) {
 					send(m, Channel.Tp.s2S_tpReq(t.getName(), t.getDisplayName(), 4));
 					send(t, Channel.Tp.s2S_tpReq(m.getName(), m.getDisplayName(), 5));
@@ -382,6 +388,7 @@ public class Main extends Plugin implements Listener {
 	public void onServerConnected(ServerConnectedEvent e) {
 		send(e.getServer(), Channel.VersionCheck.sendS());
 		ConfigManager.sendBungeeInfoToServer(e.getServer());
+		Core.autoVanish(e.getPlayer());
 	}
 
 	/**

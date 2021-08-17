@@ -60,7 +60,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * @param cmd 命令
 	 * @return 命令名称
 	 */
-	private static final String getCmdName(Class<? extends Cmd> cmd) {
+	public static final String getCmdName(Class<? extends Cmd> cmd) {
 		String cname = cmd.getSimpleName().toLowerCase();
 		if (cname.startsWith("cmd")) cname = cname.substring(3);
 		return cname;

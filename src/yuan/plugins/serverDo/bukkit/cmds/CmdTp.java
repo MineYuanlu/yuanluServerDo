@@ -15,6 +15,7 @@ import org.bukkit.entity.Player;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.Channel.Package.BiPlayerConsumer;
 import yuan.plugins.serverDo.bukkit.Core;
+import yuan.plugins.serverDo.bukkit.Core.Permissions;
 import yuan.plugins.serverDo.bukkit.Main;
 
 /**
@@ -45,9 +46,10 @@ public final class CmdTp extends Cmd {
 					Core.tpTo(player, name, -1, false);
 				}
 			});
-			Main.send(player, Channel.Tp.s0C_tpReq(args[0], 0));
+			Main.send(player, Channel.Tp.s0C_tpReq(args[0], Core.tpReqCode(player, 0)));
 			return true;
 		case 2:// tp mover target
+			if (!Permissions.tpOther_(sender)) return true;
 			Core.listenCallBack(player, Channel.TP, 0xa, (BiPlayerConsumer) (mn, md, tn, td) -> {
 				if (mn.isEmpty()) msg("not-found", player, args[0]);
 				else if (tn.isEmpty()) msg("not-found", player, args[1]);
@@ -56,9 +58,9 @@ public final class CmdTp extends Cmd {
 					Core.tpTo(player, mn, tn, -1);
 				}
 			});
-			Main.send(player, Channel.Tp.s9C_tpReqThird(args[0], args[1]));
+			int code = Permissions.tpSenior(sender) ? 1 : 0;// 是否拥有高级传送权限
+			Main.send(player, Channel.Tp.s9C_tpReqThird(args[0], args[1], code));
 		}
 		return false;
 	}
-
 }

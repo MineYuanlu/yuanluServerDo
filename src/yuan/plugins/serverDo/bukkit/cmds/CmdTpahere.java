@@ -47,7 +47,7 @@ public final class CmdTpahere extends Cmd {
 					});
 				}
 			});
-			Main.send(player, Channel.Tp.s0C_tpReq(args[0], 3));
+			Main.send(player, Channel.Tp.s0C_tpReq(args[0], Core.tpReqCode(player, 3)));
 		} else return msg("help", player);
 		return false;
 	}

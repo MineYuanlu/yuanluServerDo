@@ -41,7 +41,7 @@ public final class CmdTphere extends Cmd {
 					Core.tpTo(name, player, -1);
 				}
 			});
-			Main.send(player, Channel.Tp.s0C_tpReq(args[0], 2));
+			Main.send(player, Channel.Tp.s0C_tpReq(args[0], Core.tpReqCode(player, 2)));
 		} else return msg("help", player);
 		return false;
 	}

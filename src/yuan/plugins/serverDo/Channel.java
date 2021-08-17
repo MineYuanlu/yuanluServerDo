@@ -48,7 +48,9 @@ public enum Channel {
 	/** 时间修正 */
 	TIME_AMEND(TimeAmend.class),
 	/** 返回服务器信息 */
-	SERVER_INFO(ServerInfo.class);
+	SERVER_INFO(ServerInfo.class),
+	/** 隐身模式 */
+	VANISH(Vanish.class);
 
 	/**
 	 * 传送冷却数据包
@@ -801,12 +803,12 @@ public enum Channel {
 		 * 
 		 * @param buf            数据
 		 * @param moverAndTarget 双方搜索内容
-		 * @see #s9C_tpReqThird(String, String)
+		 * @see #s9C_tpReqThird(String, String, int)
 		 */
-		public static void p9C_tpReqThird(byte[] buf, BiConsumer<String, String> moverAndTarget) {
+		public static void p9C_tpReqThird(byte[] buf, BiIntConsumer<String, String> moverAndTarget) {
 			try (val in = DataIn.pool(buf)) {
 				checkId(in, 9);
-				moverAndTarget.accept(in.readUTF(), in.readUTF());
+				moverAndTarget.accept(in.readUTF(), in.readUTF(), in.readInt());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -872,6 +874,8 @@ public enum Channel {
 		 * 3: tpahere
 		 * 4: 第三方传送mover
 		 * 5: 第三方传送target
+		 * 
+		 * 当类型{@code <0}时, 代表其拥有高级权限
 		 * </pre>
 		 * 
 		 * @param target 搜索内容
@@ -1042,13 +1046,15 @@ public enum Channel {
 		 * 
 		 * @param mover  搜索内容
 		 * @param target 搜索内容
+		 * @param code   附属码
 		 * @return 数据包
 		 */
-		public static byte[] s9C_tpReqThird(String mover, String target) {
+		public static byte[] s9C_tpReqThird(String mover, String target, int code) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeByte(9);
 				out.writeUTF(mover);
 				out.writeUTF(target);
+				out.writeInt(code);
 				return out.getByte();
 			} catch (Exception e) {
 				throw new RuntimeException(e);
@@ -1110,6 +1116,65 @@ public enum Channel {
 			}
 		}
 
+	}
+
+	/**
+	 * 隐身模式
+	 * 
+	 * @author yuanlu
+	 * @see Channel#PERMISSION
+	 */
+	@NoArgsConstructor(access = AccessLevel.PRIVATE)
+	public static final class Vanish extends Package {
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
+		/**
+		 * 解析
+		 * 
+		 * @param buf 数据
+		 * @return 双向数据
+		 */
+		@NonNull
+		public static boolean parse(@NonNull byte[] buf) {
+			try (val in = DataIn.pool(buf)) {
+				return in.readBoolean();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Client
+		 * 
+		 * @param inHide 当前是否处于隐身状态
+		 * @return 数据包
+		 */
+		@NonNull
+		public static byte[] sendC(boolean inHide) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeBoolean(inHide);
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Server
+		 * 
+		 * @param always 是否每次上线都拥有隐身
+		 * @return 数据包
+		 */
+		@NonNull
+		public static byte[] sendS(boolean always) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeBoolean(always);
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
 	}
 
 	/**

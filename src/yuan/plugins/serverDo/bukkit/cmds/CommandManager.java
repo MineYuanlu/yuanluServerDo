@@ -69,13 +69,13 @@ public final class CommandManager implements MESSAGE {
 	 */
 	public static final void init(ConfigurationSection conf) {
 		if (conf != null) {
-			init(conf, "tp", CmdTp.class);
-			init(conf, "tpa", CmdTpa.class);
-			init(conf, "tphere", CmdTphere.class);
-			init(conf, "tpahere", CmdTpahere.class);
-			init(conf, "tpaccept", CmdTpaccept.class);
-			init(conf, "tpdeny", CmdTpdeny.class);
-			init(conf, "tpcancel", CmdTpcancel.class);
+			init(conf, CmdTp.class);
+			init(conf, CmdTpa.class);
+			init(conf, CmdTphere.class);
+			init(conf, CmdTpahere.class);
+			init(conf, CmdTpaccept.class);
+			init(conf, CmdTpdeny.class);
+			init(conf, CmdTpcancel.class);
 		}
 	}
 
@@ -83,11 +83,11 @@ public final class CommandManager implements MESSAGE {
 	 * 初始化一条命令
 	 * 
 	 * @param conf 配置文件
-	 * @param cmd  命令名
 	 * @param c    目标类
 	 */
-	private static void init(ConfigurationSection conf, String cmd, Class<? extends Cmd> c) {
+	private static void init(ConfigurationSection conf, Class<? extends Cmd> c) {
 		try {
+			val cmd = Cmd.getCmdName(c);
 			conf = conf.getConfigurationSection(cmd);
 			if (conf == null) {
 				ShareData.getLogger().warning("未注册命令 " + cmd);
