@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>bid.yuanlu</groupId>
 	<artifactId>yuanluServerDo</artifactId>
-	<version>1.1.0-SNAPSHOT-2</version><!-- -SNAPSHOT -->
+	<version>1.1.0-SNAPSHOT-3</version><!-- -SNAPSHOT -->
 	<name>yuanluServerDo</name>
 	<description>Provide players with a series of cross server operations</description>
 	<repositories>
@@ -27,7 +27,8 @@
 			</resource>
 		</resources>
 		<plugins>
-			<!-- <plugin>
+			<!-- -->
+			<plugin>
 				<artifactId>maven-antrun-plugin</artifactId>
 				<executions>
 					<execution>
@@ -63,7 +64,7 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>-->
+			</plugin><!---->
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
@@ -86,6 +87,13 @@
 							<shadedPattern>yuan.plugins.ServerDo.bstats</shadedPattern>
 						</relocation>
 					</relocations>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>1.18.12</version>
+						</path>
+					</annotationProcessorPaths>
 				</configuration>
 				<executions>
 					<execution>

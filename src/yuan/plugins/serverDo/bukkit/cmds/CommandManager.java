@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Value;
 import lombok.val;
 import yuan.plugins.serverDo.ShareData;
+import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.bukkit.MESSAGE;
 import yuan.plugins.serverDo.bukkit.Main;
 
@@ -67,15 +68,29 @@ public final class CommandManager implements MESSAGE {
 	 * 
 	 * @param conf 配置文件
 	 */
-	public static final void init(ConfigurationSection conf) {
+	@SuppressWarnings("unchecked")
+	public static void init(ConfigurationSection conf) {
+		ShareData.getLogger().info("------------" + conf);
 		if (conf != null) {
-			init(conf, CmdTp.class);
-			init(conf, CmdTpa.class);
-			init(conf, CmdTphere.class);
-			init(conf, CmdTpahere.class);
-			init(conf, CmdTpaccept.class);
-			init(conf, CmdTpdeny.class);
-			init(conf, CmdTpcancel.class);
+			val package_ = Cmd.class.getPackage().getName() + ".";
+			for (val k : conf.getKeys(false)) {
+				val name = Tool.humpTransBack("Cmd-" + k, "-");
+				if (name == null) {
+					ShareData.getLogger().warning("[CMD] 无效命令: " + k);
+					continue;
+				}
+				try {
+					val c = Class.forName(package_ + name);
+					if (c == Cmd.class || !Cmd.class.isAssignableFrom(c)) {
+						ShareData.getLogger().warning("[CMD] 非法命令: " + k);
+						continue;
+					}
+					init(conf, (Class<? extends Cmd>) c);
+				} catch (ClassNotFoundException e) {
+					ShareData.getLogger().warning("[CMD] 未知命令: " + k);
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 
@@ -90,7 +105,7 @@ public final class CommandManager implements MESSAGE {
 			val cmd = Cmd.getCmdName(c);
 			conf = conf.getConfigurationSection(cmd);
 			if (conf == null) {
-				ShareData.getLogger().warning("未注册命令 " + cmd);
+				ShareData.getLogger().warning("无法注册命令: " + cmd);
 				return;
 			}
 			val	constructor	= c.getDeclaredConstructor(String.class);
@@ -101,6 +116,7 @@ public final class CommandManager implements MESSAGE {
 				register(constructor.newInstance(cmdName));
 			}
 		} catch (Exception e) {
+			ShareData.getLogger().warning("注册命令时出错: " + c);
 			e.printStackTrace();
 		}
 	}
@@ -111,7 +127,7 @@ public final class CommandManager implements MESSAGE {
 	 * 
 	 * @param cmd 命令
 	 */
-	public static final void register(Command cmd) {
+	public static void register(Command cmd) {
 		try {
 			Method		method	= Bukkit.getServer().getClass().getMethod("getCommandMap");
 			CommandMap	cmdm	= (CommandMap) method.invoke(Bukkit.getServer());

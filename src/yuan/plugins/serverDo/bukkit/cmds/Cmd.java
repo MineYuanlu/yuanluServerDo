@@ -17,13 +17,15 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import lombok.val;
-import yuan.plugins.serverDo.ShareData;
+import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Core.CallbackQueue;
 import yuan.plugins.serverDo.bukkit.MESSAGE;
 import yuan.plugins.serverDo.bukkit.Main;
 
 /**
+ * Cmd
+ * 
  * @author yuanlu
  *
  */
@@ -48,7 +50,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 			return list;
 		}
 		ArrayList<String> list = new ArrayList<>(dataList.size());
-		dataList.forEach((x) -> {
+		list.forEach(x -> {
 			if (x != null && x.startsWith(prefix)) list.add(x);
 		});
 		return list;
@@ -61,8 +63,9 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * @return 命令名称
 	 */
 	public static final String getCmdName(Class<? extends Cmd> cmd) {
-		String cname = cmd.getSimpleName().toLowerCase();
-		if (cname.startsWith("cmd")) cname = cname.substring(3);
+		String cname = cmd.getSimpleName();
+		if (cname.length() >= 3 && cname.substring(0, 3).equalsIgnoreCase("cmd")) cname = cname.substring(3);
+		cname = Tool.humpTrans(cname, "-");
 		return cname;
 	}
 
@@ -82,13 +85,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	}
 
 	/** 此命令名称 */
-	protected final String	cmdName;
-
-	/** bc tab */
-	private boolean			tab_useBC;
-
-	/** bc tab */
-	private boolean			tab_useBC_all;
+	protected final String cmdName;
 
 	/**
 	 * 构造一个命令
@@ -141,11 +138,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * @return 消息
 	 */
 	protected final Msg msg(String type) {
-		val	key	= cmdName + "." + type;
-		Msg	msg	= MSGS.get(key);
-		if (msg != null) return msg;
-		MSGS.put(key, msg = Main.getMain().mes("cmd." + key));
-		return msg;
+		return msg(type, 0);
 	}
 
 	/**
@@ -187,26 +180,18 @@ public abstract class Cmd extends Command implements MESSAGE {
 	}
 
 	/**
-	 * 设置使用BC tab 补全数据
+	 * 返回此命令的某个消息
 	 * 
-	 * @param use   是否使用BC tab
-	 * @param isAll 是否显示全部数据
+	 * @param type 消息类型
+	 * @param code 消息格式
+	 * @return 消息
 	 */
-	protected void setUseBCtab(boolean use, boolean isAll) {
-		tab_useBC		= use;
-		tab_useBC_all	= isAll;
+	protected final Msg msg(String type, int code) {
+		val	key	= cmdName + "." + type;
+		Msg	msg	= MSGS.get(key + code);
+		if (msg != null) return msg;
+		MSGS.put(key + code, msg = Main.getMain().mes("cmd." + key, code));
+		return msg;
 	}
 
-	@Override
-	public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
-		if (tab_useBC) {
-			if (sender instanceof Player) {
-				val l = Core.TabHandler.getTabReplace((Player) sender, args.length > 0 ? args[args.length - 1] : "", tab_useBC_all);
-				if (ShareData.isDEBUG()) ShareData.getLogger().info("[TAB] " + l);
-				return l;
-			}
-		}
-		if (ShareData.isDEBUG()) ShareData.getLogger().info("[TAB] none");
-		return null;
-	}
 }

@@ -20,4 +20,8 @@ setting:
 #玩家tab替换内容，可任意修改
 player-tab-replace: "%%%yuanlu-tab-player-list"
 
+#时间校准循环间隔(ms)
 timeAmend: 300000
+
+#自动保存延时(ms)
+save-delay: 60000

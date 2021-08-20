@@ -30,7 +30,7 @@ import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Main;
 
 /**
- * Tpaccept命令
+ * tpaccept命令
  * 
  * @author yuanlu
  *
@@ -125,7 +125,7 @@ public final class CmdTpaccept extends Cmd {
 	 * @param sender 目标
 	 * @return 对此目标请求的玩家列表
 	 */
-	static final List<String> getReqList(CommandSender sender) {
+	static List<String> getReqList(CommandSender sender) {
 		if (sender instanceof Player) {
 			Player	player	= (Player) sender;
 			val		list	= TP_WAIT.get(player.getUniqueId());

@@ -24,12 +24,11 @@ import yuan.plugins.serverDo.bukkit.Main;
  * @author yuanlu
  *
  */
-public final class CmdTp extends Cmd {
+public final class CmdTp extends TabTp {
 
 	/** @param name 命令名 */
 	protected CmdTp(String name) {
 		super(name);
-		setUseBCtab(true, true);
 	}
 
 	@Override

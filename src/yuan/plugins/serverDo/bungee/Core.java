@@ -10,15 +10,22 @@ package yuan.plugins.serverDo.bungee;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.UUID;
+import java.util.function.Function;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.val;
 import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
+import net.md_5.bungee.api.connection.Server;
+import net.md_5.bungee.api.event.ServerConnectEvent.Reason;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.ShareData;
+import yuan.plugins.serverDo.ShareLocation;
+import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.bungee.ConfigManager.ConfFile;
+import yuan.plugins.serverDo.bungee.ConfigManager.PlayerConfFile;
 
 /**
  * BC端核心
@@ -45,12 +52,13 @@ public class Core {
 	 * 自动隐身处理
 	 * 
 	 * @param player 玩家
+	 * @param server 玩家所在服务器
 	 */
-	public static void autoVanish(ProxiedPlayer player) {
+	public static void autoVanish(ProxiedPlayer player, Server server) {
 		val u = player.getUniqueId();
 		if (alwaysVanish.contains(u)) {
 			nowVanish.add(u);
-			Main.send(player, Channel.Vanish.sendC(true));
+			Main.send(server, Channel.Vanish.sendC(true));
 		}
 	}
 
@@ -74,6 +82,40 @@ public class Core {
 	}
 
 	/**
+	 * 检查服务器间是否可以传送
+	 * 
+	 * @param myServer     本服务器
+	 * @param targetServer 目标服务器
+	 * @return 是否可以传送
+	 */
+	public static boolean canTp(String myServer, String targetServer) {
+		if (!ConfigManager.allowServer(targetServer)) return false;
+		if (!ConfigManager.canTp(myServer, targetServer)) return false;
+		return true;
+	}
+
+	/**
+	 * 获取地标
+	 * 
+	 * @param player 玩家
+	 * @param name   名称
+	 * @return 坐标
+	 */
+	public static ShareLocation getHome(ProxiedPlayer player, String name) {
+		return ConfigManager.HOMES.get(player.getUniqueId()).get(name);
+	}
+
+	/**
+	 * 获取家集合
+	 * 
+	 * @param player 玩家
+	 * @return homes
+	 */
+	public static HashMap<String, ShareLocation> getHomes(ProxiedPlayer player) {
+		return ConfigManager.HOMES.get(player.getUniqueId());
+	}
+
+	/**
 	 * 获取本服务器比子服务器快多少毫秒
 	 * 
 	 * @param server 服务器
@@ -86,6 +128,16 @@ public class Core {
 	}
 
 	/**
+	 * 获取地标
+	 * 
+	 * @param name 名称
+	 * @return 坐标
+	 */
+	public static ShareLocation getWarp(@NonNull String name) {
+		return ConfigManager.WARPS.get(name);
+	}
+
+	/**
 	 * 是否拥有隐身
 	 * 
 	 * @param player 玩家
@@ -93,6 +145,63 @@ public class Core {
 	 */
 	public static boolean hasVanish(ProxiedPlayer player) {
 		return nowVanish.add(player.getUniqueId());
+	}
+
+	/**
+	 * 搜索家
+	 * 
+	 * @param player 玩家
+	 * @param name   搜索名
+	 * @return 匹配名
+	 */
+	public static String searchHome(ProxiedPlayer player, String name) {
+		return Tool.search(name, ConfigManager.HOMES.get(player.getUniqueId()).keySet().iterator());
+	}
+
+	/**
+	 * 搜索地标
+	 * 
+	 * @param name 搜索名
+	 * @return 匹配名
+	 */
+	public static String searchWarp(@NonNull String name) {
+		return Tool.search(name, ConfigManager.WARPS.keySet().iterator());
+	}
+
+	/**
+	 * 设置/删除家
+	 * 
+	 * @param player 玩家
+	 * @param name   家名称
+	 * @param loc    家坐标
+	 * @return true: 成功删除/覆盖<br>
+	 *         false:不存在/新建
+	 */
+	public static boolean setHome(ProxiedPlayer player, String name, ShareLocation loc) {
+		val		home	= ConfigManager.HOMES.get(player.getUniqueId());
+		boolean	result;
+		if (loc == null) result = home.remove(name) != null;
+		else if ((loc = loc.clone()).getServer() == null) throw new IllegalArgumentException("[HOME] Null sever: " + name);
+		else result = home.put(name, loc) != null;
+		ConfigManager.saveConf(PlayerConfFile.HOME, player);
+		return result;
+	}
+
+	/**
+	 * 设置/删除地标
+	 * 
+	 * @param name 地标名称
+	 * @param loc  地标坐标
+	 * @return true: 成功删除/覆盖<br>
+	 *         false:不存在/新建
+	 */
+	public static boolean setWarp(@NonNull String name, ShareLocation loc) {
+		boolean result;
+		if (loc == null) result = ConfigManager.WARPS.remove(name) != null;
+		else if ((loc = loc.clone()).getServer() == null) throw new IllegalArgumentException("[WARP] Null sever: " + name);
+		else result = ConfigManager.WARPS.put(name, loc) != null;
+		ConfigManager.saveConf(ConfFile.WARP);
+		return result;
 	}
 
 	/**
@@ -142,4 +251,28 @@ public class Core {
 		TIME_AMEND.put(info.getName(), shift);
 		if (ShareData.isDEBUG()) ShareData.getLogger().info("[时间修正] " + info.getName() + " 偏移量:" + shift + ", 通信时长: " + time);
 	}
+
+	/**
+	 * 传送坐标
+	 * 
+	 * @param player   玩家
+	 * @param loc      目标点
+	 * @param callback 传送回调数据生成
+	 */
+	public static void tpLocation(@NonNull ProxiedPlayer player, ShareLocation loc, @NonNull Function<Boolean, byte[]> callback) {
+		val	nowServer		= player.getServer();
+		val	targetServer	= loc == null ? null : Main.getMain().getProxy().getServerInfo(loc.getServer());
+		if (targetServer == null) {
+			Main.send(nowServer, callback.apply(false));
+			return;
+		}
+		Main.sendQueue(targetServer, Channel.TpLoc.s1S_tpLoc(loc, player.getName()));
+		if (nowServer.getInfo().getName().equals(targetServer.getName())) {
+			Main.send(nowServer, callback.apply(true));
+		} else player.connect(targetServer, (success, e) -> {
+			Main.send(nowServer, callback.apply(success));
+			if (e != null) e.printStackTrace();
+		}, Reason.COMMAND);
+	}
+
 }

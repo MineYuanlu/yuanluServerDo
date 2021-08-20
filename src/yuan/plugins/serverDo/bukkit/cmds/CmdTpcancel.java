@@ -14,6 +14,8 @@ import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Main;
 
 /**
+ * tpcancel命令
+ * 
  * @author yuanlu
  *
  */

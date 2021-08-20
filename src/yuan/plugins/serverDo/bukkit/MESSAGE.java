@@ -108,7 +108,7 @@ public interface MESSAGE {
 			return cache(node, type, new JsonMsg(json, metaMsg));
 		}
 
-		static final void reload() {
+		static void reload() {
 			val	msgs	= new ArrayList<>(MSGS.values());
 			val	m		= Main.getMain();
 			for (val msg : msgs) {
@@ -120,7 +120,7 @@ public interface MESSAGE {
 		private @NonNull final String key;
 
 		@Override
-		public final boolean equals(Object obj) {
+		public boolean equals(Object obj) {
 			if (this == obj) return true;
 			if (obj == null) return false;
 			if (getClass() != obj.getClass()) return false;
@@ -143,7 +143,7 @@ public interface MESSAGE {
 		}
 
 		@Override
-		public final int hashCode() {
+		public int hashCode() {
 			final int	prime	= 31;
 			int			result	= 1;
 			result = prime * result + ((key == null) ? 0 : key.hashCode());

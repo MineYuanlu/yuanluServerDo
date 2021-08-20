@@ -269,7 +269,7 @@ public final class WaitMaintain {
 	 * @param maxTime 等待时长
 	 * @return return
 	 */
-	public static final <K> boolean add(Collection<K> set, K k, long maxTime) {
+	public static <K> boolean add(Collection<K> set, K k, long maxTime) {
 		return add(set, k, maxTime, null);
 	}
 
@@ -283,7 +283,7 @@ public final class WaitMaintain {
 	 * @param clearListener 清理监听
 	 * @return return
 	 */
-	public static final <K> boolean add(Collection<K> set, K k, long maxTime, Runnable clearListener) {
+	public static <K> boolean add(Collection<K> set, K k, long maxTime, Runnable clearListener) {
 		val r = set.add(k);
 		QUEUE.add(new CElement(System.currentTimeMillis() + maxTime, set, k, clearListener));
 		return r;
@@ -303,7 +303,7 @@ public final class WaitMaintain {
 	 * @param clearListener 清理监听
 	 * @return return
 	 */
-	public static final <K, V, L extends Collection<V>> boolean add(Map<K, L> map, K k, V v, long maxTime, Supplier<L> builder, Runnable clearListener) {
+	public static <K, V, L extends Collection<V>> boolean add(Map<K, L> map, K k, V v, long maxTime, Supplier<L> builder, Runnable clearListener) {
 		L c = map.get(k);
 		if (c == null) map.put(k, c = builder.get());
 		val r = c.add(v);
@@ -319,7 +319,7 @@ public final class WaitMaintain {
 	 * @param maxTime       等待时长
 	 * @param clearListener 清理监听
 	 */
-	public static final <K> void monitor(@NonNull Number num, long maxTime, @NonNull Runnable clearListener) {
+	public static <K> void monitor(@NonNull Number num, long maxTime, @NonNull Runnable clearListener) {
 		QUEUE.add(new NElement(System.currentTimeMillis() + maxTime, clearListener, num));
 	}
 
@@ -334,7 +334,7 @@ public final class WaitMaintain {
 	 * @param maxTime 等待时长
 	 * @return return
 	 */
-	public static final <K, V> V put(Map<K, V> map, K k, V v, long maxTime) {
+	public static <K, V> V put(Map<K, V> map, K k, V v, long maxTime) {
 		return put(map, k, v, maxTime, null);
 	}
 
@@ -350,7 +350,7 @@ public final class WaitMaintain {
 	 * @param clearListener 清理监听
 	 * @return return
 	 */
-	public static final <K, V> V put(Map<K, V> map, K k, V v, long maxTime, Runnable clearListener) {
+	public static <K, V> V put(Map<K, V> map, K k, V v, long maxTime, Runnable clearListener) {
 		val old = map.put(k, v);
 		QUEUE.add(new MapElement(System.currentTimeMillis() + maxTime, map, k, v, clearListener));
 		return old;
@@ -372,7 +372,7 @@ public final class WaitMaintain {
 	 * @param clearListener 清理监听
 	 * @return return
 	 */
-	public static final <T, K, V, M extends Map<K, V>> V put(Map<T, M> map, T t, K k, V v, long maxTime, Supplier<M> builder, Runnable clearListener) {
+	public static <T, K, V, M extends Map<K, V>> V put(Map<T, M> map, T t, K k, V v, long maxTime, Supplier<M> builder, Runnable clearListener) {
 		M m = map.get(t);
 		if (m == null) map.put(t, m = builder.get());
 		val r = m.put(k, v);

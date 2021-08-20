@@ -15,7 +15,7 @@ import org.bukkit.entity.Player;
 import lombok.NonNull;
 
 /**
- * Tpdeny命令
+ * tpdeny命令
  * 
  * @author yuanlu
  *

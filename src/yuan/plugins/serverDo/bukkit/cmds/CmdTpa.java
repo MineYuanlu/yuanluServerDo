@@ -33,7 +33,7 @@ import yuan.plugins.serverDo.bukkit.Main;
  * @author yuanlu
  *
  */
-public final class CmdTpa extends Cmd {
+public final class CmdTpa extends TabTp {
 	/**
 	 * 传送请求等待信息
 	 * 
@@ -73,7 +73,7 @@ public final class CmdTpa extends Cmd {
 	 * @param sender 目标
 	 * @return 对此目标请求的玩家列表
 	 */
-	static final List<String> getReqList(CommandSender sender) {
+	static List<String> getReqList(CommandSender sender) {
 		if (sender instanceof Player) {
 			Player	player	= (Player) sender;
 			val		list	= TP_WAIT.get(player.getUniqueId());
@@ -104,7 +104,6 @@ public final class CmdTpa extends Cmd {
 	/** @param name 命令名 */
 	protected CmdTpa(String name) {
 		super(name);
-		setUseBCtab(true, false);
 	}
 
 	@Override

@@ -9,6 +9,7 @@ package yuan.plugins.serverDo.bukkit;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -23,6 +24,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.ConfigurationSection;
@@ -47,6 +49,8 @@ import yuan.plugins.serverDo.Channel.Package.BiBoolConsumer;
 import yuan.plugins.serverDo.Channel.Package.BiPlayerConsumer;
 import yuan.plugins.serverDo.Channel.Package.BoolConsumer;
 import yuan.plugins.serverDo.ShareData;
+import yuan.plugins.serverDo.ShareData.TabType;
+import yuan.plugins.serverDo.ShareLocation;
 import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.WaitMaintain;
 import yuan.plugins.serverDo.bukkit.cmds.CmdTpaccept;
@@ -193,9 +197,21 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	/** tab处理器 */
 	public static final class TabHandler {
 		/** tab替换内容 */
-		private static final HashMap<UUID, String>	TAB_REPLACE_ALL	= new HashMap<>();
-		/** tab替换内容 */
-		private static final HashMap<UUID, String>	TAB_REPLACE_NOR	= new HashMap<>();
+		private static final HashMap<UUID, String> TAB_REPLACE = new HashMap<>();
+
+		/**
+		 * 获取tab内容
+		 * 
+		 * @param p    玩家
+		 * @param arg  实际参数
+		 * @param type 类型
+		 * @return 转换结果
+		 */
+		public static List<String> getTab(Player p, String arg, TabType type) {
+			val tab = TAB_REPLACE.get(p.getUniqueId());
+			if (tab == null) return Collections.singletonList(arg);
+			return Collections.singletonList(tab + type + arg);
+		}
 
 		/**
 		 * 获取补全列表
@@ -205,11 +221,10 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param all    全部列表
 		 * @return tabReplace 补全列表(由BC解析)
 		 */
-		public static List<String> getTabReplace(Player player, String arg, boolean all) {
-			val tab = (all ? TabHandler.TAB_REPLACE_ALL : TabHandler.TAB_REPLACE_NOR).get(player.getUniqueId());
-			if (tab == null) return Collections.singletonList(arg);
-			return Collections.singletonList(tab + arg);
+		public static List<String> getTabReplaceTp(Player player, String arg, boolean all) {
+			return getTab(player, arg, all ? TabType.TP_ALL : TabType.TP_NORMAL);
 		}
+
 	}
 
 	/**
@@ -232,10 +247,16 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * 等待加入服务器后传送<br>
 		 * 被传送者{@code ->}传送目标
 		 */
-		private static final ConcurrentHashMap<String, String>	WAIT_JOIN_TP	= new ConcurrentHashMap<>();
+		private static final ConcurrentHashMap<String, String>		WAIT_JOIN_TP		= new ConcurrentHashMap<>();
+
+		/**
+		 * 等待加入服务器后传送<br>
+		 * 被传送者{@code ->}传送坐标
+		 */
+		private static final ConcurrentHashMap<String, Location>	WAIT_JOIN_TP_LOC	= new ConcurrentHashMap<>();
 
 		/** 禁止移动的玩家 */
-		private static final HashSet<UUID>						BAN_MOVE		= new HashSet<>();
+		private static final HashSet<UUID>							BAN_MOVE			= new HashSet<>();
 
 		/**
 		 * 进入冷却
@@ -261,16 +282,47 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 
 		/**
+		 * 处理TpLoc数据包
+		 * 
+		 * @param player 玩家
+		 * @param type   通道类型(必须为TP_LOC)
+		 * @param buf    数据包
+		 */
+		@SuppressWarnings("rawtypes")
+		private static void handleTpLocMessage(Player player, Channel type, byte[] buf) {
+			if (type != Channel.TP_LOC) throw new InternalError("Bad Type");
+			byte		id		= Channel.getSubId(buf);
+			Consumer	handler	= null;
+			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] TP_LOC: " + id);
+			switch (Channel.getSubId(buf)) {
+			case 0:
+				handler = h -> Channel.TpLoc.p0S_tpLocResp(buf, (BoolConsumer) h);
+				break;
+			case 1:
+				Channel.TpLoc.p1S_tpLoc(buf, (loc, name) -> {
+					val mover = Bukkit.getPlayerExact(name);
+					if (mover != null) toToLocal(mover, toBLoc(loc));
+					else WAIT_JOIN_TP_LOC.put(name, toBLoc(loc));
+				});
+				break;
+			default:
+				ShareData.getLogger().warning("[PACKAGE]Bad TpLoc sub id:" + id + ", from: " + player.getName());
+				break;
+			}
+			if (handler != null) callBack(player, type, id, handler);
+		}
+
+		/**
 		 * 处理Tp数据包
 		 * 
 		 * @param player 玩家
-		 * @param type   通道类型(必须为Tp)
+		 * @param type   通道类型(必须为TP)
 		 * @param buf    数据包
 		 */
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		private static void handleTpMessage(Player player, Channel type, byte[] buf) {
 			if (type != Channel.TP) throw new InternalError("Bad Type");
-			byte		id		= buf[4/* 包头偏移 */];
+			byte		id		= Channel.getSubId(buf);
 			Consumer	handler	= null;
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] TP: " + id);
 			switch (id) {
@@ -319,6 +371,16 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		/**
 		 * 本地传送
 		 * 
+		 * @param mover  移动者
+		 * @param target 目标
+		 */
+		private static void toToLocal(@NonNull Player mover, @NonNull Location target) {
+			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(target));
+		}
+
+		/**
+		 * 本地传送
+		 * 
 		 * @param mover        移动者
 		 * @param target       目标
 		 * @param waitTime     传送等待时间
@@ -358,6 +420,86 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 	}
 
+	/**
+	 * 地标(含Home)处理器
+	 * 
+	 * @author yuanlu
+	 *
+	 */
+	public static final class WarpHandler {
+		/**
+		 * 处理Home数据包
+		 * 
+		 * @param player 玩家
+		 * @param type   通道类型(必须为HOME)
+		 * @param buf    数据包
+		 */
+		@SuppressWarnings({ "unchecked", "rawtypes" })
+		private static void handleHomeMessage(Player player, Channel type, byte[] buf) {
+			if (type != Channel.HOME) throw new InternalError("Bad Type");
+			byte		id		= Channel.getSubId(buf);
+			Consumer	handler	= null;
+			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] HOME: " + id);
+			switch (Channel.getSubId(buf)) {
+			case 0:
+				handler = h -> Channel.Home.p0S_setHomeResp(buf, (Runnable) h);
+				break;
+			case 1:
+				handler = h -> Channel.Home.p1S_delHomeResp(buf, (BoolConsumer) h);
+				break;
+			case 2:
+				handler = h -> Channel.Home.p2S_searchHomeResp(buf, (BiConsumer<String, String>) h);
+				break;
+			case 3:
+				handler = h -> Channel.Home.p3S_tpHomeResp(buf, (BoolConsumer) h);
+				break;
+			case 4:
+				handler = h -> Channel.Home.p4S_listHomeResp(buf, (BiConsumer<Collection<String>, Collection<String>>) h);
+				break;
+			default:
+				ShareData.getLogger().warning("[PACKAGE]Bad Home sub id:" + id + ", from: " + player.getName());
+				break;
+			}
+			if (handler != null) callBack(player, type, id, handler);
+		}
+
+		/**
+		 * 处理Warp数据包
+		 * 
+		 * @param player 玩家
+		 * @param type   通道类型(必须为WARP)
+		 * @param buf    数据包
+		 */
+		@SuppressWarnings({ "unchecked", "rawtypes" })
+		private static void handleWarpMessage(Player player, Channel type, byte[] buf) {
+			if (type != Channel.WARP) throw new InternalError("Bad Type");
+			byte		id		= Channel.getSubId(buf);
+			Consumer	handler	= null;
+			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] WARP: " + id);
+			switch (Channel.getSubId(buf)) {
+			case 0:
+				handler = h -> Channel.Warp.p0S_setWarpResp(buf, (Runnable) h);
+				break;
+			case 1:
+				handler = h -> Channel.Warp.p1S_delWarpResp(buf, (BoolConsumer) h);
+				break;
+			case 2:
+				handler = h -> Channel.Warp.p2S_searchWarpResp(buf, (BiConsumer<String, String>) h);
+				break;
+			case 3:
+				handler = h -> Channel.Warp.p3S_tpWarpResp(buf, (BoolConsumer) h);
+				break;
+			case 4:
+				handler = h -> Channel.Warp.p4S_listWarpResp(buf, (BiConsumer<Collection<String>, Collection<String>>) h);
+				break;
+			default:
+				ShareData.getLogger().warning("[PACKAGE]Bad Warp sub id:" + id + ", from: " + player.getName());
+				break;
+			}
+			if (handler != null) callBack(player, type, id, handler);
+		}
+	}
+
 	/** 配置数据 */
 	private static final DatasConf	Conf		= new DatasConf();
 
@@ -380,7 +522,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	private static final HashSet<UUID>					ALLOW_PLAYERS	= new HashSet<>();
 
 	/** 传送冷却 */
-	private static final HashMap<UUID, Long>			COOLDOWN		= new HashMap<UUID, Long>();
+	private static final HashMap<UUID, Long>			COOLDOWN		= new HashMap<>();
 
 	/** 清理监听器 */
 	private static final ArrayList<Consumer<Player>>	CLEAR_LISTENER	= new ArrayList<>();
@@ -388,8 +530,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	static {
 		registerClearListener(p -> {
 			val u = p.getUniqueId();
-			TabHandler.TAB_REPLACE_ALL.remove(u);
-			TabHandler.TAB_REPLACE_NOR.remove(u);
+			TabHandler.TAB_REPLACE.remove(u);
 			TpHandler.BAN_MOVE.remove(u);
 			CALL_BACK_WAITER.values().forEach(m -> m.remove(u));
 			ALLOW_PLAYERS.remove(u);
@@ -410,11 +551,12 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		val map = CALL_BACK_WAITER.get(channel);
 		synchronized (map) {
 			val objs = map.get(player.getUniqueId());
-			for (Iterator<ListenCallBackObj> itr = objs.iterator(); itr.hasNext();) {
+			if (objs != null) for (Iterator<ListenCallBackObj> itr = objs.iterator(); itr.hasNext();) {
 				val e = itr.next();
 				if (Tool.equals(e.getChecker(), checker)) {
 					itr.remove();
-					if (ShareData.isDEBUG()) ShareData.getLogger().info("[callback] call:" + e.getChecker() + ", consumer: " + consumer);
+					if (ShareData.isDEBUG())
+						ShareData.getLogger().info("[callback] channel: " + channel + ", call:" + e.getChecker() + ", consumer: " + consumer);
 					if (consumer != null) try {
 						consumer.accept(e.getHandler());
 					} catch (Throwable err) {
@@ -521,7 +663,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	}
 
 	/** @param c 玩家下线时的清理监听器 */
-	static final void registerClearListener(Consumer<Player> c) {
+	static void registerClearListener(Consumer<Player> c) {
 		synchronized (CLEAR_LISTENER) {
 			CLEAR_LISTENER.add(c);
 		}
@@ -537,6 +679,26 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 */
 	public static boolean removeCallBack(@NonNull Player player, @NonNull Channel channel, Object checker) {
 		return callBack(player, channel, checker, null);
+	}
+
+	/**
+	 * 转换为Bukkit坐标
+	 * 
+	 * @param loc Share坐标
+	 * @return Bukkit坐标
+	 */
+	public static @NonNull Location toBLoc(ShareLocation loc) {
+		return new Location(Bukkit.getWorld(loc.getWorld()), loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
+	}
+
+	/**
+	 * 转换为Share坐标
+	 * 
+	 * @param loc Bukkit坐标
+	 * @return Share坐标
+	 */
+	public static @NonNull ShareLocation toSLoc(Location loc) {
+		return new ShareLocation(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch(), loc.getWorld().getName());
 	}
 
 	/**
@@ -606,9 +768,12 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	public void onPlayerJoin(@NonNull PlayerJoinEvent e) {
 		val p = e.getPlayer();
 		if (p == null) return;
+
 		val to = TpHandler.WAIT_JOIN_TP.remove(p.getName());
-		if (to == null) return;
-		tpTo(p, to, -1, false);
+		if (to != null) tpTo(p, to, -1, false);
+
+		val toLoc = TpHandler.WAIT_JOIN_TP_LOC.remove(p.getName());
+		if (toLoc != null) TpHandler.toToLocal(p, toLoc);
 	}
 
 	/**
@@ -666,6 +831,18 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			TpHandler.handleTpMessage(player, type, message);
 			break;
 		}
+		case TP_LOC: {
+			TpHandler.handleTpLocMessage(player, type, message);
+			break;
+		}
+		case WARP: {
+			WarpHandler.handleWarpMessage(player, type, message);
+			break;
+		}
+		case HOME: {
+			WarpHandler.handleHomeMessage(player, type, message);
+			break;
+		}
 		case VERSION_CHECK: {
 			Main.send(player, Channel.VersionCheck.sendC(message));
 			break;
@@ -680,8 +857,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 		case SERVER_INFO: {
 			val info = Channel.ServerInfo.parseS(message);
-			TabHandler.TAB_REPLACE_ALL.put(player.getUniqueId(), info.getTabAll().intern());
-			TabHandler.TAB_REPLACE_NOR.put(player.getUniqueId(), info.getTabNor().intern());
+			TabHandler.TAB_REPLACE.put(player.getUniqueId(), info.getTab().intern());
 			val meVer = Main.getMain().getDescription().getVersion();
 			if (!meVer.equals(info.getVersion())) VER_NO_RECOMMEND.send(player, meVer, info.getVersion());
 			break;

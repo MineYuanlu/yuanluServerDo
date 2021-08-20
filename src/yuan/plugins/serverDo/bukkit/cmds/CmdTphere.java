@@ -22,12 +22,11 @@ import yuan.plugins.serverDo.bukkit.Main;
  * @author yuanlu
  *
  */
-public final class CmdTphere extends Cmd {
+public final class CmdTphere extends TabTp {
 
 	/** @param name 命令名 */
 	protected CmdTphere(String name) {
 		super(name);
-		setUseBCtab(true, true);
 	}
 
 	@Override

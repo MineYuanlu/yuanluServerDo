@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -93,7 +94,9 @@ public class Main extends Plugin implements Listener {
 	 * @param buf    数据
 	 */
 	public static void send(ProxiedPlayer player, @NonNull byte[] buf) {
-		send(player.getServer(), buf);
+		val server = player.getServer();
+		send(server, buf);
+		if (isDEBUG()) getMain().getLogger().info("发送: " + server.getInfo().getName() + " " + Arrays.toString(buf));
 	}
 
 	/**
@@ -117,6 +120,20 @@ public class Main extends Plugin implements Listener {
 	 */
 	public static boolean send(ServerInfo server, @NonNull byte[] buf) {
 		val result = server.sendData(ShareData.BC_CHANNEL, buf, false);
+		if (isDEBUG()) getMain().getLogger().info("发送: " + server.getName() + " " + Arrays.toString(buf));
+		return result;
+	}
+
+	/**
+	 * 发送数据
+	 * 
+	 * @param server 服务器
+	 * @param buf    数据
+	 * @return true if the message was sent immediately, false otherwise if queue is
+	 *         true, it has been queued, if itis false it has been discarded.
+	 */
+	public static boolean sendQueue(ServerInfo server, @NonNull byte[] buf) {
+		val result = server.sendData(ShareData.BC_CHANNEL, buf, true);
 		if (isDEBUG()) getMain().getLogger().info("发送: " + server.getName() + " " + Arrays.toString(buf));
 		return result;
 	}
@@ -157,43 +174,6 @@ public class Main extends Plugin implements Listener {
 		ShareData.setDEBUG(DEBUG);
 		ShareData.setLogger(getLogger());
 
-	}
-
-	/**
-	 * EVENT
-	 * 
-	 * @param e 补全响应
-	 * @deprecated BUNGEE
-	 */
-	@Deprecated
-	@EventHandler
-	public void event(TabCompleteResponseEvent e) {
-		val list = e.getSuggestions();
-		if (list.size() != 1) return;
-		val	str		= list.get(0);
-		val	tabAll	= ConfigManager.getTabReplaceAll();
-		val	tabNor	= ConfigManager.getTabReplaceNor();
-		if (str != null) {
-			final String	request;
-			final boolean	isAll;
-			if (str.startsWith(tabAll)) {
-				request	= str.substring(tabAll.length()).toLowerCase();
-				isAll	= true;
-			} else if (str.startsWith(tabNor)) {
-				request	= str.substring(tabNor.length()).toLowerCase();
-				isAll	= false;
-			} else return;
-			list.clear();
-			val server = (Server) e.getSender();
-			if (server == null) return;
-			val target = server.getInfo().getName();
-			if (ConfigManager.allowServer(target)) for (val p : getProxy().getPlayers()) {
-				val name = p.getName();
-				if (name.toLowerCase().startsWith(request) && Core.canTp(isAll, target, p)) //
-					list.add(name);
-			}
-			if (list.isEmpty()) list.add(request);
-		}
 	}
 
 	/**
@@ -247,6 +227,56 @@ public class Main extends Plugin implements Listener {
 	}
 
 	/**
+	 * 接收插件home消息
+	 * 
+	 * @param player 玩家
+	 * @param server 服务器
+	 * @param buf    数据
+	 */
+	private void onPluginHomeMessage(ProxiedPlayer player, Server server, byte[] buf) {
+		byte id = Channel.getSubId(buf);
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] Home:" + id);
+		switch (id) {
+		case 0:
+			Channel.Home.p0C_setHome(buf, (name, loc) -> {
+				loc.setServer(server.getInfo().getName());
+				Core.setHome(player, name, loc);
+				send(player, Channel.Home.s0S_setHomeResp());
+			});
+			break;
+		case 1:
+			Channel.Home.p1C_delHome(buf, name -> {
+				val success = Core.setHome(player, name, null);
+				send(player, Channel.Home.s1S_delHomeResp(success));
+			});
+			break;
+		case 2:
+			Channel.Home.p2C_searchHome(buf, name -> {
+				name = Core.searchHome(player, name);
+				if (name == null) {
+					send(player, Channel.Home.s2S_searchHomeResp("", ""));
+				} else {
+					send(player, Channel.Home.s2S_searchHomeResp(name, Core.getHome(player, name).getServer()));
+				}
+
+			});
+			break;
+		case 3:
+			Channel.Home.p3C_tpHome(buf, name -> Core.tpLocation(player, Core.getHome(player, name), Channel.Home::s3S_tpHomeResp));
+			break;
+		case 4:
+			Channel.Home.p4C_listHome(buf, () -> {
+				val					serverName	= server.getInfo().getName();
+				val					WARPS		= Core.getHomes(player);
+				ArrayList<String>	w1			= new ArrayList<>(), w2 = new ArrayList<>();
+				WARPS.forEach((name, loc) -> (Core.canTp(serverName, loc.getServer()) ? w1 : w2).add(name));
+				send(player, Channel.Home.s4S_listHomeResp(w1, w2));
+			});
+			break;
+		}
+	}
+
+	/**
 	 * EVENT
 	 * 
 	 * @param e 插件消息
@@ -297,11 +327,42 @@ public class Main extends Plugin implements Listener {
 			send(player, Channel.Vanish.sendC(inHide));
 			break;
 		}
+		case TP_LOC: {
+			onPluginTpLocMessage(player, server, message);
+			break;
+		}
+		case WARP: {
+			onPluginWarpMessage(player, server, message);
+			break;
+		}
+		case HOME: {
+			onPluginHomeMessage(player, server, message);
+			break;
+		}
 		case SERVER_INFO:
 		default:
 			ShareData.getLogger().warning("[channel] BAD PACKAGE: " + type);
 			break;
 
+		}
+	}
+
+	/**
+	 * 接收插件tpLoc消息
+	 * 
+	 * @param player 玩家
+	 * @param server 服务器
+	 * @param buf    数据
+	 */
+	private void onPluginTpLocMessage(ProxiedPlayer player, Server server, byte[] buf) {
+		byte id = Channel.getSubId(buf);
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] TPLoc:" + id);
+		switch (id) {
+		case 0:
+			Channel.TpLoc.p0C_tpLoc(buf, (loc, targetServer) -> {
+				loc.setServer(targetServer);
+				Core.tpLocation(player, loc, Channel.TpLoc::s0S_tpLocResp);
+			});
 		}
 	}
 
@@ -313,7 +374,7 @@ public class Main extends Plugin implements Listener {
 	 * @param buf    数据
 	 */
 	private void onPluginTpMessage(ProxiedPlayer player, Server server, byte[] buf) {
-		byte id = buf[4/* 包头偏移 */ ];
+		byte id = Channel.getSubId(buf);
 		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] TP:" + id);
 		switch (id) {
 		case 0x0:
@@ -346,7 +407,10 @@ public class Main extends Plugin implements Listener {
 					send(player, Channel.Tp.s7S_tpThirdReceive(false, false));
 				} else {
 					send(t, Channel.Tp.s8S_tpThird(m.getName()));
-					m.connect(t.getServer().getInfo(), (success, e) -> {
+					val targetServer = t.getServer().getInfo();
+					if (server.getInfo().getName().equals(targetServer.getName())) {
+						send(player, Channel.Tp.s7S_tpThirdReceive(true, false));
+					} else m.connect(targetServer, (success, e) -> {
 						if (e != null) e.printStackTrace();
 						send(player, Channel.Tp.s7S_tpThirdReceive(success, e != null));
 					}, Reason.COMMAND);
@@ -378,6 +442,56 @@ public class Main extends Plugin implements Listener {
 	}
 
 	/**
+	 * 接收插件warp消息
+	 * 
+	 * @param player 玩家
+	 * @param server 服务器
+	 * @param buf    数据
+	 */
+	private void onPluginWarpMessage(ProxiedPlayer player, Server server, byte[] buf) {
+		byte id = Channel.getSubId(buf);
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] Warp:" + id);
+		switch (id) {
+		case 0:
+			Channel.Warp.p0C_setWarp(buf, (name, loc) -> {
+				loc.setServer(server.getInfo().getName());
+				Core.setWarp(name, loc);
+				send(player, Channel.Warp.s0S_setWarpResp());
+			});
+			break;
+		case 1:
+			Channel.Warp.p1C_delWarp(buf, name -> {
+				val success = Core.setWarp(name, null);
+				send(player, Channel.Warp.s1S_delWarpResp(success));
+			});
+			break;
+		case 2:
+			Channel.Warp.p2C_searchWarp(buf, name -> {
+				name = Core.searchWarp(name);
+				if (name == null) {
+					send(player, Channel.Warp.s2S_searchWarpResp("", ""));
+				} else {
+					send(player, Channel.Warp.s2S_searchWarpResp(name, Core.getWarp(name).getServer()));
+				}
+
+			});
+			break;
+		case 3:
+			Channel.Warp.p3C_tpWarp(buf, name -> Core.tpLocation(player, Core.getWarp(name), Channel.Warp::s3S_tpWarpResp));
+			break;
+		case 4:
+			Channel.Warp.p4C_listWarp(buf, () -> {
+				val					serverName	= server.getInfo().getName();
+				val					WARPS		= ConfigManager.WARPS;
+				ArrayList<String>	w1			= new ArrayList<>(), w2 = new ArrayList<>();
+				WARPS.forEach((name, loc) -> (Core.canTp(serverName, loc.getServer()) ? w1 : w2).add(name));
+				send(player, Channel.Warp.s4S_listWarpResp(w1, w2));
+			});
+			break;
+		}
+	}
+
+	/**
 	 * EVENT
 	 * 
 	 * @param e 服务器连接
@@ -388,7 +502,19 @@ public class Main extends Plugin implements Listener {
 	public void onServerConnected(ServerConnectedEvent e) {
 		send(e.getServer(), Channel.VersionCheck.sendS());
 		ConfigManager.sendBungeeInfoToServer(e.getServer());
-		Core.autoVanish(e.getPlayer());
+		Core.autoVanish(e.getPlayer(), e.getServer());
+	}
+
+	/**
+	 * EVENT
+	 * 
+	 * @param e 服务器连接
+	 * @deprecated BUNGEE
+	 */
+	@Deprecated
+	@EventHandler
+	public void onServerConnected(TabCompleteResponseEvent e) {
+		TabHandler.TabCompleteResponse(e);
 	}
 
 	/**

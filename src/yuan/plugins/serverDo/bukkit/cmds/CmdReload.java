@@ -9,6 +9,8 @@ import org.bukkit.command.ConsoleCommandSender;
 import yuan.plugins.serverDo.bukkit.Main;
 
 /**
+ * reload命令
+ * 
  * @author yuanlu
  *
  */

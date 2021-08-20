@@ -225,7 +225,7 @@ public class Main extends JavaPlugin implements Listener {
 		} else if (config.isList(node)) {
 			List<String>		l	= config.getStringList(node);
 			final StringBuilder	sb	= new StringBuilder(32);
-			l.forEach((x) -> {
+			l.forEach(x -> {
 				if (!nop) sb.append(prefix);
 				sb.append(x).append('\n');
 			});

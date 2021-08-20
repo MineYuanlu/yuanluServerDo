@@ -16,9 +16,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 import lombok.NonNull;
 import lombok.val;
@@ -82,16 +84,38 @@ public final class Tool {
 	 * 可以抛出任何错误的运行接口
 	 * 
 	 * @author yuanlu
+	 * @param <E> 错误类型
+	 * @param <T> 输入类型
+	 * @param <R> 输出类型
 	 *
 	 */
 	@FunctionalInterface
-	public static interface ThrowableRunnable {
+	public interface ThrowableFunction<E extends Throwable, T, R> {
+		/**
+		 * Applies this function to the given argument.
+		 *
+		 * @param t the function argument
+		 * @return the function result
+		 * @throws E the function error
+		 */
+		R apply(T t) throws E;
+	}
+
+	/**
+	 * 可以抛出任何错误的运行接口
+	 * 
+	 * @author yuanlu
+	 * @param <T> 错误类型
+	 *
+	 */
+	@FunctionalInterface
+	public interface ThrowableRunnable<T extends Throwable> {
 		/**
 		 * 运行
 		 * 
-		 * @throws Throwable 任何错误
+		 * @throws T 错误
 		 */
-		void run() throws Throwable;
+		void run() throws T;
 	}
 
 	/** 空的运行体 */
@@ -100,6 +124,9 @@ public final class Tool {
 
 	/** 随机字符串 */
 	private static final char[]		RANDOM			= "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM!@#$%^&*()".toCharArray();
+
+	/** 驼峰转换正则 */
+	private static Pattern			humpPattern		= Pattern.compile("[A-Z]");
 
 	/**
 	 * 反序列化(list)
@@ -110,11 +137,11 @@ public final class Tool {
 	 * @param translate 翻译器
 	 * @return 反序列化结果
 	 */
-	public static final <E> ArrayList<E> deserializeList(String str, String split, Function<String, E> translate) {
-		if (str.isEmpty()) return new ArrayList<E>(0);
+	public static <E> ArrayList<E> deserializeList(String str, String split, Function<String, E> translate) {
+		if (str.isEmpty()) return new ArrayList<>(0);
 		String[] ss = str.split(split);
-		if (ss.length == 0) return new ArrayList<E>(0);
-		ArrayList<E> list = new ArrayList<E>(ss.length);
+		if (ss.length == 0) return new ArrayList<>(0);
+		ArrayList<E> list = new ArrayList<>(ss.length);
 		for (String s : ss) {
 			list.add(translate.apply(s));
 		}
@@ -148,10 +175,57 @@ public final class Tool {
 	 * @param map  映射图
 	 * @param func 工具
 	 */
-	public static final <K, V, VS extends Collection<V>> void forEach(Map<K, VS> map, BiConsumer<K, V> func) {
+	public static <K, V, VS extends Collection<V>> void forEach(Map<K, VS> map, BiConsumer<K, V> func) {
 		map.forEach((k, vs) -> {
-			vs.forEach((v) -> func.accept(k, v));
+			vs.forEach(v -> func.accept(k, v));
 		});
+	}
+
+	/**
+	 * 驼峰转换
+	 * 
+	 * @param str    原始字符串
+	 * @param joiner 单词间插值
+	 * @return 转换结果
+	 */
+	public static String humpTrans(String str, Object joiner) {
+		val	matcher	= humpPattern.matcher(str);
+		val	sb		= new StringBuffer();
+		val	j		= String.valueOf(joiner);
+		while (matcher.find()) {
+			matcher.appendReplacement(sb, j + matcher.group(0).toLowerCase());
+		}
+		matcher.appendTail(sb);
+		str = sb.toString();
+		if (str.startsWith(j)) str = str.substring(j.length());
+		return str;
+	}
+
+	/**
+	 * 逆向操作驼峰转换
+	 * 
+	 * @param str    原始字符串
+	 * @param joiner 单词间插值
+	 * @return 转换结果
+	 */
+	public static String humpTransBack(String str, Object joiner) {
+		StringBuilder sb;
+		try {
+			val join = String.valueOf(joiner);
+			sb = new StringBuilder();
+			int	i	= 0;
+			int	j	= 0;
+			while ((i = str.indexOf(join, i)) >= 0) {
+				sb.append(str, j, i);
+				sb.append(Character.toUpperCase(str.charAt(i += join.length())));
+				j = i + 1;
+			}
+			sb.append(str, j, str.length());
+		} catch (IndexOutOfBoundsException e) {
+			return null;
+		}
+
+		return sb.toString();
 	}
 
 	/**
@@ -160,7 +234,7 @@ public final class Tool {
 	 * @param s 字符串
 	 * @return 是否有为true的意图
 	 */
-	public static final boolean isTrue(String s) {
+	public static boolean isTrue(String s) {
 		for (int i = 0; i < s.length(); i++) {
 			char c = s.charAt(i);
 			if (c == 't' || c == 'T' || c == 'y' || c == 'Y' || c == '是' || c == '对') return true;
@@ -169,12 +243,28 @@ public final class Tool {
 	}
 
 	/**
+	 * 组合集合
+	 * 
+	 * @param c         集合
+	 * @param frame     框架格式(elements,size)
+	 * @param element   元素格式(index,data)
+	 * @param delimiter 分隔符
+	 * @return 字符串
+	 */
+	public static String join(Collection<?> c, String frame, String element, String delimiter) {
+		StringJoiner	sj	= new StringJoiner(delimiter);
+		int				i	= 0;
+		for (val x : c) sj.add(String.format(element, ++i, x));
+		return String.format(frame, sj, i);
+	}
+
+	/**
 	 * 加载某类<br>
 	 * 由ClassLoader加载
 	 * 
 	 * @param c 类
 	 */
-	public static final void load(Class<?> c) {
+	public static void load(Class<?> c) {
 		if (c != null) load(c.getTypeName());
 	}
 
@@ -183,7 +273,7 @@ public final class Tool {
 	 * 
 	 * @param o 任何参数
 	 */
-	public static final void load(Object o) {
+	public static void load(Object o) {
 		if (o != null) load(o.getClass());
 	}
 
@@ -192,7 +282,7 @@ public final class Tool {
 	 * 
 	 * @param str 类名
 	 */
-	public static final void load(String str) {
+	public static void load(String str) {
 		try {
 			Class.forName(str);
 		} catch (ClassNotFoundException e) {
@@ -213,7 +303,7 @@ public final class Tool {
 	 * @param result 结果存储的集合
 	 * @return 传入的存储集合
 	 */
-	public static final <K, V, R, C extends Collection<R>> C mapToCollection(Map<K, V> map, BiFunction<K, V, R> func, C result) {
+	public static <K, V, R, C extends Collection<R>> C mapToCollection(Map<K, V> map, BiFunction<K, V, R> func, C result) {
 		map.forEach((k, v) -> result.add(func.apply(k, v)));
 		return result;
 	}
@@ -231,10 +321,9 @@ public final class Tool {
 	 * @param result 结果存储的集合
 	 * @return 传入的存储集合
 	 */
-	public static final <K, V, R, RC extends Collection<R>, VC extends Collection<V>> RC mutiMapToCollection(Map<K, VC> map, BiFunction<K, V, R> func,
-			RC result) {
+	public static <K, V, R, RC extends Collection<R>, VC extends Collection<V>> RC mutiMapToCollection(Map<K, VC> map, BiFunction<K, V, R> func, RC result) {
 		map.forEach((k, vs) -> {
-			vs.forEach((v) -> result.add(func.apply(k, v)));
+			vs.forEach(v -> result.add(func.apply(k, v)));
 		});
 		return result;
 	}
@@ -356,7 +445,7 @@ public final class Tool {
 	 * @param translate 元素翻译器
 	 * @return 序列化字符串
 	 */
-	public static final <E> String serialize(Collection<E> c, char split, Function<? super E, String> translate) {
+	public static <E> String serialize(Collection<E> c, char split, Function<? super E, String> translate) {
 		if (c.isEmpty()) return "";
 		StringBuilder	sb	= new StringBuilder();
 		Iterator<E>		itr	= c.iterator();
@@ -376,8 +465,8 @@ public final class Tool {
 	 * @param map 元素映射图(结果)
 	 * @return 传入的元素映射图
 	 */
-	public static final <E, M extends Map<E, E>> M setToMap(Set<E> set, M map) {
-		set.forEach((e) -> map.put(e, e));
+	public static <E, M extends Map<E, E>> M setToMap(Set<E> set, M map) {
+		set.forEach(e -> map.put(e, e));
 		return map;
 	}
 
@@ -390,10 +479,10 @@ public final class Tool {
 	 * @param func 翻译工具
 	 * @return 结果列表
 	 */
-	public static final <T, R> ArrayList<R> translate(List<T> list, Function<T, R> func) {
+	public static <T, R> ArrayList<R> translate(List<T> list, Function<T, R> func) {
 		Objects.requireNonNull(list, "list can not be null.");
 		Objects.requireNonNull(func, "func can not be null.");
-		ArrayList<R> result = new ArrayList<R>(list.size());
+		ArrayList<R> result = new ArrayList<>(list.size());
 		for (T t : list) {
 			R r = func.apply(t);
 			result.add(r);
@@ -414,11 +503,11 @@ public final class Tool {
 	 * @param result 结果
 	 * @return 传入的结果映射图
 	 */
-	public static final <TK, TV, RK, RV, RM extends LinkedHashMap<RK, RV>> RM translate(Map<TK, TV> map, BiConsumer<Entry<TK, TV>, ResultEntry<RK, RV>> func,
+	public static <TK, TV, RK, RV, RM extends LinkedHashMap<RK, RV>> RM translate(Map<TK, TV> map, BiConsumer<Entry<TK, TV>, ResultEntry<RK, RV>> func,
 			RM result) {
 		Objects.requireNonNull(map, "map can not be null.");
 		Objects.requireNonNull(func, "func can not be null.");
-		ResultEntry<RK, RV> resultEntry = new ResultEntry<RK, RV>();
+		ResultEntry<RK, RV> resultEntry = new ResultEntry<>();
 		for (Entry<TK, TV> entry : map.entrySet()) {
 			func.accept(entry, resultEntry);
 			result.put(resultEntry.k, resultEntry.v);
@@ -436,10 +525,10 @@ public final class Tool {
 	 * @param func 翻译工具
 	 * @return 结果集合
 	 */
-	public static final <T, R> HashSet<R> translate(Set<T> list, Function<T, R> func) {
+	public static <T, R> HashSet<R> translate(Set<T> list, Function<T, R> func) {
 		Objects.requireNonNull(list, "list can not be null.");
 		Objects.requireNonNull(func, "func can not be null.");
-		HashSet<R> result = new HashSet<R>();
+		HashSet<R> result = new HashSet<>();
 		for (T t : list) {
 			R r = func.apply(t);
 			result.add(r);
@@ -456,10 +545,10 @@ public final class Tool {
 	 * @param func 翻译工具
 	 * @return 结果列表
 	 */
-	public static final <T, R> ArrayList<R> translateToList(Collection<T> list, Function<T, R> func) {
+	public static <T, R> ArrayList<R> translateToList(Collection<T> list, Function<T, R> func) {
 		Objects.requireNonNull(list, "list can not be null.");
 		Objects.requireNonNull(func, "func can not be null.");
-		ArrayList<R> result = new ArrayList<R>(list.size());
+		ArrayList<R> result = new ArrayList<>(list.size());
 		for (T t : list) {
 			R r = func.apply(t);
 			result.add(r);
@@ -476,10 +565,10 @@ public final class Tool {
 	 * @param func 翻译工具
 	 * @return 结果集合
 	 */
-	public static final <T, R> HashSet<R> translateToSet(Collection<T> list, Function<T, R> func) {
+	public static <T, R> HashSet<R> translateToSet(Collection<T> list, Function<T, R> func) {
 		Objects.requireNonNull(list, "list can not be null.");
 		Objects.requireNonNull(func, "func can not be null.");
-		HashSet<R> result = new HashSet<R>();
+		HashSet<R> result = new HashSet<>();
 		for (T t : list) {
 			R r = func.apply(t);
 			result.add(r);
@@ -495,7 +584,7 @@ public final class Tool {
 	 * 
 	 * @param tr      可抛出错误的代码体
 	 */
-	public static final void tryRun(boolean needRun, ThrowableRunnable tr) {
+	public static void tryRun(boolean needRun, ThrowableRunnable<?> tr) {
 		if (needRun) try {
 			tr.run();
 		} catch (Throwable e) {
@@ -509,7 +598,7 @@ public final class Tool {
 	 * 
 	 * @param tr 可抛出错误的代码体
 	 */
-	public static final void tryRun(ThrowableRunnable tr) {
+	public static void tryRun(ThrowableRunnable<?> tr) {
 		try {
 			tr.run();
 		} catch (Throwable e) {
@@ -523,7 +612,7 @@ public final class Tool {
 	 * 
 	 * @param r 代码体
 	 */
-	public static final void tryRunNormal(Runnable r) {
+	public static void tryRunNormal(Runnable r) {
 		try {
 			r.run();
 		} catch (Throwable e) {
@@ -537,4 +626,5 @@ public final class Tool {
 	 */
 	private Tool() {
 	}
+
 }

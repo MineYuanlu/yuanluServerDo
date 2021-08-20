@@ -24,11 +24,10 @@ import yuan.plugins.serverDo.bukkit.Main;
  * @author yuanlu
  *
  */
-public final class CmdTpahere extends Cmd {
+public final class CmdTpahere extends TabTp {
 	/** @param name 命令名 */
 	protected CmdTpahere(String name) {
 		super(name);
-		setUseBCtab(true, false);
 	}
 
 	@Override

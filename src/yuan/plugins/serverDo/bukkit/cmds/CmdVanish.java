@@ -13,6 +13,8 @@ import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Main;
 
 /**
+ * vanish命令
+ * 
  * @author yuanlu
  *
  */

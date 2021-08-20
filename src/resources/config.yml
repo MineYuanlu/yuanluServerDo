@@ -58,6 +58,42 @@ cmd:
   permission: 'yuanlu.serverDo.vanish'
   description: 'vanish cmd'
   usageMessage: '/ysd-v [always]'
+ warp:
+  names:
+   - 'warp'
+  permission: 'yuanlu.serverDo.warp'
+  description: 'warp cmd'
+  usageMessage: '/warp [name]'
+ set-warp:
+  names:
+   - 'setwarp'
+  permission: 'yuanlu.serverDo.set-warp'
+  description: 'set-warp cmd'
+  usageMessage: '/setwarp <name>'
+ del-warp:
+  names:
+   - 'delwarp'
+  permission: 'yuanlu.serverDo.del-warp'
+  description: 'del-warp cmd'
+  usageMessage: '/delwarp <name>'
+ home:
+  names:
+   - 'home'
+  permission: 'yuanlu.serverDo.home'
+  description: 'home cmd'
+  usageMessage: '/home [name]'
+ set-home:
+  names:
+   - 'sethome'
+  permission: 'yuanlu.serverDo.set-home'
+  description: 'set-home cmd'
+  usageMessage: '/sethome [name]'
+ del-home:
+  names:
+   - 'delhome'
+  permission: 'yuanlu.serverDo.del-home'
+  description: 'del-home cmd'
+  usageMessage: '/delhome <name>'
 
 permissions:
   tp-senior: "yuanlu.serverDo.tpSenior" #高级传送, 包括传送隐身玩家, 跨组传送
@@ -151,6 +187,39 @@ message:
     reload:
       success: '&c成功重载(此功能为实验性功能, 若出现任何错误请使用服务器重载指令或重启服务器)'
       only-console: '&7请在控制台使用此指令'
+    warp:
+      list:
+        - '%s'
+        - '%s'
+      list-w1: '&7同组地标(&2%2$s&7): %1$s&7'
+      list-w2: '&7跨组地标(&2%2$s&7): %1$s&7'
+      list-element: '&2%2$s'
+      list-delimiter: '&7, ' 
+      tp: '&7正在传送至地标 &2%s&7(&2%s&7)'
+      not-found: '&7找不到地标 &2%s'
+    del-warp:
+      success: '&7成功删除地标 &2%s'
+      fail: '&7找不到地标 &2%s'
+      help: '&7输入指令： &2/delwarp <name> &7删除地标'
+    set-warp:
+      success: '&7成功设置地标 &2%s'
+      help: '&7输入指令： &2/setwarp <name> &7设置地标'
+    home:
+      list:
+        - '%s'
+        - '%s'
+      list-w1: '&7同组家(&2%2$s&7): %1$s&7'
+      list-w2: '&7跨组家(&2%2$s&7): %1$s&7'
+      list-element: '&2%2$s'
+      list-delimiter: '&7, ' 
+      tp: '&7正在传送至家 &2%s&7(&2%s&7)'
+      not-found: '&7找不到家 &2%s'
+    del-home:
+      success: '&7成功删除家 &2%s'
+      fail: '&7找不到家 &2%s'
+      help: '&7输入指令： &2/delhome <name> &7删除家'
+    set-home:
+      success: '&7成功设置家 &2%s'
   basic:
     message-time-out: "&c服务器通讯超时, 请联系管理员"
     version-bad: "&c服务器版本检查失败, 请联系管理员"
