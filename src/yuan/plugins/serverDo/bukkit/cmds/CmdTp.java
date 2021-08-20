@@ -7,13 +7,17 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
+import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import lombok.val;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.Channel.Package.BiPlayerConsumer;
+import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Core.Permissions;
 import yuan.plugins.serverDo.bukkit.Main;
@@ -25,10 +29,14 @@ import yuan.plugins.serverDo.bukkit.Main;
  *
  */
 public final class CmdTp extends TabTp {
+	/** 默认命令 */
+	private final String defaultCmd;
 
 	/** @param name 命令名 */
 	protected CmdTp(String name) {
 		super(name);
+		val def = getCmdInfo().getExtra().getString("def-cmd", "minecraft:tp");
+		defaultCmd = (def.startsWith("/") ? def.substring(1) : def) + " ";
 	}
 
 	@Override
@@ -60,6 +68,10 @@ public final class CmdTp extends TabTp {
 			int code = Permissions.tpSenior(sender) ? 1 : 0;// 是否拥有高级传送权限
 			Main.send(player, Channel.Tp.s9C_tpReqThird(args[0], args[1], code));
 		}
+		StringJoiner sj = new StringJoiner(" ", defaultCmd, "");
+		for (val arg : args) sj.add(arg);
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[cmd] 转发: " + sj.toString());
+		Bukkit.dispatchCommand(sender, sj.toString());
 		return false;
 	}
 }

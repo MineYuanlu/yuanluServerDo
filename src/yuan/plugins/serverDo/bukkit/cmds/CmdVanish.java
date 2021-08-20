@@ -20,6 +20,16 @@ import yuan.plugins.serverDo.bukkit.Main;
  */
 public final class CmdVanish extends Cmd {
 
+	/**
+	 * 回调函数<br>
+	 * 主动回调
+	 * 
+	 * @param player 玩家
+	 */
+	public static void callback(Player player) {
+		msg(CmdVanish.class, "auto-hide").send(player);
+	}
+
 	/** @param name 命令名 */
 	CmdVanish(String name) {
 		super(name);
@@ -48,15 +58,5 @@ public final class CmdVanish extends Cmd {
 		});
 		Main.send(player, Channel.Vanish.sendS(true));
 		return false;
-	}
-
-	/**
-	 * 回调函数<br>
-	 * 主动回调
-	 * 
-	 * @param player 玩家
-	 */
-	public static void callback(Player player) {
-		msg(CmdVanish.class, "auto-hide").send(player);
 	}
 }

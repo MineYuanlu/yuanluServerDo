@@ -43,18 +43,20 @@ public final class CommandManager implements MESSAGE {
 			val	permission		= conf.getString("permission", null);
 			val	usageMessage	= conf.getString("usageMessage", "");
 			val	description		= conf.getString("description", "");
-			return new CmdInfo(description, usageMessage, names, permission);
+			return new CmdInfo(description, usageMessage, names, permission, conf);
 		}
 
 		/** 描述 */
-		String			description;
+		String					description;
 		/** 使用方法 */
-		String			usageMessage;
+		String					usageMessage;
 		/** 所有名称 */
-		List<String>	names;
+		List<String>			names;
 
 		/** 权限 */
-		String			permission;
+		String					permission;
+		/** 额外数据 */
+		ConfigurationSection	extra;
 	}
 
 	/**
@@ -70,7 +72,6 @@ public final class CommandManager implements MESSAGE {
 	 */
 	@SuppressWarnings("unchecked")
 	public static void init(ConfigurationSection conf) {
-		ShareData.getLogger().info("------------" + conf);
 		if (conf != null) {
 			val package_ = Cmd.class.getPackage().getName() + ".";
 			for (val k : conf.getKeys(false)) {
@@ -110,8 +111,8 @@ public final class CommandManager implements MESSAGE {
 			}
 			val	constructor	= c.getDeclaredConstructor(String.class);
 			val	info		= CmdInfo.getCmdInfo(conf);
-
-			for (val cmdName : info.getNames()) {
+			if (info.getNames().isEmpty()) ShareData.getLogger().warning("关闭命令: " + cmd);
+			else for (val cmdName : info.getNames()) {
 				INFOS.put(cmdName, info);
 				register(constructor.newInstance(cmdName));
 			}
@@ -125,18 +126,21 @@ public final class CommandManager implements MESSAGE {
 	 * 注册命令<br>
 	 * 将命令注册到Bukkit上
 	 * 
+	 * @param <T> cmd
+	 * 
 	 * @param cmd 命令
+	 * @return input
 	 */
-	public static void register(Command cmd) {
+	public static <T extends Command> T register(T cmd) {
 		try {
 			Method		method	= Bukkit.getServer().getClass().getMethod("getCommandMap");
 			CommandMap	cmdm	= (CommandMap) method.invoke(Bukkit.getServer());
 			val			b		= cmdm.register(Main.getMain().getName(), cmd);
-			if (ShareData.isDEBUG()) ShareData.getLogger().info("[D] cmdm: " + cmdm);
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[D] register cmd: " + b + ", fbn:" + Main.getMain().getName() + ": " + cmd.getName());
 		} catch (Exception e2) {
 			System.err.println("CAN NOT REGISTER COMMAND: " + e2.toString());
 			Main.getMain().getLogger().warning("CAN NOT REGISTER COMMAND: " + e2.toString());
 		}
+		return cmd;
 	}
 }

@@ -12,6 +12,7 @@ setting:
   teleport-cooldown: 100
   request-overtime: 120
   use-safeLocation: false
+#所有的命令, 删除某个节点将关闭对应的命令
 cmd:
  reload:
   names: 'ysd-reload'
@@ -21,6 +22,7 @@ cmd:
   permission: 'yuanlu.serverDo.tp'
   description: 'tp cmd'
   usageMessage: '/tp <target>'
+  def-cmd: 'minecraft:tp'
  tpa:
   names:
    - tpa

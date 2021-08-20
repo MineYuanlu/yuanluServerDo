@@ -22,6 +22,7 @@ import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Core.CallbackQueue;
 import yuan.plugins.serverDo.bukkit.MESSAGE;
 import yuan.plugins.serverDo.bukkit.Main;
+import yuan.plugins.serverDo.bukkit.cmds.CommandManager.CmdInfo;
 
 /**
  * Cmd
@@ -94,7 +95,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 */
 	Cmd(String name) {
 		super(name);
-		val info = CommandManager.INFOS.get(name);
+		val info = getCmdInfo();
 		setDescription(info.getDescription());
 		setUsage(info.getUsageMessage());
 		setPermission(info.getPermission());
@@ -130,6 +131,11 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * @return true if the command was successful, otherwise false
 	 */
 	protected abstract boolean execute0(CommandSender sender, String[] args);
+
+	/** @return Info */
+	protected CmdInfo getCmdInfo() {
+		return CommandManager.INFOS.get(getName());
+	}
 
 	/**
 	 * 返回此命令的某个消息
@@ -193,5 +199,4 @@ public abstract class Cmd extends Command implements MESSAGE {
 		MSGS.put(key + code, msg = Main.getMain().mes("cmd." + key, code));
 		return msg;
 	}
-
 }
