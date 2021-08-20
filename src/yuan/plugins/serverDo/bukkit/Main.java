@@ -272,7 +272,7 @@ public class Main extends JavaPlugin implements Listener {
 		CommandManager.init(config.getConfigurationSection("cmd"));
 		getServer().getMessenger().registerOutgoingPluginChannel(this, ShareData.BC_CHANNEL);
 		getServer().getMessenger().registerIncomingPluginChannel(this, ShareData.BC_CHANNEL, Core.INSTANCE);
-
+		Core.init(config);
 	}
 
 	/** 重载插件 */

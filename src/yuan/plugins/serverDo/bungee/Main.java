@@ -238,15 +238,15 @@ public class Main extends Plugin implements Listener {
 		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] Home:" + id);
 		switch (id) {
 		case 0:
-			Channel.Home.p0C_setHome(buf, (name, loc) -> {
+			Channel.Home.p0C_setHome(buf, (name, loc, amount) -> {
 				loc.setServer(server.getInfo().getName());
-				Core.setHome(player, name, loc);
-				send(player, Channel.Home.s0S_setHomeResp());
+				val result = Core.setHome(player, name, loc, amount);
+				send(player, Channel.Home.s0S_setHomeResp(result));
 			});
 			break;
 		case 1:
 			Channel.Home.p1C_delHome(buf, name -> {
-				val success = Core.setHome(player, name, null);
+				val success = Core.setHome(player, name, null, 0);
 				send(player, Channel.Home.s1S_delHomeResp(success));
 			});
 			break;

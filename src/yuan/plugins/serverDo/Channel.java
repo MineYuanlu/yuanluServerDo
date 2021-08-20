@@ -383,14 +383,14 @@ public enum Channel {
 		/**
 		 * 解析: 设置家
 		 * 
-		 * @param buf        数据
-		 * @param nameAndLoc 家名称,家
+		 * @param buf                 数据
+		 * @param nameAndLocAndAmount 家名称,家,最大数量
 		 * 
-		 * @see #s0C_setHome(String, ShareLocation)
+		 * @see #s0C_setHome(String, ShareLocation, int)
 		 */
-		public static void p0C_setHome(byte[] buf, BiConsumer<String, ShareLocation> nameAndLoc) {
+		public static void p0C_setHome(byte[] buf, BiIntConsumer<String, ShareLocation> nameAndLocAndAmount) {
 			try (val in = DataIn.pool(buf, 0)) {
-				nameAndLoc.accept(in.readUTF(), in.readLocation());
+				nameAndLocAndAmount.accept(in.readUTF(), in.readLocation(), in.readInt());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -399,14 +399,14 @@ public enum Channel {
 		/**
 		 * 解析: 设置家响应
 		 * 
-		 * @param buf 数据
-		 * @param r   next
+		 * @param buf     数据
+		 * @param success 成功
 		 * 
-		 * @see #s0S_setHomeResp()
+		 * @see #s0S_setHomeResp(boolean)
 		 */
-		public static void p0S_setHomeResp(byte[] buf, Runnable r) {
+		public static void p0S_setHomeResp(byte[] buf, BoolConsumer success) {
 			try (val in = DataIn.pool(buf, 0)) {
-				r.run();
+				success.accept(in.readBoolean());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -432,7 +432,7 @@ public enum Channel {
 		 * 解析: 删除家响应
 		 * 
 		 * @param buf     数据
-		 * @param success 删除删除
+		 * @param success 删除成功
 		 * 
 		 * @see #s1S_delHomeResp(boolean)
 		 */
@@ -549,14 +549,16 @@ public enum Channel {
 		/**
 		 * 设置家
 		 * 
-		 * @param name 家名称
-		 * @param loc  家
+		 * @param name   家名称
+		 * @param loc    家
+		 * @param amount 最大数量
 		 * @return 数据包
 		 */
-		public static byte[] s0C_setHome(String name, ShareLocation loc) {
+		public static byte[] s0C_setHome(String name, ShareLocation loc, int amount) {
 			try (val out = DataOut.pool(ID, 0)) {
 				out.writeUTF(name);
 				out.writeLocation(loc);
+				out.writeInt(amount);
 				return out.getByte();
 			} catch (Exception e) {
 				throw new RuntimeException(e);
@@ -566,10 +568,12 @@ public enum Channel {
 		/**
 		 * 设置家响应
 		 * 
+		 * @param success 成功
 		 * @return 数据包
 		 */
-		public static byte[] s0S_setHomeResp() {
+		public static byte[] s0S_setHomeResp(boolean success) {
 			try (val out = DataOut.pool(ID, 0)) {
+				out.writeBoolean(success);
 				return out.getByte();
 			} catch (Exception e) {
 				throw new RuntimeException(e);
@@ -594,7 +598,7 @@ public enum Channel {
 		/**
 		 * 删除家响应
 		 * 
-		 * @param success 删除删除
+		 * @param success 删除成功
 		 * @return 数据包
 		 */
 		public static byte[] s1S_delHomeResp(boolean success) {

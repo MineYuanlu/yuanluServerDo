@@ -1,8 +1,13 @@
 Prefix: ''
 setting:
   permission:
-    no-delay: 'yuanlu.serverDo.no-delay'
-    no-cooldown: 'yuanlu.serverDo.no-cooldown'
+    no-delay: 'yuanlu.serverDo.no-delay' #无延时
+    no-cooldown: 'yuanlu.serverDo.no-cooldown' #无冷却
+    tp-senior: "yuanlu.serverDo.tpSenior" #高级传送, 包括传送隐身玩家, 跨组传送
+    tp-other: "yuanlu.serverDo.tpOther" #第三方传送
+    home:
+      "yuanlu.serverDo.home.3": 3
+      "yuanlu.serverDo.home.50": 50
   teleport-delay: 3
   teleport-cooldown: 100
   request-overtime: 120
@@ -94,11 +99,7 @@ cmd:
   permission: 'yuanlu.serverDo.del-home'
   description: 'del-home cmd'
   usageMessage: '/delhome <name>'
-
-permissions:
-  tp-senior: "yuanlu.serverDo.tpSenior" #高级传送, 包括传送隐身玩家, 跨组传送
-  tp-other: "yuanlu.serverDo.tpOther" #第三方传送
-
+  
 message:
   LanguageFileIsLost: '&c&l[语言文件缺失]节点:%node%'
   not-player: '&c您不是玩家!'
@@ -179,6 +180,7 @@ message:
     vanish:
       always-hide: '&7已 &2开启 &7自动隐藏您的身份'
       always-show: '&7已 &2关闭 &7自动隐藏您的身份'
+      auto-hide: '&7已自动隐藏您的身份'
       hide: '&7已在列表中 &2隐藏 &7您的身份'
       show: '&7已在列表中 &2显示 &7您的身份'
       help:

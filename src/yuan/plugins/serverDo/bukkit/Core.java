@@ -54,6 +54,7 @@ import yuan.plugins.serverDo.ShareLocation;
 import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.WaitMaintain;
 import yuan.plugins.serverDo.bukkit.cmds.CmdTpaccept;
+import yuan.plugins.serverDo.bukkit.cmds.CmdVanish;
 
 /**
  * Bukkit端的核心组件
@@ -137,8 +138,58 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 *
 	 */
 	public static final class Permissions {
+		@SuppressWarnings("javadoc")
+		@Value
+		public static final class PerAmountNode implements Comparable<PerAmountNode> {
+			String	permission;
+			int		amount;
+
+			@Override
+			public int compareTo(PerAmountNode o) {
+				return Integer.compare(amount, o.amount);
+			}
+
+			@Override
+			public boolean equals(Object obj) {
+				if (this == obj) return true;
+				if (obj == null) return false;
+				if (getClass() != obj.getClass()) return false;
+				PerAmountNode other = (PerAmountNode) obj;
+				if (permission == null) {
+					if (other.permission != null) return false;
+				} else if (!permission.equals(other.permission)) return false;
+				return true;
+			}
+
+			@Override
+			public int hashCode() {
+				final int	prime	= 31;
+				int			result	= 1;
+				result = prime * result + ((permission == null) ? 0 : permission.hashCode());
+				return result;
+			}
+
+		}
+
 		/** 所有权限 */
-		private static final HashMap<String, String> permissions = new HashMap<>();
+		private static final HashMap<String, String>			permissions	= new HashMap<>();
+
+		/** 所有数量权限 */
+		private static final HashMap<String, PerAmountNode[]>	perAmounts	= new HashMap<>();
+
+		/**
+		 * 获取数量
+		 * 
+		 * @param sender 检测对象
+		 * @param node   权限节点
+		 * @return 最大数量/null(无任何权限)
+		 */
+		public static Integer getMaxAmount(CommandSender sender, String node) {
+			val ps = perAmounts.get(node);
+			if (ps == null) return null;
+			for (int i = 0; i < ps.length; i++) if (sender.hasPermission(ps[i].permission)) return ps[i].amount;
+			return null;
+		}
 
 		/**
 		 * 检测对象是否有权限
@@ -167,8 +218,21 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		private static void init(ConfigurationSection conf) {
 			if (conf == null) return;
 			for (val k : conf.getKeys(false)) {
-				val p = conf.getString(k, null);
-				if (p != null) permissions.put(k, p);
+				if (conf.isString(k)) {
+					val p = conf.getString(k, null);
+					if (p != null) permissions.put(k, p);
+				} else if (conf.isConfigurationSection(k)) {
+					val	ps		= conf.getConfigurationSection(k);
+					val	psKeys	= ps.getKeys(false);
+					val	list	= new PerAmountNode[psKeys.size()];
+					perAmounts.put(k, list);
+					int i = 0;
+					for (val p : psKeys) {
+						int amount = ps.getInt(p, 0);
+						list[i++] = new PerAmountNode(p, amount);
+					}
+					Arrays.sort(list, Collections.reverseOrder());
+				}
 			}
 		}
 
@@ -442,7 +506,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] HOME: " + id);
 			switch (Channel.getSubId(buf)) {
 			case 0:
-				handler = h -> Channel.Home.p0S_setHomeResp(buf, (Runnable) h);
+				handler = h -> Channel.Home.p0S_setHomeResp(buf, (BoolConsumer) h);
 				break;
 			case 1:
 				handler = h -> Channel.Home.p1S_delHomeResp(buf, (BoolConsumer) h);
@@ -612,7 +676,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		WaitMaintain.setT_User(Conf.getOvertime() * 1000);
 
 		// init Permission
-		Permissions.init(conf.getConfigurationSection("permissions"));
+		Permissions.init(conf.getConfigurationSection("setting.permission"));
 	}
 
 	/**
@@ -864,7 +928,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 		case VANISH: {
 			val isHide = Channel.Vanish.parse(message);
-			callBack(player, type, null, h -> ((BoolConsumer) h).accept(isHide));
+			if (!callBack(player, type, null, h -> ((BoolConsumer) h).accept(isHide)) && isHide) CmdVanish.callback(player);
 			break;
 		}
 		}

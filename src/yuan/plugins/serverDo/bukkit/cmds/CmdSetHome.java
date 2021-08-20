@@ -8,7 +8,9 @@ import org.bukkit.entity.Player;
 
 import lombok.val;
 import yuan.plugins.serverDo.Channel;
+import yuan.plugins.serverDo.Channel.Package.BoolConsumer;
 import yuan.plugins.serverDo.bukkit.Core;
+import yuan.plugins.serverDo.bukkit.Core.Permissions;
 import yuan.plugins.serverDo.bukkit.Main;
 
 /**
@@ -29,10 +31,11 @@ public final class CmdSetHome extends Cmd {
 		val	player	= (Player) sender;
 		val	name	= args.length > 0 ? args[0] : "home";
 		val	loc		= Core.toSLoc(player.getLocation());
-		Core.listenCallBack(player, Channel.HOME, 0, (Runnable) () -> {
-			msg("success", player, name);
+		Core.listenCallBack(player, Channel.HOME, 0, (BoolConsumer) success -> {
+			msg(success ? "success" : "fail", player, name);
 		});
-		Main.send(player, Channel.Home.s0C_setHome(name, loc));
+		val a = Permissions.getMaxAmount(sender, "home");
+		Main.send(player, Channel.Home.s0C_setHome(name, loc, a));
 		return false;
 	}
 

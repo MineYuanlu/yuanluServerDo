@@ -101,7 +101,7 @@ public class Core {
 	 * @param name   名称
 	 * @return 坐标
 	 */
-	public static ShareLocation getHome(ProxiedPlayer player, String name) {
+	public static ShareLocation getHome(@NonNull ProxiedPlayer player, @NonNull String name) {
 		return ConfigManager.HOMES.get(player.getUniqueId()).get(name);
 	}
 
@@ -111,7 +111,7 @@ public class Core {
 	 * @param player 玩家
 	 * @return homes
 	 */
-	public static HashMap<String, ShareLocation> getHomes(ProxiedPlayer player) {
+	public static HashMap<String, ShareLocation> getHomes(@NonNull ProxiedPlayer player) {
 		return ConfigManager.HOMES.get(player.getUniqueId());
 	}
 
@@ -154,7 +154,7 @@ public class Core {
 	 * @param name   搜索名
 	 * @return 匹配名
 	 */
-	public static String searchHome(ProxiedPlayer player, String name) {
+	public static String searchHome(@NonNull ProxiedPlayer player, @NonNull String name) {
 		return Tool.search(name, ConfigManager.HOMES.get(player.getUniqueId()).keySet().iterator());
 	}
 
@@ -174,15 +174,20 @@ public class Core {
 	 * @param player 玩家
 	 * @param name   家名称
 	 * @param loc    家坐标
-	 * @return true: 成功删除/覆盖<br>
-	 *         false:不存在/新建
+	 * @param amount 家最大数量
+	 * @return true: 成功删除/成功设置<br>
+	 *         false:不存在/已满
 	 */
-	public static boolean setHome(ProxiedPlayer player, String name, ShareLocation loc) {
+	public static boolean setHome(@NonNull ProxiedPlayer player, @NonNull String name, ShareLocation loc, int amount) {
 		val		home	= ConfigManager.HOMES.get(player.getUniqueId());
 		boolean	result;
 		if (loc == null) result = home.remove(name) != null;
 		else if ((loc = loc.clone()).getServer() == null) throw new IllegalArgumentException("[HOME] Null sever: " + name);
-		else result = home.put(name, loc) != null;
+		else {
+			result = (home.containsKey(name) || home.size() < amount);
+			if (result) home.put(name, loc);
+		}
+
 		ConfigManager.saveConf(PlayerConfFile.HOME, player);
 		return result;
 	}

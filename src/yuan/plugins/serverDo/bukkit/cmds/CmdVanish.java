@@ -50,4 +50,13 @@ public final class CmdVanish extends Cmd {
 		return false;
 	}
 
+	/**
+	 * 回调函数<br>
+	 * 主动回调
+	 * 
+	 * @param player 玩家
+	 */
+	public static void callback(Player player) {
+		msg(CmdVanish.class, "auto-hide").send(player);
+	}
 }
