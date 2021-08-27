@@ -182,6 +182,39 @@ public final class Tool {
 	}
 
 	/**
+	 * 获取匹配的列表
+	 * 
+	 * @param str 给定字符串
+	 * @param c   内容
+	 * @return 匹配的列表
+	 */
+	public static List<String> getMatchList(@NonNull String str, @NonNull Collection<String> c) {
+		ArrayList<String> l = new ArrayList<>();
+		str = str.toLowerCase();
+		for (val x : c) if (x != null && x.toLowerCase().startsWith(str)) l.add(x);
+		return l;
+	}
+
+	/**
+	 * 获取匹配的列表
+	 * 
+	 * @param <T>   内容类型
+	 * @param str   给定字符串
+	 * @param c     内容
+	 * @param trans 内容转换
+	 * @return 匹配的列表
+	 */
+	public static <T> List<String> getMatchList(@NonNull String str, @NonNull Collection<T> c, Function<T, String> trans) {
+		ArrayList<String> l = new ArrayList<>();
+		str = str.toLowerCase();
+		for (val y : c) {
+			val x = trans.apply(y);
+			if (x != null && x.toLowerCase().startsWith(str)) l.add(x);
+		}
+		return l;
+	}
+
+	/**
 	 * 驼峰转换
 	 * 
 	 * @param str    原始字符串

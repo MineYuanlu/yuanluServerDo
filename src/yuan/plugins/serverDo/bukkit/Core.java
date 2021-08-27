@@ -22,6 +22,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -929,6 +930,14 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		case VANISH: {
 			val isHide = Channel.Vanish.parse(message);
 			if (!callBack(player, type, null, h -> ((BoolConsumer) h).accept(isHide)) && isHide) CmdVanish.callback(player);
+			break;
+		}
+		case TRANS_HOME: {
+			callBack(player, type, null, h -> Channel.TransHome.parseC(message, (IntConsumer) h));
+			break;
+		}
+		case TRANS_WARP: {
+			callBack(player, type, null, h -> Channel.TransWarp.parseC(message, (IntConsumer) h));
 			break;
 		}
 		}

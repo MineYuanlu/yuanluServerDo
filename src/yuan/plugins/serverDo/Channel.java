@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 import java.util.function.ObjIntConsumer;
 
 import lombok.AccessLevel;
@@ -27,8 +28,10 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
+import lombok.ToString;
 import lombok.Value;
 import lombok.val;
+import lombok.experimental.FieldDefaults;
 
 /**
  * 通道数据<br>
@@ -58,7 +61,11 @@ public enum Channel {
 	/** 传送家 */
 	HOME(Home.class),
 	/** 传送坐标 */
-	TP_LOC(TpLoc.class);
+	TP_LOC(TpLoc.class),
+	/** 转换家 */
+	TRANS_HOME(TransHome.class),
+	/** 转换地标 */
+	TRANS_WARP(TransWarp.class);
 
 	/**
 	 * 传送冷却数据包
@@ -388,7 +395,7 @@ public enum Channel {
 		 * 
 		 * @see #s0C_setHome(String, ShareLocation, int)
 		 */
-		public static void p0C_setHome(byte[] buf, BiIntConsumer<String, ShareLocation> nameAndLocAndAmount) {
+		public static void p0C_setHome(byte[] buf, BiObjIntConsumer<String, ShareLocation> nameAndLocAndAmount) {
 			try (val in = DataIn.pool(buf, 0)) {
 				nameAndLocAndAmount.accept(in.readUTF(), in.readLocation(), in.readInt());
 			} catch (IOException e) {
@@ -721,7 +728,13 @@ public enum Channel {
 
 		@SuppressWarnings("javadoc")
 		@FunctionalInterface
-		public interface BiIntConsumer<T, U> {
+		public interface BiIntConsumer {
+			void accept(int t, int u);
+		}
+
+		@SuppressWarnings("javadoc")
+		@FunctionalInterface
+		public interface BiObjIntConsumer<T, U> {
 			void accept(T t, U u, int x);
 		}
 
@@ -1070,7 +1083,7 @@ public enum Channel {
 		 * @param nameAndDisplayAndType 传送者真实名字,传送者展示名字,传送类型
 		 * @see #s2S_tpReq(String, String, int)
 		 */
-		public static void p2S_tpReq(byte[] buf, BiIntConsumer<String, String> nameAndDisplayAndType) {
+		public static void p2S_tpReq(byte[] buf, BiObjIntConsumer<String, String> nameAndDisplayAndType) {
 			try (val in = DataIn.pool(buf, 2)) {
 				nameAndDisplayAndType.accept(in.readUTF(), in.readUTF(), in.readInt());
 			} catch (IOException e) {
@@ -1175,7 +1188,7 @@ public enum Channel {
 		 * @param moverAndTarget 双方搜索内容
 		 * @see #s9C_tpReqThird(String, String, int)
 		 */
-		public static void p9C_tpReqThird(byte[] buf, BiIntConsumer<String, String> moverAndTarget) {
+		public static void p9C_tpReqThird(byte[] buf, BiObjIntConsumer<String, String> moverAndTarget) {
 			try (val in = DataIn.pool(buf, 9)) {
 				moverAndTarget.accept(in.readUTF(), in.readUTF(), in.readInt());
 			} catch (IOException e) {
@@ -1576,6 +1589,203 @@ public enum Channel {
 				throw new RuntimeException(e);
 			}
 		}
+	}
+
+	/**
+	 * 转换家数据包
+	 * 
+	 * @author yuanlu
+	 */
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	@Getter
+	@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+	@ToString
+	public static final class TransHome extends Package {
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
+		/**
+		 * 解析: 响应
+		 * 
+		 * @param buf    数据
+		 * @param amount 接收到的数量
+		 */
+		public static void parseC(byte[] buf, IntConsumer amount) {
+			try (val in = DataIn.pool(buf)) {
+				amount.accept(in.readInt());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: 家数据
+		 * 
+		 * @param buf  数据
+		 * @param home 家数据
+		 */
+		public static void parseS(byte[] buf, Consumer<TransHome> home) {
+			try (val in = DataIn.pool(buf)) {
+				home.accept(in.readBoolean() ? null : new TransHome(in.readUUID(), in.readUTF(), in.readLocation()));
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Client
+		 * 
+		 * @param amount 接收到的数量
+		 * @return 数据包
+		 */
+		public static byte[] sendC(int amount) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeInt(amount);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Server<br>
+		 * 结束标志
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] sendS() {
+			try (val out = DataOut.pool(ID)) {
+				out.writeBoolean(true);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Server
+		 * 
+		 * @param player 玩家UUID
+		 * @param name   家名称
+		 * @param loc    家坐标
+		 * @return 数据包
+		 */
+		public static byte[] sendS(UUID player, String name, ShareLocation loc) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeBoolean(false);
+				out.writeUUID(player);
+				out.writeUTF(name);
+				out.writeLocation(loc);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/** 玩家UUID */
+		UUID			player;
+
+		/** 家名称 */
+		String			name;
+
+		/** 家坐标 */
+		ShareLocation	loc;
+	}
+
+	/**
+	 * 转换地标数据包
+	 * 
+	 * @author yuanlu
+	 */
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	@Getter
+	@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
+	@ToString
+	public static final class TransWarp extends Package {
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
+		/**
+		 * 解析: 响应
+		 * 
+		 * @param buf    数据
+		 * @param amount 接收到的数量
+		 */
+		public static void parseC(byte[] buf, IntConsumer amount) {
+			try (val in = DataIn.pool(buf)) {
+				amount.accept(in.readInt());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 解析: 地标数据
+		 * 
+		 * @param buf  数据
+		 * @param warp 地标数据
+		 */
+		public static void parseS(byte[] buf, Consumer<TransWarp> warp) {
+			try (val in = DataIn.pool(buf)) {
+				warp.accept(in.readBoolean() ? null : new TransWarp(in.readUTF(), in.readLocation()));
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Client
+		 * 
+		 * @param amount 接收到的数量
+		 * @return 数据包
+		 */
+		public static byte[] sendC(int amount) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeInt(amount);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Server<br>
+		 * 结束标志
+		 * 
+		 * @return 数据包
+		 */
+		public static byte[] sendS() {
+			try (val out = DataOut.pool(ID)) {
+				out.writeBoolean(true);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送至Server
+		 * 
+		 * @param name 地标名称
+		 * @param loc  地标坐标
+		 * @return 数据包
+		 */
+		public static byte[] sendS(String name, ShareLocation loc) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeBoolean(false);
+				out.writeUTF(name);
+				out.writeLocation(loc);
+				return out.getByte();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/** 地标名称 */
+		String			name;
+
+		/** 地标坐标 */
+		ShareLocation	loc;
 	}
 
 	/**

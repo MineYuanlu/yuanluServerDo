@@ -31,10 +31,10 @@ public final class CmdSetHome extends Cmd {
 		val	player	= (Player) sender;
 		val	name	= args.length > 0 ? args[0] : "home";
 		val	loc		= Core.toSLoc(player.getLocation());
+		val	a		= Permissions.getMaxAmount(sender, "home");
 		Core.listenCallBack(player, Channel.HOME, 0, (BoolConsumer) success -> {
-			msg(success ? "success" : "fail", player, name);
+			msg(success ? "success" : "fail", player, name, a);
 		});
-		val a = Permissions.getMaxAmount(sender, "home");
 		Main.send(player, Channel.Home.s0C_setHome(name, loc, a));
 		return false;
 	}

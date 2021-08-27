@@ -5,3 +5,5 @@ description: ${project.description}
 author: yuanlu
 api: ["1.12","1.12.2"]
 website: http://dx.mapland.cn:48083/yuanlu/yuanluServerDo
+
+softdepend: ['CMI','CMILib']

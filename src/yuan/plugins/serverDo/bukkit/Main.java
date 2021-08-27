@@ -236,7 +236,7 @@ public class Main extends JavaPlugin implements Listener {
 			String message = config.getString(node);
 			return message.isEmpty() ? (checkEmpty ? null : Msg.get(node, type)) : Msg.get(node, type, t(nop ? message : (prefix + message)));
 		}
-		MESSAGE_LOST_NODE.set(node, node);
+		if (MESSAGE_LOST_NODE != null) MESSAGE_LOST_NODE.set(node, node);
 		getLogger().warning("§d[LMES] §c§lcan not find message in config: " + node);
 		if (nop) return Msg.get(node, type, t(langLost.replace("%node%", node)));
 		return Msg.get(node, type, t(prefix + langLost.replace("%node%", node)));

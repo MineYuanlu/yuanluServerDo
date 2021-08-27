@@ -101,7 +101,12 @@ cmd:
   permission: 'yuanlu.serverDo.del-home'
   description: 'del-home cmd'
   usageMessage: '/delhome <name>'
-  
+ trans:
+  names:
+   - 'ysd-trans'
+  permission: 'yuanlu.serverDo.ysd-trans'
+  description: 'ysd-trans cmd'
+  usageMessage: '/ysd-trans <plugin> <func>'
 message:
   LanguageFileIsLost: '&c&l[语言文件缺失]节点:%node%'
   not-player: '&c您不是玩家!'
@@ -224,6 +229,18 @@ message:
       help: '&7输入指令： &2/delhome <name> &7删除家'
     set-home:
       success: '&7成功设置家 &2%s'
+      fail: '&7家数量已达上限: &2%s'
+    trans:
+      help: '&7输入指令：&2/ysd-trans <plugin> <func> &7从某插件转换数据'
+      not-found: '&7找不到名为 &2&s &7的转换器'
+      invlid: '&7转换器 &2%s &7不可用'
+      cannot: '&7转换器 &2%s &7不可以完成 &2&s &7的功能'
+      title: '&7转换器 &2%s &7运行中'
+      sub-title: '&7进度: &6%s&7/&2%s&r'
+      success: '&7已完成转换: 完成 &2%s &7(预计 &2%s &7)'
+      help-CMI:
+        - '&2CMI &7转换器可用功能: '
+        - '&7 - &2all-home &7转换全部的家数据'
   basic:
     message-time-out: "&c服务器通讯超时, 请联系管理员"
     version-bad: "&c服务器版本检查失败, 请联系管理员"

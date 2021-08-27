@@ -487,9 +487,20 @@ public final class ConfigManager {
 	 * 
 	 * @param f      配置类型
 	 * @param player 对应玩家
+	 * @see #saveConf(PlayerConfFile, UUID)
 	 */
 	public static void saveConf(PlayerConfFile f, ProxiedPlayer player) {
-		val u = player.getUniqueId();
+		saveConf(f, player.getUniqueId());
+	}
+
+	/**
+	 * 保存配置<br>
+	 * 将会延时保存
+	 * 
+	 * @param f 配置类型
+	 * @param u 对应玩家UUID
+	 */
+	public static void saveConf(PlayerConfFile f, UUID u) {
 		f.needSave.add(u);
 		WaitMaintain.put(f.SAVE_DELAY, u, System.currentTimeMillis(), saveDelay, () -> f.save(u));
 	}

@@ -339,6 +339,14 @@ public class Main extends Plugin implements Listener {
 			onPluginHomeMessage(player, server, message);
 			break;
 		}
+		case TRANS_HOME: {
+			Channel.TransHome.parseS(message, h -> TransHandler.receiveHome(player, h));
+			break;
+		}
+		case TRANS_WARP: {
+			Channel.TransWarp.parseS(message, w -> TransHandler.receiveWarp(player, w));
+			break;
+		}
 		case SERVER_INFO:
 		default:
 			ShareData.getLogger().warning("[channel] BAD PACKAGE: " + type);

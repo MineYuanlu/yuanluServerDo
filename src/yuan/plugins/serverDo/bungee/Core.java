@@ -193,6 +193,24 @@ public class Core {
 	}
 
 	/**
+	 * 设置家<br>
+	 * 用于转换时上传
+	 * 
+	 * @param player 玩家
+	 * @param name   家名称
+	 * @param loc    家坐标
+	 * @see TransHandler#receiveHome(ProxiedPlayer,
+	 *      yuan.plugins.serverDo.Channel.TransHome)
+	 */
+	public static void setHome(@NonNull UUID player, @NonNull String name, @NonNull ShareLocation loc) {
+		val home = ConfigManager.HOMES.get(player);
+		if ((loc = loc.clone()).getServer() == null) throw new IllegalArgumentException("[HOME] Null sever: " + name);
+		else home.put(name, loc);
+
+		ConfigManager.saveConf(PlayerConfFile.HOME, player);
+	}
+
+	/**
 	 * 设置/删除地标
 	 * 
 	 * @param name 地标名称
