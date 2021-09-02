@@ -17,7 +17,6 @@ import lombok.NoArgsConstructor;
 import lombok.Value;
 import lombok.val;
 import yuan.plugins.serverDo.ShareData;
-import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.bukkit.MESSAGE;
 import yuan.plugins.serverDo.bukkit.Main;
 
@@ -72,27 +71,41 @@ public final class CommandManager implements MESSAGE {
 	 */
 	@SuppressWarnings("unchecked")
 	public static void init(ConfigurationSection conf) {
-		if (conf != null) {
-			val package_ = Cmd.class.getPackage().getName() + ".";
-			for (val k : conf.getKeys(false)) {
-				val name = Tool.humpTransBack("Cmd-" + k, "-");
-				if (name == null) {
-					ShareData.getLogger().warning("[CMD] 无效命令: " + k);
+		if (conf == null) return;
+		// @formatter:off
+		val str="CmdDelHome.java\r\n"
+				+ "CmdDelWarp.java\r\n"
+				+ "CmdHome.java\r\n"
+				+ "CmdReload.java\r\n"
+				+ "CmdSetHome.java\r\n"
+				+ "CmdSetWarp.java\r\n"
+				+ "CmdTp.java\r\n"
+				+ "CmdTpa.java\r\n"
+				+ "CmdTpaccept.java\r\n"
+				+ "CmdTpahere.java\r\n"
+				+ "CmdTpcancel.java\r\n"
+				+ "CmdTpdeny.java\r\n"
+				+ "CmdTphere.java\r\n"
+				+ "CmdTrans.java\r\n"
+				+ "CmdVanish.java\r\n"
+				+ "CmdWarp.java";
+		// @formatter:on
+		val		names	= str.replace(".java", "").split("\r\n");
+		val package_ = Cmd.class.getPackage().getName() + ".";
+		for (val name : names) {
+			try {
+				val c = Class.forName(package_ + name);
+				if (c == Cmd.class || !Cmd.class.isAssignableFrom(c)) {
+					ShareData.getLogger().warning("[CMD] 非法命令: " + name);
 					continue;
 				}
-				try {
-					val c = Class.forName(package_ + name);
-					if (c == Cmd.class || !Cmd.class.isAssignableFrom(c)) {
-						ShareData.getLogger().warning("[CMD] 非法命令: " + k);
-						continue;
-					}
-					init(conf, (Class<? extends Cmd>) c);
-				} catch (ClassNotFoundException e) {
-					ShareData.getLogger().warning("[CMD] 未知命令: " + k);
-					e.printStackTrace();
-				}
+				init(conf, (Class<? extends Cmd>) c);
+			} catch (ClassNotFoundException e) {
+				ShareData.getLogger().warning("[CMD] 未知命令: " + name);
+				e.printStackTrace();
 			}
 		}
+
 	}
 
 	/**
@@ -106,7 +119,7 @@ public final class CommandManager implements MESSAGE {
 			val cmd = Cmd.getCmdName(c);
 			conf = conf.getConfigurationSection(cmd);
 			if (conf == null) {
-				ShareData.getLogger().warning("无法注册命令: " + cmd);
+				ShareData.getLogger().warning("关闭命令: " + cmd);
 				return;
 			}
 			val	constructor	= c.getDeclaredConstructor(String.class);

@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>bid.yuanlu</groupId>
 	<artifactId>yuanluServerDo</artifactId>
-	<version>1.1.0-SNAPSHOT-4</version><!-- -SNAPSHOT -->
+	<version>1.1.0-SNAPSHOT-5</version><!-- -SNAPSHOT -->
 	<name>yuanluServerDo</name>
 	<description>Provide players with a series of cross server operations</description>
 	<repositories>
@@ -130,6 +130,13 @@
 		<dependency>
 			<groupId>org.bstats</groupId>
 			<artifactId>bstats-bukkit</artifactId>
+			<version>2.2.1</version>
+			<scope>compile</scope>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.bstats/bstats-bungeecord -->
+		<dependency>
+			<groupId>org.bstats</groupId>
+			<artifactId>bstats-bungeecord</artifactId>
 			<version>2.2.1</version>
 			<scope>compile</scope>
 		</dependency>

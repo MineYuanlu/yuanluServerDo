@@ -9,8 +9,12 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
+import org.bstats.bukkit.Metrics;
+import org.bstats.charts.MultiLineChart;
+import org.bstats.charts.SimplePie;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -25,6 +29,7 @@ import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.bukkit.MESSAGE.Msg;
+import yuan.plugins.serverDo.bukkit.cmds.Cmd;
 import yuan.plugins.serverDo.bukkit.cmds.CommandManager;
 
 /**
@@ -87,15 +92,21 @@ public class Main extends JavaPlugin implements Listener {
 	private void bstats() {
 
 		// 注册bstats
-		Metrics metrics = new Metrics(this);
-		metrics.addCustomChart(new Metrics.SimplePie("pls_count", () -> {
+		int		pluginId	= 12395;
+		Metrics	metrics		= new Metrics(this, pluginId);
+		metrics.addCustomChart(new SimplePie("pls_count", () -> {
 			int count = 0;
 			for (Plugin pl : getServer().getPluginManager().getPlugins()) {
 				if (pl.getName().startsWith("yuanlu")) count++;
 			}
 			return Integer.toString(count);
 		}));
-
+		metrics.addCustomChart(new MultiLineChart("cmds", () -> {
+			HashMap<String, Integer> m = new HashMap<>();
+			Cmd.EXECUTE_COUNT.forEach((k, v) -> m.put(Cmd.getCmdName(k), v.getAndSet(0)));
+			return m;
+		}));
+		metrics.addCustomChart(new MultiLineChart("packets", Channel::getPackCount));
 	}
 
 	/** 检查中央配置文件 */

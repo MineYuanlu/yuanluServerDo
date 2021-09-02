@@ -12,7 +12,10 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicInteger;
+
+import org.bstats.bungeecord.Metrics;
+import org.bstats.charts.MultiLineChart;
+import org.bstats.charts.SimplePie;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -48,9 +51,6 @@ public class Main extends Plugin implements Listener {
 
 	/** 调试模式 */
 	private static @Getter boolean		DEBUG		= false;
-
-	/** 数据包统计 */
-	private static final AtomicInteger	PACK_COUNT	= new AtomicInteger(0);
 
 	/** 时间修正循环器 */
 	private static Thread				timeAmendLooper;
@@ -146,15 +146,15 @@ public class Main extends Plugin implements Listener {
 		int		pluginId	= 12396;						// <-- Replace with the id of your plugin!
 		Metrics	metrics		= new Metrics(this, pluginId);
 
-		// Optional: Add custom charts
-		metrics.addCustomChart(new Metrics.SingleLineChart("packets", () -> PACK_COUNT.getAndSet(0)));
-		metrics.addCustomChart(new Metrics.SimplePie("pls_count", () -> {
+		metrics.addCustomChart(new SimplePie("pls_count", () -> {
 			int count = 0;
 			for (Plugin pl : getMain().getProxy().getPluginManager().getPlugins()) {
 				if (pl.getDescription().getAuthor().contains("yuanlu")) count++;
 			}
 			return Integer.toString(count);
 		}));
+
+		metrics.addCustomChart(new MultiLineChart("packets", Channel::getPackCount));
 	}
 
 	/** 检查中央配置文件 */

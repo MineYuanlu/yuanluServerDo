@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -116,12 +117,24 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	@Override
 	public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+		bstatsExecute(this);
 		val cq = new CallbackQueue();
 		cq.task(() -> checkPlayer(sender, cq), //
 				() -> Core.permissionCheck(sender, getPermission(), cq), //
 				() -> execute0(sender, args));
 		return true;
 	}
+
+	/**
+	 * bstats统计: 执行命令
+	 * 
+	 * @param cmd 命令
+	 */
+	protected static void bstatsExecute(Cmd cmd) {
+		EXECUTE_COUNT.computeIfAbsent(cmd.getClass(), x -> new AtomicInteger()).getAndIncrement();
+	}
+
+	public static final HashMap<Class<? extends Cmd>, AtomicInteger> EXECUTE_COUNT = new HashMap<>();
 
 	/**
 	 * 实际执行

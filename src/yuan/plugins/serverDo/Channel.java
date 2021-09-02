@@ -14,9 +14,12 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.util.Collection;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
@@ -2268,6 +2271,15 @@ public enum Channel {
 
 	/** 版本数据 */
 	private static final byte[] VERSION;
+	/** 数据包计数 */
+	public static final EnumMap<Channel, AtomicInteger>	PACK_COUNT	= new EnumMap<>(Channel.class);
+
+	/** @return 数据包计数 */
+	public static HashMap<String, Integer> getPackCount() {
+		HashMap<String, Integer> m = new HashMap<>();
+		PACK_COUNT.forEach((k, v) -> m.put(k.name(), v.getAndSet(0)));
+		return m;
+	}
 	static {
 		try {
 			val sb = new StringBuilder();
@@ -2278,6 +2290,7 @@ public enum Channel {
 		} catch (Exception e) {
 			throw new InternalError(e);
 		}
+		for (val x : values()) PACK_COUNT.put(x, new AtomicInteger());
 	}
 
 	/** 所有数据包 */
