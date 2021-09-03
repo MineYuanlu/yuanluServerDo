@@ -141,6 +141,24 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	public static final class Permissions {
 		@SuppressWarnings("javadoc")
 		@Value
+		public static final class PerAmount {
+			PerAmountNode[]	nodes;
+			int				def;
+
+			/**
+			 * 获取数量
+			 * 
+			 * @param sender 检测对象
+			 * @return 最大数量
+			 */
+			public int getMaxAmount(CommandSender sender) {
+				for (int i = 0; i < nodes.length; i++) if (sender.hasPermission(nodes[i].permission)) return nodes[i].amount;
+				return def;
+			}
+		}
+
+		@SuppressWarnings("javadoc")
+		@Value
 		public static final class PerAmountNode implements Comparable<PerAmountNode> {
 			String	permission;
 			int		amount;
@@ -173,10 +191,10 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 
 		/** 所有权限 */
-		private static final HashMap<String, String>			permissions	= new HashMap<>();
+		private static final HashMap<String, String>	permissions	= new HashMap<>();
 
 		/** 所有数量权限 */
-		private static final HashMap<String, PerAmountNode[]>	perAmounts	= new HashMap<>();
+		private static final HashMap<String, PerAmount>	perAmounts	= new HashMap<>();
 
 		/**
 		 * 获取数量
@@ -187,9 +205,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 */
 		public static Integer getMaxAmount(CommandSender sender, String node) {
 			val ps = perAmounts.get(node);
-			if (ps == null) return null;
-			for (int i = 0; i < ps.length; i++) if (sender.hasPermission(ps[i].permission)) return ps[i].amount;
-			return null;
+			return ps == null ? null : ps.getMaxAmount(sender);
 		}
 
 		/**
@@ -223,18 +239,29 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 					val p = conf.getString(k, null);
 					if (p != null) permissions.put(k, p);
 				} else if (conf.isConfigurationSection(k)) {
-					val	ps		= conf.getConfigurationSection(k);
-					val	psKeys	= ps.getKeys(false);
-					val	list	= new PerAmountNode[psKeys.size()];
-					perAmounts.put(k, list);
-					int i = 0;
+					val							ps		= conf.getConfigurationSection(k);
+					val							psKeys	= ps.getKeys(false);
+					int							def		= 0;
+					ArrayList<PerAmountNode>	list	= new ArrayList<>(psKeys.size());
 					for (val p : psKeys) {
-						int amount = ps.getInt(p, 0);
-						list[i++] = new PerAmountNode(p, amount);
+						if (p.equalsIgnoreCase("default") || p.equalsIgnoreCase("def")) def = ps.getInt(p, def);
+						else try {
+							val amount = Integer.parseInt(p);
+							if (ps.isString(p)) list.add(new PerAmountNode(ps.getString(p), amount));
+							else if (ps.isList(p)) for (val permission : ps.getStringList(p)) list.add(new PerAmountNode(permission, amount));
+							else ShareData.getLogger()
+									.warning("[CONF] Unsupported permission section, need a string or string-list: " + ps.getCurrentPath() + "." + p);
+						} catch (NullPointerException | NumberFormatException e) {
+							ShareData.getLogger()
+									.warning("[CONF] Unsupported permission node, need a number or 'def'/'default': " + ps.getCurrentPath() + "." + p);
+						}
 					}
-					Arrays.sort(list, Collections.reverseOrder());
+					list.sort(Collections.reverseOrder());
+					perAmounts.put(k, new PerAmount(list.toArray(new PerAmountNode[list.size()]), def));
 				}
 			}
+			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CONF] permissions: " + permissions);
+			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CONF] perAmounts: " + perAmounts);
 		}
 
 		/**

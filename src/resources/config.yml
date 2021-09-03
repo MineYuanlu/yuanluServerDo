@@ -6,8 +6,11 @@ setting:
     tp-senior: "yuanlu.serverDo.tpSenior" #高级传送, 包括传送隐身玩家, 跨组传送
     tp-other: "yuanlu.serverDo.tpOther" #第三方传送
     home:
-      "yuanlu.serverDo.home.3": 3
-      "yuanlu.serverDo.home.50": 50
+      'default': 3
+      '10': "yuanlu.serverDo.home.10"
+      '50':
+       - "yuanlu.serverDo.home.50"
+       - "yuanlu.serverDo.home.another-permission-50"
   teleport-delay: 3
   teleport-cooldown: 100
   request-overtime: 120
