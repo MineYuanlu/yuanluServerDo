@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>bid.yuanlu</groupId>
 	<artifactId>yuanluServerDo</artifactId>
-	<version>1.1.0-SNAPSHOT-5</version><!-- -SNAPSHOT -->
+	<version>1.1.0</version><!-- -SNAPSHOT -->
 	<name>yuanluServerDo</name>
 	<description>Provide players with a series of cross server operations</description>
 	<repositories>
@@ -15,6 +15,11 @@
 		<repository>
 			<id>spigot-repo</id>
 			<url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+		</repository>
+		
+		<repository>
+			<id>mapland-repo</id>
+			<url>http://dx.mapland.cn:48089/repository/mapland/</url>
 		</repository>
 	</repositories>
 	<build>
@@ -85,6 +90,11 @@
 							<pattern>org.bstats</pattern>
 							<!-- Replace this with your package! -->
 							<shadedPattern>yuan.plugins.ServerDo.bstats</shadedPattern>
+						</relocation>
+						<relocation>
+							<pattern>cn.mapland.yuanlu.updater</pattern>
+							<!-- Replace this with your package! -->
+							<shadedPattern>yuan.plugins.ServerDo.updater</shadedPattern>
 						</relocation>
 					</relocations>
 					<annotationProcessorPaths>
@@ -186,7 +196,12 @@
           <version>1.0.3.4</version>
           <scope>system</scope>
           <systemPath>${project.basedir}/lib/CMILib1.0.3.4.jar</systemPath>
-        </dependency>	
+        </dependency>
+        <dependency>
+			<groupId>cn.mapland.yuanlu</groupId>
+			<artifactId>UpdaterClient-bukkit</artifactId>
+			<version>1.0.0</version>
+		</dependency>	
 	</dependencies>
 	<properties>
 		<maven.compiler.target>1.8</maven.compiler.target>

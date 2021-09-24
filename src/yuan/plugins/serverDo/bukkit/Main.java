@@ -23,6 +23,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import cn.mapland.yuanlu.updater.bukkit.BukkitUpdater;
 import lombok.Getter;
 import lombok.val;
 import yuan.plugins.serverDo.Channel;
@@ -266,6 +267,7 @@ public class Main extends JavaPlugin implements Listener {
 		checkYuanluConfig();
 		ShareData.setDEBUG(DEBUG);
 		bstats();
+		update();
 
 		if (ShareData.isDEBUG()) {
 			MESSAGE_LOST_NODE = loadFile("lang-lost.yml");
@@ -284,6 +286,18 @@ public class Main extends JavaPlugin implements Listener {
 		getServer().getMessenger().registerOutgoingPluginChannel(this, ShareData.BC_CHANNEL);
 		getServer().getMessenger().registerIncomingPluginChannel(this, ShareData.BC_CHANNEL, Core.INSTANCE);
 		Core.init(config);
+	}
+
+	/** 更新检测 */
+	private void update() {
+		try {
+			val updater = new BukkitUpdater(this);
+			updater.useCmd();
+			updater.dailyCheck();
+			if (updater.getConf().isNoticeUser()) updater.noticeJoin();
+		} catch (Throwable e) {
+			e.printStackTrace();
+		}
 	}
 
 	/** 重载插件 */

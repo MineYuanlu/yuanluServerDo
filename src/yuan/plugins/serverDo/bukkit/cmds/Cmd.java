@@ -134,6 +134,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 		EXECUTE_COUNT.computeIfAbsent(cmd.getClass(), x -> new AtomicInteger()).getAndIncrement();
 	}
 
+	/** 执行计数 */
 	public static final HashMap<Class<? extends Cmd>, AtomicInteger> EXECUTE_COUNT = new HashMap<>();
 
 	/**
