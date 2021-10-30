@@ -16,10 +16,10 @@
 			<id>spigot-repo</id>
 			<url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
 		</repository>
-		
+
 		<repository>
-			<id>mapland-repo</id>
-			<url>http://dx.mapland.cn:48089/repository/mapland/</url>
+			<id>jitpack.io</id>
+			<url>https://jitpack.io</url>
 		</repository>
 	</repositories>
 	<build>
@@ -179,29 +179,29 @@
 			<version>1.16-R0.4</version>
 			<scope>provided</scope>
 		</dependency>
-		
+
 		<!-- CMI -->
 		<dependency>
-          <groupId>CMI</groupId>
-          <artifactId>CMI</artifactId>
-          <version>9.0.2.6</version>
-          <scope>system</scope>
-          <systemPath>${project.basedir}/lib/CMI9.0.2.6.jar</systemPath>
-        </dependency>
-		
+			<groupId>CMI</groupId>
+			<artifactId>CMI</artifactId>
+			<version>9.0.2.6</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/CMI9.0.2.6.jar</systemPath>
+		</dependency>
+
 		<!-- CMILib -->
 		<dependency>
-          <groupId>CMI</groupId>
-          <artifactId>CMILib</artifactId>
-          <version>1.0.3.4</version>
-          <scope>system</scope>
-          <systemPath>${project.basedir}/lib/CMILib1.0.3.4.jar</systemPath>
-        </dependency>
-        <dependency>
-			<groupId>cn.mapland.yuanlu</groupId>
+			<groupId>CMI</groupId>
+			<artifactId>CMILib</artifactId>
+			<version>1.0.3.4</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/CMILib1.0.3.4.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>cn.mapland.git.yuanlu</groupId>
 			<artifactId>UpdaterClient-bukkit</artifactId>
-			<version>1.0.0</version>
-		</dependency>	
+			<version>1.0.5</version>
+		</dependency>
 	</dependencies>
 	<properties>
 		<maven.compiler.target>1.8</maven.compiler.target>
