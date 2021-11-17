@@ -6,20 +6,25 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.MultiLineChart;
 import org.bstats.charts.SimplePie;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -35,7 +40,7 @@ import yuan.plugins.serverDo.bukkit.cmds.CommandManager;
 
 /**
  * 主类
- * 
+ *
  * @author yuanlu
  *
  */
@@ -60,7 +65,7 @@ public class Main extends JavaPlugin implements Listener {
 
 	/**
 	 * 向玩家(BC端)发送数据
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param data   数据
 	 */
@@ -72,11 +77,11 @@ public class Main extends JavaPlugin implements Listener {
 	/**
 	 * 翻译字符串<br>
 	 * 将文字中的彩色字符串进行翻译
-	 * 
+	 *
 	 * @param s 字符串
 	 * @return 翻译后的字符串
 	 */
-	public static final String t(String s) {
+	public static String t(String s) {
 		return ChatColor.translateAlternateColorCodes('&', s);
 	}
 
@@ -148,13 +153,13 @@ public class Main extends JavaPlugin implements Listener {
 			return r;
 		} else {
 			getLogger().warning("§d[LMES] §c§lcan not find list in config: " + node);
-			return new ArrayList<>(Arrays.asList(langLost.replace("%node%", node)));
+			return new ArrayList<>(Collections.singletonList(langLost.replace("%node%", node)));
 		}
 	}
 
 	/**
 	 * 加载配置
-	 * 
+	 *
 	 * @param fileName 配置文件名，例如{@code "config.yml"}
 	 * @return 配置文件
 	 */
@@ -173,7 +178,7 @@ public class Main extends JavaPlugin implements Listener {
 			return null;
 		}
 		try {
-			return YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+			return YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -181,7 +186,7 @@ public class Main extends JavaPlugin implements Listener {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param node 节点
 	 * @return 获取到的字符串
 	 * @see #mes(String, int)
@@ -245,7 +250,7 @@ public class Main extends JavaPlugin implements Listener {
 
 			return sb.length() < 1 ? (checkEmpty ? null : Msg.get(node, type)) : Msg.get(node, type, t(sb.toString()));
 		} else if (config.isString(node)) {
-			String message = config.getString(node);
+			String message = config.getString(node, "");
 			return message.isEmpty() ? (checkEmpty ? null : Msg.get(node, type)) : Msg.get(node, type, t(nop ? message : (prefix + message)));
 		}
 		if (MESSAGE_LOST_NODE != null) MESSAGE_LOST_NODE.set(node, node);
@@ -282,22 +287,45 @@ public class Main extends JavaPlugin implements Listener {
 		prefix		= config.getString("Prefix", "");
 		langLost	= config.getString("message.LanguageFileIsLost", LANG_LOST);
 		getServer().getPluginManager().registerEvents(Core.INSTANCE, this); // 注册监听器
-		CommandManager.init(config.getConfigurationSection("cmd"));
+
+		registerCmd(config.getBoolean("setting.register-after-all", false), () -> CommandManager.init(config.getConfigurationSection("cmd")));
 		getServer().getMessenger().registerOutgoingPluginChannel(this, ShareData.BC_CHANNEL);
 		getServer().getMessenger().registerIncomingPluginChannel(this, ShareData.BC_CHANNEL, Core.INSTANCE);
 		Core.init(config);
 	}
 
-	/** 更新检测 */
-	private void update() {
-		try {
-			val updater = new BukkitUpdater(this);
-			updater.useCmd();
-			updater.dailyCheck();
-			if (updater.getConf().isNoticeUser()) updater.noticeJoin();
-		} catch (Throwable e) {
-			e.printStackTrace();
+	/**
+	 * 注册命令
+	 *
+	 * @param raa 是否在其他插件加载完毕后再注册
+	 * @param r   注册函数
+	 * @return 是否立即注册
+	 */
+	private boolean registerCmd(boolean raa, Runnable r) {
+		if (!raa) {
+			getLogger().info("开始注册命令");
+			r.run();
+			return true;
 		}
+		getLogger().info("已启用 register-after-all, 正在等待其它插件加载完毕");
+		val notEnable = Arrays.stream(getServer().getPluginManager().getPlugins())//
+				.filter(p -> !p.isEnabled())//
+				.map(Plugin::getName)//
+				.collect(Collectors.toSet());
+		if (notEnable.isEmpty()) return registerCmd(false, r);
+		Bukkit.getServer().getPluginManager().registerEvents(new Listener() {
+			private boolean finish = false;
+
+			@EventHandler
+			public void listener(PluginEnableEvent e) {
+				if (finish) return;
+				notEnable.remove(e.getPlugin().getName());
+				if (!notEnable.isEmpty()) return;
+				finish = true;
+				registerCmd(false, r);
+			}
+		}, main);
+		return false;
 	}
 
 	/** 重载插件 */
@@ -310,15 +338,27 @@ public class Main extends JavaPlugin implements Listener {
 
 	/**
 	 * 保存配置
-	 * 
+	 *
 	 * @param c        配置文件
 	 * @param fileName 保存名称
 	 * @author yuanlu
 	 */
 	public void saveFile(FileConfiguration c, String fileName) {
 		val f = new File(getDataFolder(), fileName);
-		try (val o = new OutputStreamWriter(new FileOutputStream(f), Charset.forName("UTF-8"))) {
+		try (val o = new OutputStreamWriter(new FileOutputStream(f), StandardCharsets.UTF_8)) {
 			o.write(c.saveToString());
+		} catch (Throwable e) {
+			e.printStackTrace();
+		}
+	}
+
+	/** 更新检测 */
+	private void update() {
+		try {
+			val updater = new BukkitUpdater(this);
+			updater.useCmd();
+			updater.dailyCheck();
+			if (updater.getConf().isNoticeUser()) updater.noticeJoin();
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}

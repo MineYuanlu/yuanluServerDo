@@ -59,12 +59,88 @@ import yuan.plugins.serverDo.bukkit.cmds.CmdVanish;
 
 /**
  * Bukkit端的核心组件
- * 
+ *
  * @author yuanlu
  *
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Core implements PluginMessageListener, MESSAGE, Listener {
+	/**
+	 * Back处理器
+	 *
+	 * @author yuanlu
+	 */
+	public static final class BackHandler {
+		/**
+		 * 上一个坐标的保存<br>
+		 * 当loc.server为null代表本地, 否则代表其它服务器<br>
+		 * 当玩家退出当前服务器时删除(待考虑, 例如临时退出 TODO )
+		 */
+		private static final ConcurrentHashMap<String, ShareLocation> BACKS = new ConcurrentHashMap<>();
+		static {
+			registerClearListener(c -> BACKS.remove(c.getName()));
+		}
+
+		/**
+		 * 获取Back坐标
+		 *
+		 * @param player 玩家
+		 * @return 玩家的back坐标/null
+		 */
+		public static final ShareLocation getBack(@NonNull Player player) {
+			return BACKS.get(player.getName());
+		}
+
+		/**
+		 * 处理Back数据包
+		 *
+		 * @param player 玩家
+		 * @param type   通道类型(必须为BACK)
+		 * @param buf    数据包
+		 */
+		private static final void handleBackMessage(Player player, Channel type, byte[] buf) {
+			if (type != Channel.BACK) throw new InternalError("Bad Type");
+			byte id = Channel.getSubId(buf);
+			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] BACK: " + id);
+			switch (id) {
+			case 1:
+				Channel.Back.p1S_tellTp(buf, BACKS::put);
+				break;
+			default:
+				ShareData.getLogger().warning("[PACKAGE]Bad Back sub id:" + id + ", from: " + player.getName());
+				break;
+			}
+		}
+
+		/**
+		 * 记录当前坐标
+		 *
+		 * @param player   玩家
+		 * @param toServer 玩家即将传送的服务器(null为本地)
+		 */
+		private static final void recordLocation(@NonNull Player player, String toServer) {
+			recordLocation(player, toServer, null);
+		}
+
+		/**
+		 * 记录当前坐标<br>
+		 * 注: toServer 与 toPlayer 均为null时为本地
+		 *
+		 * @param player   玩家
+		 * @param toServer 玩家即将传送的服务器
+		 * @param toPlayer 玩家即将传送的玩家
+		 */
+		private static final void recordLocation(@NonNull Player player, String toServer, String toPlayer) {
+			val	name	= player.getName();
+			val	loc		= toSLoc(player.getLocation());
+			if (toServer == null && toPlayer == null) {
+				BACKS.put(name, loc);
+			} else {
+				Main.send(player, Channel.Back.s0C_tellTp(name, loc, toServer != null, toServer != null ? toServer : toPlayer));
+			}
+		}
+	}
+
 	/** 回调队列 */
 	public static final class CallbackQueue implements Runnable {
 		/** 队列 */
@@ -81,7 +157,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 传入一组任务, 按顺序执行
-		 * 
+		 *
 		 * @param tasks 运行任务
 		 */
 		public synchronized void task(Runnable... tasks) {
@@ -134,7 +210,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 权限管理器
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -147,12 +223,12 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 			/**
 			 * 获取数量
-			 * 
+			 *
 			 * @param sender 检测对象
 			 * @return 最大数量
 			 */
 			public int getMaxAmount(CommandSender sender) {
-				for (int i = 0; i < nodes.length; i++) if (sender.hasPermission(nodes[i].permission)) return nodes[i].amount;
+				for (PerAmountNode node : nodes) if (sender.hasPermission(node.permission)) return node.amount;
 				return def;
 			}
 		}
@@ -171,8 +247,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			@Override
 			public boolean equals(Object obj) {
 				if (this == obj) return true;
-				if (obj == null) return false;
-				if (getClass() != obj.getClass()) return false;
+				if ((obj == null) || (getClass() != obj.getClass())) return false;
 				PerAmountNode other = (PerAmountNode) obj;
 				if (permission == null) {
 					if (other.permission != null) return false;
@@ -198,7 +273,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 获取数量
-		 * 
+		 *
 		 * @param sender 检测对象
 		 * @param node   权限节点
 		 * @return 最大数量/null(无任何权限)
@@ -210,7 +285,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 检测对象是否有权限
-		 * 
+		 *
 		 * @param sender 检测对象
 		 * @param node   权限节点
 		 * @param silent 静默检查
@@ -229,7 +304,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 初始化权限
-		 * 
+		 *
 		 * @param conf 权限节点
 		 */
 		private static void init(ConfigurationSection conf) {
@@ -267,7 +342,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		/**
 		 * 检测对象是否有权限<br>
 		 * <b>非静默</b>
-		 * 
+		 *
 		 * @param sender 检测对象
 		 * @return 是否有权限
 		 */
@@ -277,7 +352,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 检测对象是否有权限
-		 * 
+		 *
 		 * @param sender 检测对象
 		 * @return 是否有权限
 		 */
@@ -293,7 +368,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 获取tab内容
-		 * 
+		 *
 		 * @param p    玩家
 		 * @param arg  实际参数
 		 * @param type 类型
@@ -307,7 +382,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 获取补全列表
-		 * 
+		 *
 		 * @param player 玩家
 		 * @param arg    输入
 		 * @param all    全部列表
@@ -321,7 +396,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * Tp数据包处理
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -352,7 +427,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 进入冷却
-		 * 
+		 *
 		 * @param player 玩家
 		 */
 		private static void checkCooldown(@NonNull Player player) {
@@ -363,7 +438,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 检查延时传送
-		 * 
+		 *
 		 * @param player 玩家
 		 * @param time   延时时长
 		 * @param r      检查完成
@@ -375,7 +450,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 处理TpLoc数据包
-		 * 
+		 *
 		 * @param player 玩家
 		 * @param type   通道类型(必须为TP_LOC)
 		 * @param buf    数据包
@@ -386,7 +461,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			byte		id		= Channel.getSubId(buf);
 			Consumer	handler	= null;
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] TP_LOC: " + id);
-			switch (Channel.getSubId(buf)) {
+			switch (id) {
 			case 0:
 				handler = h -> Channel.TpLoc.p0S_tpLocResp(buf, (BoolConsumer) h);
 				break;
@@ -406,7 +481,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 处理Tp数据包
-		 * 
+		 *
 		 * @param player 玩家
 		 * @param type   通道类型(必须为TP)
 		 * @param buf    数据包
@@ -462,17 +537,18 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 本地传送
-		 * 
+		 *
 		 * @param mover  移动者
 		 * @param target 目标
 		 */
 		private static void toToLocal(@NonNull Player mover, @NonNull Location target) {
+			BackHandler.recordLocation(mover, null);
 			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(target));
 		}
 
 		/**
 		 * 本地传送
-		 * 
+		 *
 		 * @param mover        移动者
 		 * @param target       目标
 		 * @param waitTime     传送等待时间
@@ -483,13 +559,29 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 				checkDelay(mover, Conf.delay, () -> toToLocal(mover, target, -1, needCooldown));
 				return;
 			}
+			BackHandler.recordLocation(mover, null);
 			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(target));
 			if (needCooldown) checkCooldown(mover);
 		}
 
 		/**
 		 * 远程传送
-		 * 
+		 *
+		 * @param player 玩家
+		 * @param loc    地址
+		 */
+		public static void tpToRemote(@NonNull Player player, @NonNull ShareLocation loc) {
+			if (loc.getServer() == null) throw new IllegalArgumentException("No server specified: " + loc);
+			BackHandler.recordLocation(player, loc.getServer());
+			listenCallBack(player, Channel.TP_LOC, 0, (BoolConsumer) success -> {
+				if (!success) BC_ERROR.send(player);
+			});
+			Channel.TpLoc.s0C_tpLoc(loc, loc.getServer());
+		}
+
+		/**
+		 * 远程传送
+		 *
 		 * @param player       操控玩家
 		 * @param mover        移动者
 		 * @param target       目标
@@ -503,6 +595,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 				checkDelay(player, Conf.delay, () -> tpToRemote(player, mover, target, -1, needCooldown));
 				return;
 			}
+			BackHandler.recordLocation(player, null, target);// TODO 第三方传送的back记录
 			listenCallBack(player, Channel.TP, 7, (BiBoolConsumer) (success, error) -> {
 				if (error) BC_ERROR.send(player);
 				else if (!success) BC_PLAYER_OFF.send(player);
@@ -514,14 +607,14 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 地标(含Home)处理器
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
 	public static final class WarpHandler {
 		/**
 		 * 处理Home数据包
-		 * 
+		 *
 		 * @param player 玩家
 		 * @param type   通道类型(必须为HOME)
 		 * @param buf    数据包
@@ -557,7 +650,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 		/**
 		 * 处理Warp数据包
-		 * 
+		 *
 		 * @param player 玩家
 		 * @param type   通道类型(必须为WARP)
 		 * @param buf    数据包
@@ -599,9 +692,9 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	public static final Core		INSTANCE	= new Core();
 	/*
 	 * tp,tpa,tpahere,tphere tpaccept,tpcancel
-	 * 
+	 *
 	 * warp,home,spawn
-	 * 
+	 *
 	 */
 
 	/** 回调等待 */
@@ -631,7 +724,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 回调
-	 * 
+	 *
 	 * @param player   玩家
 	 * @param channel  通道
 	 * @param checker  验证数据
@@ -672,7 +765,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 获取等待时间
-	 * 
+	 *
 	 * @param player 玩家
 	 * @return >0: 玩家的等待时间<br>
 	 *         =0: 无等待时间<br>
@@ -689,7 +782,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 初始化数据
-	 * 
+	 *
 	 * @param conf 总配置文件
 	 */
 	public static void init(ConfigurationSection conf) {
@@ -709,7 +802,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 监听回调
-	 * 
+	 *
 	 * @param player  玩家
 	 * @param channel 通道
 	 * @param checker 验证数据
@@ -727,7 +820,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 监听回调
-	 * 
+	 *
 	 * @param player  玩家
 	 * @param channel 通道
 	 * @param checker 验证数据
@@ -739,7 +832,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 权限检查
-	 * 
+	 *
 	 * @param player     玩家
 	 * @param permission 权限
 	 * @param next       成功的回调函数
@@ -763,7 +856,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 移除回调
-	 * 
+	 *
 	 * @param player  玩家
 	 * @param channel 通道
 	 * @param checker 验证数据
@@ -775,7 +868,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 转换为Bukkit坐标
-	 * 
+	 *
 	 * @param loc Share坐标
 	 * @return Bukkit坐标
 	 */
@@ -785,7 +878,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 转换为Share坐标
-	 * 
+	 *
 	 * @param loc Bukkit坐标
 	 * @return Share坐标
 	 */
@@ -795,7 +888,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/**
 	 * 传送请求码转换
-	 * 
+	 *
 	 * @param player   玩家
 	 * @param realCode 真实的请求码
 	 * @return 转换后的请求码
@@ -806,9 +899,21 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	}
 
 	/**
+	 * 传送玩家到指定地点<br>
+	 * 当loc的server未指定时, 代表本地传送
+	 *
+	 * @param player 玩家
+	 * @param loc    指定坐标
+	 */
+	public static void tpTo(@NonNull Player player, @NonNull ShareLocation loc) {
+		if (loc.getServer() == null) TpHandler.toToLocal(player, toBLoc(loc));
+		else TpHandler.tpToRemote(player, loc);
+	}
+
+	/**
 	 * 传送玩家<br>
 	 * 将会先检查本地玩家, 若不存在则向BC请求
-	 * 
+	 *
 	 * @param mover        移动者
 	 * @param target       目标
 	 * @param waitTime     传送等待时间
@@ -823,7 +928,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	/**
 	 * 传送玩家<br>
 	 * 将会先检查本地玩家, 若不存在则向BC请求
-	 * 
+	 *
 	 * @param player   操控玩家
 	 * @param mover    移动者
 	 * @param target   目标
@@ -839,7 +944,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	/**
 	 * 传送玩家<br>
 	 * 将会先检查本地玩家, 若不存在则向BC请求
-	 * 
+	 *
 	 * @param mover    移动者
 	 * @param target   目标
 	 * @param waitTime 传送等待时间
@@ -851,7 +956,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param e 事件
 	 * @deprecated BUKKIT
 	 */
@@ -869,7 +974,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param e 事件
 	 * @deprecated BUKKIT
 	 */
@@ -885,7 +990,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param e 事件
 	 * @deprecated BUKKIT
 	 */
@@ -933,6 +1038,10 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 		case HOME: {
 			WarpHandler.handleHomeMessage(player, type, message);
+			break;
+		}
+		case BACK: {
+			BackHandler.handleBackMessage(player, type, message);
 			break;
 		}
 		case VERSION_CHECK: {

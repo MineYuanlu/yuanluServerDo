@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Objects;
 
 import org.bstats.bungeecord.Metrics;
 import org.bstats.charts.MultiLineChart;
@@ -39,26 +40,26 @@ import yuan.plugins.serverDo.Tool;
 
 /**
  * BC端
- * 
+ *
  * @author yuanlu
  *
  */
 public class Main extends Plugin implements Listener {
 	/** 实例 */
-	private static @Getter Main			main;
+	private static @Getter Main		main;
 	/** 插件名称 用于信息提示 模板自动生成 */
-	public final static String			SHOW_NAME	= ShareData.SHOW_NAME;
+	public final static String		SHOW_NAME	= ShareData.SHOW_NAME;
 
 	/** 调试模式 */
-	private static @Getter boolean		DEBUG		= false;
+	private static @Getter boolean	DEBUG		= false;
 
 	/** 时间修正循环器 */
-	private static Thread				timeAmendLooper;
+	private static Thread			timeAmendLooper;
 
 	/**
 	 * 获取玩家<br>
 	 * 模糊搜索, 借鉴Bukkit
-	 * 
+	 *
 	 * @param sender 发起者, 当其不为null时, 会检查服务器组
 	 * @param name   玩家名
 	 * @return 玩家
@@ -89,7 +90,7 @@ public class Main extends Plugin implements Listener {
 
 	/**
 	 * 发送数据(toServer)
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param buf    数据
 	 */
@@ -101,7 +102,7 @@ public class Main extends Plugin implements Listener {
 
 	/**
 	 * 发送数据
-	 * 
+	 *
 	 * @param server 服务器
 	 * @param buf    数据
 	 */
@@ -112,7 +113,7 @@ public class Main extends Plugin implements Listener {
 
 	/**
 	 * 发送数据
-	 * 
+	 *
 	 * @param server 服务器
 	 * @param buf    数据
 	 * @return true if the message was sent immediately, false otherwise if queue is
@@ -126,7 +127,7 @@ public class Main extends Plugin implements Listener {
 
 	/**
 	 * 发送数据
-	 * 
+	 *
 	 * @param server 服务器
 	 * @param buf    数据
 	 * @return true if the message was sent immediately, false otherwise if queue is
@@ -165,6 +166,7 @@ public class Main extends Plugin implements Listener {
 		try {
 			config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(configFile);
 		} catch (IOException e) {
+			e.printStackTrace();
 		}
 		if (!configFile.exists() || config == null) {
 			DEBUG = false;
@@ -178,7 +180,7 @@ public class Main extends Plugin implements Listener {
 
 	/**
 	 * 加载配置
-	 * 
+	 *
 	 * @param fileName 配置文件名，例如{@code "config.yml"}
 	 * @return 配置文件
 	 * @author yuanlu
@@ -228,7 +230,43 @@ public class Main extends Plugin implements Listener {
 
 	/**
 	 * 接收插件home消息
-	 * 
+	 *
+	 * @param player 玩家
+	 * @param server 服务器
+	 * @param buf    数据
+	 */
+	private void onPluginBackMessage(ProxiedPlayer player, Server server, byte[] buf) {
+		byte id = Channel.getSubId(buf);
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] Back:" + id);
+		switch (id) {
+		case 0:
+			Channel.Back.p0C_tellTp(buf, back -> {
+				if (back.isServer()) {// 目标是服务器
+					val toServer = getProxy().getServerInfo(back.getTo());
+					if (toServer == null) {
+						ShareData.getLogger().warning("[PACKAGE] Can not found back's toServer: " + back.getTo() + ", from: " + server.getInfo().getName());
+						return;
+					}
+					send(toServer, Channel.Back.s1S_tellTp(back.getPlayer(), back.getLoc(), player.getServer().getInfo().getName()));
+				} else {// 目标是玩家
+					val toPlayer = getProxy().getPlayer(back.getTo());
+					if (toPlayer == null) {
+						ShareData.getLogger().warning("[PACKAGE] Can not found back's toPlayer: " + back.getTo() + ", from: " + server.getInfo().getName());
+						return;
+					}
+					send(toPlayer, Channel.Back.s1S_tellTp(back.getPlayer(), back.getLoc(), player.getServer().getInfo().getName()));
+				}
+			});
+			break;
+		default:
+			ShareData.getLogger().warning("[PACKAGE]Bad Back sub id:" + id + ", from: " + server.getInfo().getName());
+			break;
+		}
+	}
+
+	/**
+	 * 接收插件home消息
+	 *
 	 * @param player 玩家
 	 * @param server 服务器
 	 * @param buf    数据
@@ -273,12 +311,15 @@ public class Main extends Plugin implements Listener {
 				send(player, Channel.Home.s4S_listHomeResp(w1, w2));
 			});
 			break;
+		default:
+			ShareData.getLogger().warning("[PACKAGE]Bad Home sub id:" + id + ", from: " + server.getInfo().getName());
+			break;
 		}
 	}
 
 	/**
 	 * EVENT
-	 * 
+	 *
 	 * @param e 插件消息
 	 * @deprecated BUNGEE
 	 */
@@ -291,9 +332,10 @@ public class Main extends Plugin implements Listener {
 		ProxiedPlayer	player	= (ProxiedPlayer) e.getReceiver();
 		Server			server	= (Server) e.getSender();
 		val				message	= e.getData();
-		val				type	= Channel.byId(ShareData.readInt(message, 0, -1));
+		val				id		= ShareData.readInt(message, 0, -1);
+		val				type	= Channel.byId(id);
 		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] receive: " + player.getName() + "-" + type + ": " + Arrays.toString(message));
-		switch (type) {
+		switch (Objects.requireNonNull(type, "unknown type id: " + id)) {
 		case PERMISSION: {
 			val	permission	= Channel.Permission.parseC(message);
 			val	allow		= player.hasPermission(permission);
@@ -339,6 +381,10 @@ public class Main extends Plugin implements Listener {
 			onPluginHomeMessage(player, server, message);
 			break;
 		}
+		case BACK: {
+			onPluginBackMessage(player, server, message);
+			break;
+		}
 		case TRANS_HOME: {
 			Channel.TransHome.parseS(message, h -> TransHandler.receiveHome(player, h));
 			break;
@@ -357,7 +403,7 @@ public class Main extends Plugin implements Listener {
 
 	/**
 	 * 接收插件tpLoc消息
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param server 服务器
 	 * @param buf    数据
@@ -371,12 +417,16 @@ public class Main extends Plugin implements Listener {
 				loc.setServer(targetServer);
 				Core.tpLocation(player, loc, Channel.TpLoc::s0S_tpLocResp);
 			});
+			break;
+		default:
+			ShareData.getLogger().warning("[PACKAGE]Bad Tp sub id:" + id + ", from: " + server.getInfo().getName());
+			break;
 		}
 	}
 
 	/**
 	 * 接收插件tp消息
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param server 服务器
 	 * @param buf    数据
@@ -416,9 +466,10 @@ public class Main extends Plugin implements Listener {
 				} else {
 					send(t, Channel.Tp.s8S_tpThird(m.getName()));
 					val targetServer = t.getServer().getInfo();
-					if (server.getInfo().getName().equals(targetServer.getName())) {
-						send(player, Channel.Tp.s7S_tpThirdReceive(true, false));
-					} else m.connect(targetServer, (success, e) -> {
+//					if (server.getInfo().getName().equals(targetServer.getName())) {//TODO BUG 未实际执行m.connect
+//						send(player, Channel.Tp.s7S_tpThirdReceive(true, false));
+//					} else
+					m.connect(targetServer, (success, e) -> {
 						if (e != null) e.printStackTrace();
 						send(player, Channel.Tp.s7S_tpThirdReceive(success, e != null));
 					}, Reason.COMMAND);
@@ -451,7 +502,7 @@ public class Main extends Plugin implements Listener {
 
 	/**
 	 * 接收插件warp消息
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param server 服务器
 	 * @param buf    数据
@@ -496,12 +547,15 @@ public class Main extends Plugin implements Listener {
 				send(player, Channel.Warp.s4S_listWarpResp(w1, w2));
 			});
 			break;
+		default:
+			ShareData.getLogger().warning("[PACKAGE]Bad Warp sub id:" + id + ", from: " + server.getInfo().getName());
+			break;
 		}
 	}
 
 	/**
 	 * EVENT
-	 * 
+	 *
 	 * @param e 服务器连接
 	 * @deprecated BUNGEE
 	 */
@@ -515,7 +569,7 @@ public class Main extends Plugin implements Listener {
 
 	/**
 	 * EVENT
-	 * 
+	 *
 	 * @param e 服务器连接
 	 * @deprecated BUNGEE
 	 */
@@ -526,7 +580,7 @@ public class Main extends Plugin implements Listener {
 	}
 
 	/**
-	 * 
+	 *
 	 */
 	private void startTimeAmendLoop() {
 		val timeAmend = ConfigManager.getConfig().getLong("timeAmend", 1000 * 60 * 5);

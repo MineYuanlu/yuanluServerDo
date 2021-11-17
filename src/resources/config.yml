@@ -15,6 +15,9 @@ setting:
   teleport-cooldown: 100
   request-overtime: 120
   use-safeLocation: false
+  #在其他(插件)加载完毕后再注册命令, 此项适用于/tp等命令被ess,CMI等插件覆盖掉时启用
+  #测试项, 可能会存在问题
+  register-after-all: false
 #所有的命令, 删除某个节点将关闭对应的命令
 cmd:
  reload:
@@ -110,6 +113,12 @@ cmd:
   permission: 'yuanlu.serverDo.ysd-trans'
   description: 'ysd-trans cmd'
   usageMessage: '/ysd-trans <plugin> <func>'
+ back:
+  names:
+   - 'back'
+  permission: 'yuanlu.serverDo.back'
+  description: 'back cmd'
+  usageMessage: '/back'
 message:
   LanguageFileIsLost: '&c&l[语言文件缺失]节点:%node%'
   not-player: '&c您不是玩家!'

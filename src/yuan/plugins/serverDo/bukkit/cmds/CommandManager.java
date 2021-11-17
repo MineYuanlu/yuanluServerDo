@@ -73,7 +73,8 @@ public final class CommandManager implements MESSAGE {
 	public static void init(ConfigurationSection conf) {
 		if (conf == null) return;
 		// @formatter:off
-		val str="CmdDelHome.java\r\n"
+		val str="CmdBack.java\r\n"
+				+ "CmdDelHome.java\r\n"
 				+ "CmdDelWarp.java\r\n"
 				+ "CmdHome.java\r\n"
 				+ "CmdReload.java\r\n"
