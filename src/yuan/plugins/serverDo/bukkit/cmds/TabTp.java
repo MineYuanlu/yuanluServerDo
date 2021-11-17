@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
@@ -15,7 +15,7 @@ import yuan.plugins.serverDo.bukkit.Core.Permissions;
 
 /**
  * tab
- * 
+ *
  * @author yuanlu
  *
  */

@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package yuan.plugins.serverDo.bukkit.third;
 
@@ -35,7 +35,7 @@ import yuan.plugins.serverDo.bukkit.Main;
 
 /**
  * 第三方数据
- * 
+ *
  * @author yuanlu
  *
  */
@@ -43,7 +43,7 @@ import yuan.plugins.serverDo.bukkit.Main;
 public abstract class Third {
 	/**
 	 * 转换方法
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -56,7 +56,7 @@ public abstract class Third {
 
 	/**
 	 * 所有的转换方法
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -76,7 +76,7 @@ public abstract class Third {
 
 		/**
 		 * 通过名字获取
-		 * 
+		 *
 		 * @param name 名字
 		 * @return 方法
 		 */
@@ -90,7 +90,7 @@ public abstract class Third {
 
 		/**
 		 * 执行此项操作
-		 * 
+		 *
 		 * @param t       处理器
 		 * @param p       玩家
 		 * @param process 过程回调
@@ -133,7 +133,7 @@ public abstract class Third {
 
 	/**
 	 * 获取某个转换器可以完成的功能
-	 * 
+	 *
 	 * @param c 转换器的类
 	 * @return 可以完成的功能
 	 */
@@ -152,7 +152,7 @@ public abstract class Third {
 
 	/**
 	 * 获取处理器
-	 * 
+	 *
 	 * @param third 名称
 	 * @return 处理器/null
 	 */
@@ -176,7 +176,7 @@ public abstract class Third {
 
 	/**
 	 * 构造
-	 * 
+	 *
 	 * @param targetPluginName 目标插件名
 	 * @param name             别名
 	 */
@@ -188,7 +188,7 @@ public abstract class Third {
 
 	/**
 	 * 检测此转换器是否能够完成某个功能
-	 * 
+	 *
 	 * @param m 功能
 	 * @return 是否能完成
 	 */
@@ -198,7 +198,7 @@ public abstract class Third {
 
 	/**
 	 * 获取所有玩家的Home
-	 * 
+	 *
 	 * @return 玩家UUID-家名-家坐标
 	 */
 	@TransFunc(TransMethods.ALL_HOME)
@@ -209,7 +209,7 @@ public abstract class Third {
 
 	/**
 	 * @see #getAllHomes()
-	 * 
+	 *
 	 * @param p       玩家
 	 * @param process 过程
 	 */
@@ -236,7 +236,7 @@ public abstract class Third {
 
 	/**
 	 * 获取所有的Warp
-	 * 
+	 *
 	 * @return 地标名-地标坐标
 	 */
 	@TransFunc(TransMethods.ALL_WARP)
@@ -247,7 +247,7 @@ public abstract class Third {
 
 	/**
 	 * @see #getAllWarps()
-	 * 
+	 *
 	 * @param p       玩家
 	 * @param process 过程
 	 */

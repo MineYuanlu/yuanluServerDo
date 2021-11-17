@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package yuan.plugins.serverDo.bungee;
 
@@ -15,7 +15,7 @@ import yuan.plugins.serverDo.ShareData.TabType;
 
 /**
  * tab处理器
- * 
+ *
  * @author yuanlu
  *
  */
@@ -54,7 +54,7 @@ public final class TabHandler {
 
 	/**
 	 * EVENT
-	 * 
+	 *
 	 * @param e 补全响应
 	 */
 	public static void TabCompleteResponse(TabCompleteResponseEvent e) {

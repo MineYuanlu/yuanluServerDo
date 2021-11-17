@@ -9,7 +9,7 @@ import lombok.val;
 
 /**
  * 最近最少使用
- * 
+ *
  * @author sun.misc
  *
  * @param <K> K
@@ -19,7 +19,7 @@ import lombok.val;
 public abstract class LRUCache<K, V> {
 	/**
 	 * 节点
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 * @param <K> 键
@@ -42,7 +42,7 @@ public abstract class LRUCache<K, V> {
 
 	/**
 	 * 将元素移到最前端
-	 * 
+	 *
 	 * @param objs  数据
 	 * @param index 要移动的数据
 	 */
@@ -67,7 +67,7 @@ public abstract class LRUCache<K, V> {
 
 	/**
 	 * 检出元素, 不会对缓存进行任何修改
-	 * 
+	 *
 	 * @param k 键
 	 * @return 值, 当不存在时返回null
 	 */
@@ -85,7 +85,7 @@ public abstract class LRUCache<K, V> {
 
 	/**
 	 * 清空缓存
-	 * 
+	 *
 	 * @return 是否有元素被清除
 	 */
 	public synchronized final boolean clearCache() {
@@ -103,7 +103,7 @@ public abstract class LRUCache<K, V> {
 	/**
 	 * 清除处理<br>
 	 * 当一个缓存被清除时触发
-	 * 
+	 *
 	 * @param k 键
 	 * @param v 值
 	 */
@@ -113,7 +113,7 @@ public abstract class LRUCache<K, V> {
 
 	/**
 	 * 创建对象
-	 * 
+	 *
 	 * @param k 键
 	 * @return 值
 	 */
@@ -121,10 +121,10 @@ public abstract class LRUCache<K, V> {
 
 	/**
 	 * 获取元素
-	 * 
+	 *
 	 * @param k 键
 	 * @return 值
-	 * 
+	 *
 	 */
 	public synchronized final V get(K k) {
 		CACHE_USE.addAndGet(1);
@@ -151,7 +151,7 @@ public abstract class LRUCache<K, V> {
 
 	/**
 	 * 重新调整缓冲区大小
-	 * 
+	 *
 	 * @param size 大小
 	 */
 	public synchronized final void resize(int size) {

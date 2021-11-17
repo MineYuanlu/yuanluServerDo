@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package yuan.plugins.serverDo.bungee;
 
@@ -18,7 +18,7 @@ import yuan.plugins.serverDo.ShareLocation;
 
 /**
  * 转换处理器
- * 
+ *
  * @author yuanlu
  *
  */
@@ -37,7 +37,7 @@ public final class TransHandler {
 
 	/**
 	 * 接收家数据
-	 * 
+	 *
 	 * @param player 通道玩家
 	 * @param home   家信息
 	 */
@@ -58,7 +58,7 @@ public final class TransHandler {
 
 	/**
 	 * 接收地标数据
-	 * 
+	 *
 	 * @param player 通道玩家
 	 * @param warp   地标信息
 	 */
@@ -77,7 +77,7 @@ public final class TransHandler {
 
 	/**
 	 * 设置坐标所在的服务器
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param loc    坐标
 	 * @return 传入的坐标

@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package yuan.plugins.serverDo.bukkit.third;
 
@@ -28,7 +28,7 @@ public class CMI extends Third {
 
 	/**
 	 * 通过反射获取所有玩家的Home
-	 * 
+	 *
 	 * @return 玩家UUID-家名-家坐标
 	 */
 	@Override

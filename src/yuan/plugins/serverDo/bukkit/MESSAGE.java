@@ -23,7 +23,7 @@ import yuan.plugins.serverDo.Tool;
 
 /**
  * 语言文件
- * 
+ *
  * @author yuanlu
  *
  */
@@ -79,7 +79,7 @@ public interface MESSAGE {
 
 	/**
 	 * 消息
-	 * 
+	 *
 	 * @see StrMsg
 	 * @see JsonMsg
 	 */
@@ -122,8 +122,7 @@ public interface MESSAGE {
 		@Override
 		public boolean equals(Object obj) {
 			if (this == obj) return true;
-			if (obj == null) return false;
-			if (getClass() != obj.getClass()) return false;
+			if ((obj == null) || (getClass() != obj.getClass())) return false;
 			Msg other = (Msg) obj;
 			if (key == null) {
 				if (other.key != null) return false;
@@ -152,7 +151,7 @@ public interface MESSAGE {
 
 		/**
 		 * 发送一条消息
-		 * 
+		 *
 		 * @param sender 发送的对象
 		 * @param msg    信息
 		 * @param args   参数
@@ -163,7 +162,7 @@ public interface MESSAGE {
 
 		/**
 		 * 发送一条消息
-		 * 
+		 *
 		 * @param sender 发送的对象
 		 * @param msg    信息
 		 * @param args   参数
@@ -184,7 +183,7 @@ public interface MESSAGE {
 
 		/**
 		 * 发送一条消息
-		 * 
+		 *
 		 * @param sender 发送的对象
 		 * @param msg    信息
 		 * @param args   参数
@@ -193,7 +192,7 @@ public interface MESSAGE {
 
 		/**
 		 * 发送一条消息
-		 * 
+		 *
 		 * @param sender 发送的对象
 		 * @param msg    信息
 		 * @param args   参数

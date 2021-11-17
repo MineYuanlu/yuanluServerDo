@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
@@ -18,7 +18,7 @@ import yuan.plugins.serverDo.bukkit.Main;
 
 /**
  * home命令
- * 
+ *
  * @author yuanlu
  *
  */

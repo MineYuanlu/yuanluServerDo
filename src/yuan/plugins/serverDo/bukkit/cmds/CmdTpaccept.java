@@ -31,14 +31,14 @@ import yuan.plugins.serverDo.bukkit.Main;
 
 /**
  * tpaccept命令
- * 
+ *
  * @author yuanlu
  *
  */
 public final class CmdTpaccept extends Cmd {
 	/**
 	 * 传送请求等待信息
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -82,7 +82,7 @@ public final class CmdTpaccept extends Cmd {
 
 	/**
 	 * 增加传送请求
-	 * 
+	 *
 	 * @param player  指向玩家
 	 * @param sender  发起者
 	 * @param display 发起者展示名
@@ -98,7 +98,7 @@ public final class CmdTpaccept extends Cmd {
 
 	/**
 	 * 取消传送请求
-	 * 
+	 *
 	 * @param player 指向玩家
 	 * @param sender 发起者
 	 * @return 是否成功取消
@@ -121,7 +121,7 @@ public final class CmdTpaccept extends Cmd {
 
 	/**
 	 * 获取玩家请求列表
-	 * 
+	 *
 	 * @param sender 目标
 	 * @return 对此目标请求的玩家列表
 	 */
@@ -136,7 +136,7 @@ public final class CmdTpaccept extends Cmd {
 
 	/**
 	 * 处理请求
-	 * 
+	 *
 	 * @param player 指向玩家
 	 * @param who    请求发起者
 	 * @param accept 是否是接受请求

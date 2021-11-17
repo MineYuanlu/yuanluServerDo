@@ -29,14 +29,14 @@ import yuan.plugins.serverDo.bukkit.Main;
 
 /**
  * tpa命令
- * 
+ *
  * @author yuanlu
  *
  */
 public final class CmdTpa extends TabTp {
 	/**
 	 * 传送请求等待信息
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -58,7 +58,7 @@ public final class CmdTpa extends TabTp {
 
 	/**
 	 * 增加传送请求(本地)
-	 * 
+	 *
 	 * @param player  发起玩家
 	 * @param target  指向者
 	 * @param display 指向者展示名
@@ -69,7 +69,7 @@ public final class CmdTpa extends TabTp {
 
 	/**
 	 * 获取玩家请求列表
-	 * 
+	 *
 	 * @param sender 目标
 	 * @return 对此目标请求的玩家列表
 	 */
@@ -84,7 +84,7 @@ public final class CmdTpa extends TabTp {
 
 	/**
 	 * 移除请求
-	 * 
+	 *
 	 * @param player         发起玩家
 	 * @param target         指向者
 	 * @param nameAndDisplay 回调函数

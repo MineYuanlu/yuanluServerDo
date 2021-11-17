@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
@@ -15,11 +15,11 @@ import yuan.plugins.serverDo.bukkit.third.Third.TransMethods;
 
 /**
  * trans命令
- * 
+ *
  * @author yuanlu
  *
  */
-public class CmdTrans extends Cmd {
+public final class CmdTrans extends Cmd {
 
 	/** @param name 命令名 */
 	CmdTrans(String name) {
@@ -39,7 +39,8 @@ public class CmdTrans extends Cmd {
 		val tm = TransMethods.getByName(args[1]);
 		if (!third.canDo(tm)) return msg("cannot", sender, third.getName(), tm);
 
-		val title = msg("title", 1).getMsg(), subtitle = msg("sub-title", 1).getMsg();
+		val	title		= msg("title", 1).getMsg();
+		val	subtitle	= msg("sub-title", 1).getMsg();
 		tm.handle(third, player, (n, a) -> {
 			player.sendTitle(String.format(title, tm.getName()), String.format(subtitle, n, Math.abs(a)), 0, 100, 0);
 			if (a <= 0) msg("success", sender, n, -a);

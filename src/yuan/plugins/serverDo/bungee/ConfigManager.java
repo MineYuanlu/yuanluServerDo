@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package yuan.plugins.serverDo.bungee;
 
@@ -44,7 +44,7 @@ import yuan.plugins.serverDo.WaitMaintain;
 
 /**
  * 配置管理器
- * 
+ *
  * @author yuanlu
  *
  */
@@ -52,7 +52,7 @@ import yuan.plugins.serverDo.WaitMaintain;
 public final class ConfigManager {
 	/**
 	 * 配置文件
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -157,8 +157,8 @@ public final class ConfigManager {
 
 		/**
 		 * 实际加载
-		 * 
-		 * 
+		 *
+		 *
 		 * @throws IOException IOE
 		 */
 		protected abstract void load0() throws IOException;
@@ -175,8 +175,8 @@ public final class ConfigManager {
 
 		/**
 		 * 实际保存
-		 * 
-		 * 
+		 *
+		 *
 		 * @throws IOException IOE
 		 */
 		protected abstract void save0() throws IOException;
@@ -184,7 +184,7 @@ public final class ConfigManager {
 
 	/**
 	 * Home
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -211,7 +211,7 @@ public final class ConfigManager {
 
 		/**
 		 * load
-		 * 
+		 *
 		 * @param uid UUID
 		 * @return data
 		 * @throws IOException IOE
@@ -242,7 +242,7 @@ public final class ConfigManager {
 
 		/**
 		 * save
-		 * 
+		 *
 		 * @param uid uuid
 		 * @param map data
 		 * @throws IOException IOE
@@ -271,7 +271,7 @@ public final class ConfigManager {
 	 * save: 被动式保存, 由LRU调用, 通过 {@link #save(UUID, ThrowableRunnable) 框架函数} 调用实际保存函数,
 	 * 保存数据<br>
 	 * save: 主动式保存, 通过 {@link #save(UUID)} 触发, 由具体配置指定LRU, 调用其保存函数
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -314,7 +314,7 @@ public final class ConfigManager {
 
 		/**
 		 * 加载
-		 * 
+		 *
 		 * @param <T> T
 		 * @param <R> R
 		 * @param t   输入数据
@@ -336,14 +336,14 @@ public final class ConfigManager {
 		/**
 		 * 强制保存<br>
 		 * 由配置文件实现
-		 * 
+		 *
 		 * @param u UUID
 		 */
 		protected abstract void save(UUID u);
 
 		/**
 		 * 保存
-		 * 
+		 *
 		 * @param u UUID
 		 * @param r 运行体
 		 */
@@ -386,7 +386,7 @@ public final class ConfigManager {
 
 	/**
 	 * 检测是否启用服务器
-	 * 
+	 *
 	 * @param server 服务器
 	 * @return 此服务器是否启用本插件
 	 */
@@ -396,7 +396,7 @@ public final class ConfigManager {
 
 	/**
 	 * 检测是否可以传送
-	 * 
+	 *
 	 * @param s1 服务器1
 	 * @param s2 服务器2
 	 * @return 是否可以传送
@@ -429,7 +429,7 @@ public final class ConfigManager {
 
 	/**
 	 * 初始化
-	 * 
+	 *
 	 * @param config config
 	 */
 	public static void init(Configuration config) {
@@ -447,7 +447,7 @@ public final class ConfigManager {
 
 	/**
 	 * 加载组
-	 * 
+	 *
 	 * @param config 配置文件
 	 */
 	private static void loadGroup(Configuration config) {
@@ -474,7 +474,7 @@ public final class ConfigManager {
 	/**
 	 * 保存配置<br>
 	 * 将会延时保存
-	 * 
+	 *
 	 * @param f 配置类型
 	 */
 	public static void saveConf(ConfFile f) {
@@ -484,7 +484,7 @@ public final class ConfigManager {
 	/**
 	 * 保存配置<br>
 	 * 将会延时保存
-	 * 
+	 *
 	 * @param f      配置类型
 	 * @param player 对应玩家
 	 * @see #saveConf(PlayerConfFile, UUID)
@@ -496,7 +496,7 @@ public final class ConfigManager {
 	/**
 	 * 保存配置<br>
 	 * 将会延时保存
-	 * 
+	 *
 	 * @param f 配置类型
 	 * @param u 对应玩家UUID
 	 */
@@ -507,7 +507,7 @@ public final class ConfigManager {
 
 	/**
 	 * 发送BC信息给子服务器
-	 * 
+	 *
 	 * @param server 服务器
 	 */
 	public static void sendBungeeInfoToServer(Server server) {

@@ -28,14 +28,14 @@ import lombok.val;
 /**
  * 工具类<br>
  * A类
- * 
+ *
  * @author yuanlu
  *
  */
 public final class Tool {
 	/**
 	 * 结果映射
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 * @param <K> 键
@@ -82,7 +82,7 @@ public final class Tool {
 
 	/**
 	 * 可以抛出任何错误的运行接口
-	 * 
+	 *
 	 * @author yuanlu
 	 * @param <E> 错误类型
 	 * @param <T> 输入类型
@@ -103,7 +103,7 @@ public final class Tool {
 
 	/**
 	 * 可以抛出任何错误的运行接口
-	 * 
+	 *
 	 * @author yuanlu
 	 * @param <T> 错误类型
 	 *
@@ -112,7 +112,7 @@ public final class Tool {
 	public interface ThrowableRunnable<T extends Throwable> {
 		/**
 		 * 运行
-		 * 
+		 *
 		 * @throws T 错误
 		 */
 		void run() throws T;
@@ -130,7 +130,7 @@ public final class Tool {
 
 	/**
 	 * 反序列化(list)
-	 * 
+	 *
 	 * @param <E>       元素类型
 	 * @param str       序列化字符串
 	 * @param split     分隔符
@@ -151,7 +151,7 @@ public final class Tool {
 	/**
 	 * 比较两个对象是否一致<br>
 	 * 特别的, 当对象均为Number时, 将会比较器long与double值, 其中double值误差范围为{@code 0x1.0p-1021}
-	 * 
+	 *
 	 * @param a 对象
 	 * @param b 对象
 	 * @return 是否一致
@@ -168,7 +168,7 @@ public final class Tool {
 	/**
 	 * 迭代<br>
 	 * 对映射图进行深度迭代
-	 * 
+	 *
 	 * @param <K>  键
 	 * @param <V>  值
 	 * @param <VS> 值集合
@@ -183,7 +183,7 @@ public final class Tool {
 
 	/**
 	 * 获取匹配的列表
-	 * 
+	 *
 	 * @param str 给定字符串
 	 * @param c   内容
 	 * @return 匹配的列表
@@ -197,7 +197,7 @@ public final class Tool {
 
 	/**
 	 * 获取匹配的列表
-	 * 
+	 *
 	 * @param <T>   内容类型
 	 * @param str   给定字符串
 	 * @param c     内容
@@ -216,7 +216,7 @@ public final class Tool {
 
 	/**
 	 * 驼峰转换
-	 * 
+	 *
 	 * @param str    原始字符串
 	 * @param joiner 单词间插值
 	 * @return 转换结果
@@ -236,7 +236,7 @@ public final class Tool {
 
 	/**
 	 * 逆向操作驼峰转换
-	 * 
+	 *
 	 * @param str    原始字符串
 	 * @param joiner 单词间插值
 	 * @return 转换结果
@@ -263,7 +263,7 @@ public final class Tool {
 
 	/**
 	 * 判断字符串是否有为true的意图
-	 * 
+	 *
 	 * @param s 字符串
 	 * @return 是否有为true的意图
 	 */
@@ -277,7 +277,7 @@ public final class Tool {
 
 	/**
 	 * 组合集合
-	 * 
+	 *
 	 * @param c         集合
 	 * @param frame     框架格式(elements,size)
 	 * @param element   元素格式(index,data)
@@ -294,7 +294,7 @@ public final class Tool {
 	/**
 	 * 加载某类<br>
 	 * 由ClassLoader加载
-	 * 
+	 *
 	 * @param c 类
 	 */
 	public static void load(Class<?> c) {
@@ -303,7 +303,7 @@ public final class Tool {
 
 	/**
 	 * 不做任何事， 仅用于加载类
-	 * 
+	 *
 	 * @param o 任何参数
 	 */
 	public static void load(Object o) {
@@ -312,7 +312,7 @@ public final class Tool {
 
 	/**
 	 * 加载某类
-	 * 
+	 *
 	 * @param str 类名
 	 */
 	public static void load(String str) {
@@ -326,7 +326,7 @@ public final class Tool {
 
 	/**
 	 * 将Map{@code <K,V>}转为Collection{@code <R>}
-	 * 
+	 *
 	 * @param <K>    map键
 	 * @param <V>    map值
 	 * @param <R>    列表项
@@ -343,7 +343,7 @@ public final class Tool {
 
 	/**
 	 * 将Map{@code <K,Collection<V>>}转为Collection{@code <R>}
-	 * 
+	 *
 	 * @param <K>    map键类型
 	 * @param <V>    map值类型
 	 * @param <R>    列表内容类型
@@ -365,7 +365,7 @@ public final class Tool {
 	 * 解析字符串含义<br>
 	 * 使用指定字符包围的字符串将作为变量名解析为对应数据<br>
 	 * 例子:
-	 * 
+	 *
 	 * <pre>
 	 * msg: 你好{@code <player>}, 我是{@code <who>}, 现在已经{@code <time>}点了！
 	 * start: {@code '<'}
@@ -375,10 +375,10 @@ public final class Tool {
 	 *     who: Administrators
 	 *     time: 7
 	 * }
-	 * 
+	 *
 	 * return: 你好yuanlu, 我是Administrators, 现在已经7点了！
 	 * </pre>
-	 * 
+	 *
 	 * @param msg   原消息
 	 * @param start 变量开始字符
 	 * @param end   变量结束字符
@@ -431,7 +431,7 @@ public final class Tool {
 
 	/**
 	 * 随机字符串
-	 * 
+	 *
 	 * @param len 长度
 	 * @return 字符串
 	 */
@@ -443,8 +443,8 @@ public final class Tool {
 
 	/**
 	 * 模糊搜索
-	 * 
-	 * 
+	 *
+	 *
 	 * @param text 给定字符串
 	 * @param itr  内容
 	 * @return 搜索结果
@@ -471,7 +471,7 @@ public final class Tool {
 
 	/**
 	 * 序列化
-	 * 
+	 *
 	 * @param <E>       序列化集合元素类型
 	 * @param c         序列化集合
 	 * @param split     元素分隔符
@@ -491,7 +491,7 @@ public final class Tool {
 
 	/**
 	 * 将Set转换为Map
-	 * 
+	 *
 	 * @param <E> Set元素类型
 	 * @param <M> Map类型
 	 * @param set 元素集合
@@ -505,7 +505,7 @@ public final class Tool {
 
 	/**
 	 * 翻译列表
-	 * 
+	 *
 	 * @param <T>  要翻译的类型
 	 * @param <R>  结果类型
 	 * @param list 要翻译的列表
@@ -525,7 +525,7 @@ public final class Tool {
 
 	/**
 	 * 翻译映射图
-	 * 
+	 *
 	 * @param <TK>   要翻译的类型键
 	 * @param <TV>   要翻译的类型值
 	 * @param <RK>   结果类型键
@@ -551,7 +551,7 @@ public final class Tool {
 
 	/**
 	 * 翻译集合
-	 * 
+	 *
 	 * @param <T>  要翻译的类型
 	 * @param <R>  结果类型
 	 * @param list 要翻译的列表
@@ -571,7 +571,7 @@ public final class Tool {
 
 	/**
 	 * 翻译为列表
-	 * 
+	 *
 	 * @param <T>  要翻译的类型
 	 * @param <R>  结果类型
 	 * @param list 要翻译的集合
@@ -591,7 +591,7 @@ public final class Tool {
 
 	/**
 	 * 翻译为集合
-	 * 
+	 *
 	 * @param <T>  要翻译的类型
 	 * @param <R>  结果类型
 	 * @param list 要翻译的集合
@@ -611,10 +611,10 @@ public final class Tool {
 
 	/**
 	 * 尝试运行
-	 * 
+	 *
 	 * @param needRun 是否需要运行<br>
 	 *                若为false则什么都不做
-	 * 
+	 *
 	 * @param tr      可抛出错误的代码体
 	 */
 	public static void tryRun(boolean needRun, ThrowableRunnable<?> tr) {
@@ -628,7 +628,7 @@ public final class Tool {
 
 	/**
 	 * 尝试运行
-	 * 
+	 *
 	 * @param tr 可抛出错误的代码体
 	 */
 	public static void tryRun(ThrowableRunnable<?> tr) {
@@ -642,7 +642,7 @@ public final class Tool {
 
 	/**
 	 * 尝试运行
-	 * 
+	 *
 	 * @param r 代码体
 	 */
 	public static void tryRunNormal(Runnable r) {

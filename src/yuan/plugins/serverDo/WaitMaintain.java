@@ -19,7 +19,7 @@ import lombok.val;
 
 /**
  * 等待任务的维护清理
- * 
+ *
  * @author yuanlu
  *
  */
@@ -27,7 +27,7 @@ import lombok.val;
 public final class WaitMaintain {
 	/**
 	 * 延时监听元素
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -58,7 +58,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 延时监听元素
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -89,7 +89,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 延时监听元素
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -124,7 +124,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 延时监听元素
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -166,7 +166,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 延时监听元素
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -205,7 +205,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 延时监听元素
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -262,7 +262,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 将键放入set,并设置最长超时时间, 超时后将被清理
-	 * 
+	 *
 	 * @param <K>     数据类型
 	 * @param set     图
 	 * @param k       键
@@ -275,7 +275,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 将键放入set,并设置最长超时时间, 超时后将被清理
-	 * 
+	 *
 	 * @param <K>           数据类型
 	 * @param set           图
 	 * @param k             键
@@ -291,7 +291,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 将一对多键值对放入map,并设置最长超时时间, 超时后将被清理
-	 * 
+	 *
 	 * @param <K>           数据类型
 	 * @param <V>           数据类型
 	 * @param <L>           多值列表类型
@@ -313,7 +313,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 监听数值, 并设置最长超时时间, 若超时后数值未发生改变则触发清理
-	 * 
+	 *
 	 * @param <K>           数据类型
 	 * @param num           数值
 	 * @param maxTime       等待时长
@@ -325,7 +325,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 将键值对放入map,并设置最长超时时间, 超时后将被清理
-	 * 
+	 *
 	 * @param <K>     数据类型
 	 * @param <V>     数据类型
 	 * @param map     图
@@ -340,7 +340,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 将键值对放入map,并设置最长超时时间, 超时后将被清理
-	 * 
+	 *
 	 * @param <K>           数据类型
 	 * @param <V>           数据类型
 	 * @param map           图
@@ -358,7 +358,7 @@ public final class WaitMaintain {
 
 	/**
 	 * 将一对多键值对放入map,并设置最长超时时间, 超时后将被清理
-	 * 
+	 *
 	 * @param <T>           数据类型
 	 * @param <K>           数据类型
 	 * @param <V>           数据类型

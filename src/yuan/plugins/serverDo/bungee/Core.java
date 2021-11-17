@@ -29,7 +29,7 @@ import yuan.plugins.serverDo.bungee.ConfigManager.PlayerConfFile;
 
 /**
  * BC端核心
- * 
+ *
  * @author yuanlu
  *
  */
@@ -50,7 +50,7 @@ public class Core {
 
 	/**
 	 * 自动隐身处理
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param server 玩家所在服务器
 	 */
@@ -64,7 +64,7 @@ public class Core {
 
 	/**
 	 * 检查TP
-	 * 
+	 *
 	 * @param isSenior 是否是高级传送
 	 * @param myServer 本服务器
 	 * @param target   目标玩家
@@ -75,28 +75,26 @@ public class Core {
 		if (!ConfigManager.allowServer(targetServer)) return false;
 		if (isSenior) return true;
 
-		if (!ConfigManager.canTp(myServer, targetServer)) return false;
-		if (hasVanish(target)) return false;
+		if (!ConfigManager.canTp(myServer, targetServer) || hasVanish(target)) return false;
 
 		return true;
 	}
 
 	/**
 	 * 检查服务器间是否可以传送
-	 * 
+	 *
 	 * @param myServer     本服务器
 	 * @param targetServer 目标服务器
 	 * @return 是否可以传送
 	 */
 	public static boolean canTp(String myServer, String targetServer) {
-		if (!ConfigManager.allowServer(targetServer)) return false;
-		if (!ConfigManager.canTp(myServer, targetServer)) return false;
+		if (!ConfigManager.allowServer(targetServer) || !ConfigManager.canTp(myServer, targetServer)) return false;
 		return true;
 	}
 
 	/**
 	 * 获取地标
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param name   名称
 	 * @return 坐标
@@ -107,7 +105,7 @@ public class Core {
 
 	/**
 	 * 获取家集合
-	 * 
+	 *
 	 * @param player 玩家
 	 * @return homes
 	 */
@@ -117,7 +115,7 @@ public class Core {
 
 	/**
 	 * 获取本服务器比子服务器快多少毫秒
-	 * 
+	 *
 	 * @param server 服务器
 	 * @return 时间戳修正
 	 */
@@ -129,7 +127,7 @@ public class Core {
 
 	/**
 	 * 获取地标
-	 * 
+	 *
 	 * @param name 名称
 	 * @return 坐标
 	 */
@@ -139,7 +137,7 @@ public class Core {
 
 	/**
 	 * 是否拥有隐身
-	 * 
+	 *
 	 * @param player 玩家
 	 * @return 是否拥有隐身
 	 */
@@ -149,7 +147,7 @@ public class Core {
 
 	/**
 	 * 搜索家
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param name   搜索名
 	 * @return 匹配名
@@ -160,7 +158,7 @@ public class Core {
 
 	/**
 	 * 搜索地标
-	 * 
+	 *
 	 * @param name 搜索名
 	 * @return 匹配名
 	 */
@@ -170,7 +168,7 @@ public class Core {
 
 	/**
 	 * 设置/删除家
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param name   家名称
 	 * @param loc    家坐标
@@ -195,7 +193,7 @@ public class Core {
 	/**
 	 * 设置家<br>
 	 * 用于转换时上传
-	 * 
+	 *
 	 * @param player 玩家
 	 * @param name   家名称
 	 * @param loc    家坐标
@@ -212,7 +210,7 @@ public class Core {
 
 	/**
 	 * 设置/删除地标
-	 * 
+	 *
 	 * @param name 地标名称
 	 * @param loc  地标坐标
 	 * @return true: 成功删除/覆盖<br>
@@ -241,7 +239,7 @@ public class Core {
 
 	/**
 	 * 切换隐身
-	 * 
+	 *
 	 * @param player   玩家
 	 * @param isAlways 是否自动隐身
 	 * @return 切换后状态
@@ -257,7 +255,7 @@ public class Core {
 
 	/**
 	 * 时间修正回调
-	 * 
+	 *
 	 * @param info   子服务器
 	 * @param client 子服务器时间
 	 */
@@ -277,7 +275,7 @@ public class Core {
 
 	/**
 	 * 传送坐标
-	 * 
+	 *
 	 * @param player   玩家
 	 * @param loc      目标点
 	 * @param callback 传送回调数据生成

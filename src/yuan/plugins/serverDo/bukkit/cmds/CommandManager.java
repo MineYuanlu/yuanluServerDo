@@ -22,7 +22,7 @@ import yuan.plugins.serverDo.bukkit.Main;
 
 /**
  * 命令管理器
- * 
+ *
  * @author yuanlu
  *
  */
@@ -33,7 +33,7 @@ public final class CommandManager implements MESSAGE {
 	static final class CmdInfo {
 		/**
 		 * 获取命令信息
-		 * 
+		 *
 		 * @param conf 配置节点
 		 * @return 命令信息
 		 */
@@ -66,7 +66,7 @@ public final class CommandManager implements MESSAGE {
 
 	/**
 	 * 初始化所有命令
-	 * 
+	 *
 	 * @param conf 配置文件
 	 */
 	@SuppressWarnings("unchecked")
@@ -90,8 +90,8 @@ public final class CommandManager implements MESSAGE {
 				+ "CmdVanish.java\r\n"
 				+ "CmdWarp.java";
 		// @formatter:on
-		val		names	= str.replace(".java", "").split("\r\n");
-		val package_ = Cmd.class.getPackage().getName() + ".";
+		val	names		= str.replace(".java", "").split("\r\n");
+		val	package_	= Cmd.class.getPackage().getName() + ".";
 		for (val name : names) {
 			try {
 				val c = Class.forName(package_ + name);
@@ -110,7 +110,7 @@ public final class CommandManager implements MESSAGE {
 
 	/**
 	 * 初始化一条命令
-	 * 
+	 *
 	 * @param conf 配置文件
 	 * @param c    目标类
 	 */
@@ -138,9 +138,9 @@ public final class CommandManager implements MESSAGE {
 	/**
 	 * 注册命令<br>
 	 * 将命令注册到Bukkit上
-	 * 
+	 *
 	 * @param <T> cmd
-	 * 
+	 *
 	 * @param cmd 命令
 	 * @return input
 	 */

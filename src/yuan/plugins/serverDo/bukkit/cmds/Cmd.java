@@ -27,18 +27,30 @@ import yuan.plugins.serverDo.bukkit.cmds.CommandManager.CmdInfo;
 
 /**
  * Cmd
- * 
+ *
  * @author yuanlu
  *
  */
 public abstract class Cmd extends Command implements MESSAGE {
 	/** 所有的信息 */
-	private static final HashMap<String, Msg> MSGS = new HashMap<>();
+	private static final HashMap<String, Msg>							MSGS			= new HashMap<>();
+
+	/** 执行计数 */
+	public static final HashMap<Class<? extends Cmd>, AtomicInteger>	EXECUTE_COUNT	= new HashMap<>();
+
+	/**
+	 * bstats统计: 执行命令
+	 *
+	 * @param cmd 命令
+	 */
+	protected static void bstatsExecute(Cmd cmd) {
+		EXECUTE_COUNT.computeIfAbsent(cmd.getClass(), x -> new AtomicInteger()).getAndIncrement();
+	}
 
 	/**
 	 * 从list中挑选合适的文字返回<br>
 	 * 不会修改原列表
-	 * 
+	 *
 	 * @param prefix   前缀
 	 * @param nullList 当前缀内容为空时返回的列表(做默认值用)
 	 * @param dataList 数据列表
@@ -60,7 +72,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	/**
 	 * 获取cmd名称
-	 * 
+	 *
 	 * @param cmd 命令
 	 * @return 命令名称
 	 */
@@ -73,7 +85,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	/**
 	 * 返回此命令的某个消息
-	 * 
+	 *
 	 * @param cmd  命令
 	 * @param type 消息类型
 	 * @return 消息
@@ -91,7 +103,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	/**
 	 * 构造一个命令
-	 * 
+	 *
 	 * @param name 名称
 	 */
 	Cmd(String name) {
@@ -106,7 +118,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	/**
 	 * 检查CommandSender状态
-	 * 
+	 *
 	 * @param sender CommandSender
 	 * @param next   回调
 	 */
@@ -126,20 +138,8 @@ public abstract class Cmd extends Command implements MESSAGE {
 	}
 
 	/**
-	 * bstats统计: 执行命令
-	 * 
-	 * @param cmd 命令
-	 */
-	protected static void bstatsExecute(Cmd cmd) {
-		EXECUTE_COUNT.computeIfAbsent(cmd.getClass(), x -> new AtomicInteger()).getAndIncrement();
-	}
-
-	/** 执行计数 */
-	public static final HashMap<Class<? extends Cmd>, AtomicInteger> EXECUTE_COUNT = new HashMap<>();
-
-	/**
 	 * 实际执行
-	 * 
+	 *
 	 * @param sender Source object which is executing this command
 	 * @param args   All arguments passed to the command, split via ' '
 	 * @return true if the command was successful, otherwise false
@@ -153,7 +153,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	/**
 	 * 返回此命令的某个消息
-	 * 
+	 *
 	 * @param type 消息类型
 	 * @return 消息
 	 */
@@ -163,7 +163,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	/**
 	 * 返回此命令的某个消息
-	 * 
+	 *
 	 * @param type   消息类型
 	 * @param sender 目标
 	 * @return true
@@ -175,7 +175,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	/**
 	 * 返回此命令的某个消息
-	 * 
+	 *
 	 * @param type   消息类型
 	 * @param sender 目标
 	 * @param args   参数
@@ -188,7 +188,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	/**
 	 * 返回此命令的某个消息
-	 * 
+	 *
 	 * @param type   消息类型
 	 * @param sender 目标
 	 * @param args   参数
@@ -201,7 +201,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 
 	/**
 	 * 返回此命令的某个消息
-	 * 
+	 *
 	 * @param type 消息类型
 	 * @param code 消息格式
 	 * @return 消息

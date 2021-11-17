@@ -21,7 +21,7 @@ import lombok.val;
 
 /**
  * 共享数据
- * 
+ *
  * @author yuanlu
  *
  */
@@ -29,7 +29,7 @@ import lombok.val;
 public final class ShareData {
 	/**
 	 * Tab补全类型
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -88,7 +88,7 @@ public final class ShareData {
 
 	/**
 	 * 读取一个int
-	 * 
+	 *
 	 * @param bs     byte[]
 	 * @param offset 偏移下标
 	 * @param def    默认值

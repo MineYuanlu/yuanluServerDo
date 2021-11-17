@@ -18,7 +18,7 @@ import yuan.plugins.serverDo.bukkit.Main;
 
 /**
  * tphere命令
- * 
+ *
  * @author yuanlu
  *
  */

@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package yuan.plugins.serverDo;
 
@@ -12,7 +12,7 @@ import lombok.ToString;
 
 /**
  * 共享用的坐标
- * 
+ *
  * @author yuanlu
  *
  */

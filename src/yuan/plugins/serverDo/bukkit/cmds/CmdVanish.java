@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
@@ -14,7 +14,7 @@ import yuan.plugins.serverDo.bukkit.Main;
 
 /**
  * vanish命令
- * 
+ *
  * @author yuanlu
  *
  */
@@ -23,7 +23,7 @@ public final class CmdVanish extends Cmd {
 	/**
 	 * 回调函数<br>
 	 * 主动回调
-	 * 
+	 *
 	 * @param player 玩家
 	 */
 	public static void callback(Player player) {
