@@ -218,9 +218,11 @@ public abstract class Third {
 		int				all		= 0, now = 0;
 		for (val homes : data.values()) all += homes.size();
 		if (all > 0) for (val e : data.entrySet()) {
-			val uuid = e.getKey(), homes = e.getValue();
+			val	uuid	= e.getKey();
+			val	homes	= e.getValue();
 			if (!homes.isEmpty()) for (val he : homes.entrySet()) {
-				val name = he.getKey(), home = he.getValue();
+				val	name	= he.getKey();
+				val	home	= he.getValue();
 				Main.send(p, Channel.TransHome.sendS(uuid, name, Core.toSLoc(home)));
 				process.accept(now++, all);
 				if (ShareData.isDEBUG()) ShareData.getLogger().info("[TRANS] " + uuid + " " + name + " " + home);

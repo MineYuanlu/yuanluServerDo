@@ -64,7 +64,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 			return list;
 		}
 		ArrayList<String> list = new ArrayList<>(dataList.size());
-		list.forEach(x -> {
+		dataList.forEach(x -> {
 			if (x != null && x.startsWith(prefix)) list.add(x);
 		});
 		return list;
@@ -76,7 +76,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * @param cmd 命令
 	 * @return 命令名称
 	 */
-	public static final String getCmdName(Class<? extends Cmd> cmd) {
+	public static String getCmdName(Class<? extends Cmd> cmd) {
 		String cname = cmd.getSimpleName();
 		if (cname.length() >= 3 && cname.substring(0, 3).equalsIgnoreCase("cmd")) cname = cname.substring(3);
 		cname = Tool.humpTrans(cname, "-");
@@ -90,7 +90,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * @param type 消息类型
 	 * @return 消息
 	 */
-	protected static final Msg msg(Class<? extends Cmd> cmd, String type) {
+	protected static Msg msg(Class<? extends Cmd> cmd, String type) {
 		val	key	= getCmdName(cmd) + "." + type;
 		Msg	msg	= MSGS.get(key);
 		if (msg != null) return msg;

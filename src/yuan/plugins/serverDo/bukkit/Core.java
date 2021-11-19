@@ -36,6 +36,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 import lombok.AccessLevel;
@@ -115,6 +116,16 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		/**
 		 * 记录当前坐标
 		 *
+		 * @param player 玩家
+		 * @param loc    本地坐标
+		 */
+		private static final void recordLocation(@NonNull Player player, @NonNull Location loc) {
+			BACKS.put(player.getName(), toSLoc(loc));
+		}
+
+		/**
+		 * 记录当前坐标
+		 *
 		 * @param player   玩家
 		 * @param toServer 玩家即将传送的服务器(null为本地)
 		 */
@@ -175,17 +186,25 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	private static final class DatasConf {
 		/** 无传送延时的权限 */
-		String	noDelayPermission		= null;
+		String	noDelayPermission			= null;
 		/** 传送延时(秒) */
-		long	delay					= 3;
+		long	delay						= 3;
 		/** 无冷却的权限 */
-		String	noCooldownPermission	= null;
+		String	noCooldownPermission		= null;
 		/** 冷却(秒) */
-		long	cooldown				= 100;
+		long	cooldown					= 100;
 		/** 超时时长(秒) */
-		long	overtime				= 120;
+		long	overtime					= 120;
 		/** 安全传送 */
-		boolean	safeLocation			= false;
+		boolean	safeLocation				= false;
+		/** tp事件记录back */
+		boolean	useTpEvent					= false;
+		/** tp事件入服休眠 */
+		long	tpEventJoinSleep			= 3000;
+		/** tp事件最小记录距离 */
+		double	tpEventMinDistance			= 5;
+		/** tp事件最小记录距离平方 */
+		double	tpEventMinDistanceSquare	= tpEventMinDistance * tpEventMinDistance;
 	}
 
 	/** 监听回调的对象 */
@@ -468,7 +487,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			case 1:
 				Channel.TpLoc.p1S_tpLoc(buf, (loc, name) -> {
 					val mover = Bukkit.getPlayerExact(name);
-					if (mover != null) toToLocal(mover, toBLoc(loc));
+					if (mover != null) toToLocal(mover, toBLoc(loc), true);
 					else WAIT_JOIN_TP_LOC.put(name, toBLoc(loc));
 				});
 				break;
@@ -518,7 +537,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			case 0x8:
 				Channel.Tp.p8S_tpThird(buf, name -> {
 					val mover = Bukkit.getPlayerExact(name);
-					if (mover != null) toToLocal(mover, player, -1, false);
+					if (mover != null) toToLocal(mover, player, -1, false, true);
 					else WAIT_JOIN_TP.put(name, player.getName());
 				});
 				break;
@@ -538,12 +557,13 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		/**
 		 * 本地传送
 		 *
-		 * @param mover  移动者
-		 * @param target 目标
+		 * @param mover    移动者
+		 * @param target   目标
+		 * @param noRecord 是否不记录位置(用于back)
 		 */
-		private static void toToLocal(@NonNull Player mover, @NonNull Location target) {
-			BackHandler.recordLocation(mover, null);
-			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(target));
+		private static void toToLocal(@NonNull Player mover, @NonNull Location target, boolean noRecord) {
+			if (!noRecord) BackHandler.recordLocation(mover, (String) null);
+			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(target, PlayerTeleportEvent.TeleportCause.COMMAND));
 		}
 
 		/**
@@ -553,26 +573,28 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param target       目标
 		 * @param waitTime     传送等待时间
 		 * @param needCooldown 是否需要检查冷却
+		 * @param noRecord     是否不记录位置(用于back)
 		 */
-		private static void toToLocal(@NonNull Player mover, @NonNull Player target, long waitTime, boolean needCooldown) {
+		private static void toToLocal(@NonNull Player mover, @NonNull Player target, long waitTime, boolean needCooldown, boolean noRecord) {
 			if (waitTime > 0) {
-				checkDelay(mover, Conf.delay, () -> toToLocal(mover, target, -1, needCooldown));
+				checkDelay(mover, Conf.delay, () -> toToLocal(mover, target, -1, needCooldown, noRecord));
 				return;
 			}
-			BackHandler.recordLocation(mover, null);
-			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(target));
+			if (!noRecord) BackHandler.recordLocation(mover, (String) null);
+			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(target, PlayerTeleportEvent.TeleportCause.COMMAND));
 			if (needCooldown) checkCooldown(mover);
 		}
 
 		/**
 		 * 远程传送
 		 *
-		 * @param player 玩家
-		 * @param loc    地址
+		 * @param player   玩家
+		 * @param loc      地址
+		 * @param noRecord 是否不记录位置(用于back)
 		 */
-		public static void tpToRemote(@NonNull Player player, @NonNull ShareLocation loc) {
+		public static void tpToRemote(@NonNull Player player, @NonNull ShareLocation loc, boolean noRecord) {
 			if (loc.getServer() == null) throw new IllegalArgumentException("No server specified: " + loc);
-			BackHandler.recordLocation(player, loc.getServer());
+			if (!noRecord) BackHandler.recordLocation(player, loc.getServer());
 			listenCallBack(player, Channel.TP_LOC, 0, (BoolConsumer) success -> {
 				if (!success) BC_ERROR.send(player);
 			});
@@ -587,15 +609,17 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param target       目标
 		 * @param waitTime     传送等待时间
 		 * @param needCooldown 是否需要检查冷却
+		 * @param noRecord     是否不记录位置(用于back)
 		 */
-		private static void tpToRemote(@NonNull Player player, @NonNull String mover, @NonNull String target, long waitTime, boolean needCooldown) {
+		private static void tpToRemote(@NonNull Player player, @NonNull String mover, @NonNull String target, long waitTime, boolean needCooldown,
+				boolean noRecord) {
 			if (ShareData.isDEBUG())
 				ShareData.getLogger().info(String.format("[tpTo] remote: %s->%s, wait: %s, cd: %s", mover, target, waitTime, needCooldown));
 			if (waitTime > 0) {
-				checkDelay(player, Conf.delay, () -> tpToRemote(player, mover, target, -1, needCooldown));
+				checkDelay(player, Conf.delay, () -> tpToRemote(player, mover, target, -1, needCooldown, noRecord));
 				return;
 			}
-			BackHandler.recordLocation(player, null, target);// TODO 第三方传送的back记录
+			if (!noRecord) BackHandler.recordLocation(player, null, target);
 			listenCallBack(player, Channel.TP, 7, (BiBoolConsumer) (success, error) -> {
 				if (error) BC_ERROR.send(player);
 				else if (!success) BC_PLAYER_OFF.send(player);
@@ -721,6 +745,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			ALLOW_PLAYERS.remove(u);
 		});
 	}
+	/** 当启用tp event时，玩家加入服务器后禁用记录数秒 */
+	private static final HashSet<UUID> EVENT_JOIN_SLEEP = new HashSet<>(Conf.getTpEventJoinSleep() > 0 ? 8 : 0);
 
 	/**
 	 * 回调
@@ -793,6 +819,15 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		Conf.cooldown				= conf.getLong("setting.teleport-cooldown", Conf.cooldown);
 		Conf.overtime				= conf.getLong("setting.request-overtime", Conf.overtime);
 		Conf.safeLocation			= conf.getBoolean("setting.use-safeLocation", Conf.safeLocation);
+		Conf.useTpEvent				= conf.getBoolean("setting.back.use-tp-event", Conf.useTpEvent);
+		if (Conf.isUseTpEvent()) {
+			Conf.tpEventJoinSleep			= conf.getLong("setting.back.event-after-join", Conf.tpEventJoinSleep);
+			Conf.tpEventMinDistance			= conf.getDouble("setting.back.event-ignore-distance", Conf.tpEventMinDistance);
+			Conf.tpEventMinDistanceSquare	= Conf.tpEventMinDistance * Conf.tpEventMinDistance;
+		} else {
+			Conf.tpEventJoinSleep	= -1;
+			Conf.tpEventMinDistance	= Conf.tpEventMinDistanceSquare = Double.MAX_VALUE;
+		}
 
 		WaitMaintain.setT_User(Conf.getOvertime() * 1000);
 
@@ -887,11 +922,13 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	}
 
 	/**
-	 * 传送请求码转换
+	 * 传送请求码转换<br>
+	 * 检测玩家是否拥有高级权限
 	 *
 	 * @param player   玩家
 	 * @param realCode 真实的请求码
 	 * @return 转换后的请求码
+	 * @see yuan.plugins.serverDo.Channel.Tp#s0C_tpReq(String, int)
 	 */
 	public static int tpReqCode(Player player, int realCode) {
 		if (realCode < 0) return realCode;
@@ -906,13 +943,14 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 * @param loc    指定坐标
 	 */
 	public static void tpTo(@NonNull Player player, @NonNull ShareLocation loc) {
-		if (loc.getServer() == null) TpHandler.toToLocal(player, toBLoc(loc));
-		else TpHandler.tpToRemote(player, loc);
+		if (loc.getServer() == null) TpHandler.toToLocal(player, toBLoc(loc), false);
+		else TpHandler.tpToRemote(player, loc, false);
 	}
 
 	/**
 	 * 传送玩家<br>
-	 * 将会先检查本地玩家, 若不存在则向BC请求
+	 * 将会先检查本地玩家, 若不存在则向BC请求 <br>
+	 * 适合一般传送
 	 *
 	 * @param mover        移动者
 	 * @param target       目标
@@ -920,14 +958,30 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 * @param needCooldown 是否需要检查冷却
 	 */
 	public static void tpTo(Player mover, String target, long waitTime, boolean needCooldown) {
-		val localTarget = Main.getMain().getServer().getPlayerExact(target);
-		if (localTarget != null) TpHandler.toToLocal(mover, localTarget, waitTime, needCooldown);
-		else TpHandler.tpToRemote(mover, mover.getName(), target, waitTime, needCooldown);
+		tpTo(mover, target, waitTime, needCooldown, false);
 	}
 
 	/**
 	 * 传送玩家<br>
-	 * 将会先检查本地玩家, 若不存在则向BC请求
+	 * 将会先检查本地玩家, 若不存在则向BC请求<br>
+	 * 适合目标服务器加入传送
+	 *
+	 * @param mover        移动者
+	 * @param target       目标
+	 * @param waitTime     传送等待时间
+	 * @param needCooldown 是否需要检查冷却
+	 * @param noRecord     是否不记录位置(用于back)
+	 */
+	public static void tpTo(Player mover, String target, long waitTime, boolean needCooldown, boolean noRecord) {
+		val localTarget = Main.getMain().getServer().getPlayerExact(target);
+		if (localTarget != null) TpHandler.toToLocal(mover, localTarget, waitTime, needCooldown, noRecord);
+		else TpHandler.tpToRemote(mover, mover.getName(), target, waitTime, needCooldown, noRecord);
+	}
+
+	/**
+	 * 传送玩家<br>
+	 * 将会先检查本地玩家, 若不存在则向BC请求<br>
+	 * 适合第三方传送
 	 *
 	 * @param player   操控玩家
 	 * @param mover    移动者
@@ -937,13 +991,14 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	public static void tpTo(Player player, String mover, String target, long waitTime) {
 		val	localMover	= Main.getMain().getServer().getPlayerExact(mover);
 		val	localTarget	= Main.getMain().getServer().getPlayerExact(target);
-		if (localMover != null && localTarget != null) TpHandler.toToLocal(localMover, localTarget, waitTime, false);
-		else TpHandler.tpToRemote(player, mover, target, waitTime, false);
+		if (localMover != null && localTarget != null) TpHandler.toToLocal(localMover, localTarget, waitTime, false, false);
+		else TpHandler.tpToRemote(player, mover, target, waitTime, false, false);
 	}
 
 	/**
 	 * 传送玩家<br>
-	 * 将会先检查本地玩家, 若不存在则向BC请求
+	 * 将会先检查本地玩家, 若不存在则向BC请求<br>
+	 * 适合tphere
 	 *
 	 * @param mover    移动者
 	 * @param target   目标
@@ -951,8 +1006,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 */
 	public static void tpTo(String mover, Player target, long waitTime) {
 		val localMover = Main.getMain().getServer().getPlayerExact(mover);
-		if (localMover != null) TpHandler.toToLocal(localMover, target, waitTime, false);
-		else TpHandler.tpToRemote(target, mover, target.getName(), waitTime, false);
+		if (localMover != null) TpHandler.toToLocal(localMover, target, waitTime, false, false);
+		else TpHandler.tpToRemote(target, mover, target.getName(), waitTime, false, false);
 	}
 
 	/**
@@ -966,11 +1021,18 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		val p = e.getPlayer();
 		if (p == null) return;
 
+		if (Conf.getTpEventJoinSleep() > 0) {
+			WaitMaintain.add(EVENT_JOIN_SLEEP, p.getUniqueId(), Conf.getTpEventJoinSleep());
+		}
+
 		val to = TpHandler.WAIT_JOIN_TP.remove(p.getName());
-		if (to != null) tpTo(p, to, -1, false);
+		if (to != null) {
+			tpTo(p, to, -1, false, true);
+			return;
+		}
 
 		val toLoc = TpHandler.WAIT_JOIN_TP_LOC.remove(p.getName());
-		if (toLoc != null) TpHandler.toToLocal(p, toLoc);
+		if (toLoc != null) TpHandler.toToLocal(p, toLoc, true);
 	}
 
 	/**
@@ -998,6 +1060,23 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	@EventHandler(priority = EventPriority.HIGH)
 	public void onPlayerQuit(@NonNull PlayerQuitEvent e) {
 		callClear(e.getPlayer());
+	}
+
+	/**
+	 *
+	 * @param e 事件
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerTp(@NonNull PlayerTeleportEvent e) {
+		if (!Conf.isUseTpEvent()) return;
+		val player = e.getPlayer();
+		if ((player == null) || EVENT_JOIN_SLEEP.contains(player.getUniqueId())) return;
+		val	f	= e.getFrom();
+		val	t	= e.getTo();
+		if (f == null || t == null || f.distanceSquared(t) < Conf.getTpEventMinDistanceSquare()) return;
+		BackHandler.recordLocation(player, f);
 	}
 
 	/** @deprecated BUKKIT */

@@ -124,10 +124,7 @@ public interface MESSAGE {
 			if (this == obj) return true;
 			if ((obj == null) || (getClass() != obj.getClass())) return false;
 			Msg other = (Msg) obj;
-			if (key == null) {
-				if (other.key != null) return false;
-			} else if (!key.equals(other.key)) return false;
-			return true;
+			return key.equals(other.key);
 		}
 
 		public String getMsg() {
@@ -143,17 +140,13 @@ public interface MESSAGE {
 
 		@Override
 		public int hashCode() {
-			final int	prime	= 31;
-			int			result	= 1;
-			result = prime * result + ((key == null) ? 0 : key.hashCode());
-			return result;
+			return key.hashCode();
 		}
 
 		/**
 		 * 发送一条消息
 		 *
 		 * @param sender 发送的对象
-		 * @param msg    信息
 		 * @param args   参数
 		 */
 		public void send(CommandSender sender, Map<String, Object> args) {
@@ -164,7 +157,6 @@ public interface MESSAGE {
 		 * 发送一条消息
 		 *
 		 * @param sender 发送的对象
-		 * @param msg    信息
 		 * @param args   参数
 		 */
 		public void send(CommandSender sender, Object... args) {
@@ -185,7 +177,6 @@ public interface MESSAGE {
 		 * 发送一条消息
 		 *
 		 * @param sender 发送的对象
-		 * @param msg    信息
 		 * @param args   参数
 		 */
 		public abstract void send(CommandSender sender, Map<String, Object> args);
@@ -194,7 +185,6 @@ public interface MESSAGE {
 		 * 发送一条消息
 		 *
 		 * @param sender 发送的对象
-		 * @param msg    信息
 		 * @param args   参数
 		 */
 		public abstract void send(CommandSender sender, Object... args);

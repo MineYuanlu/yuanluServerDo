@@ -102,7 +102,7 @@ public final class ConfigManager {
 					val	z		= warp.getDouble("z", Double.NaN);
 					val	Y		= warp.getFloat("yaw", Float.NaN);
 					val	P		= warp.getFloat("pitch", Float.NaN);
-					if (world == null || server == null || x == Double.NaN || y == Double.NaN || z == Double.NaN || Y == Float.NaN || P == Float.NaN) {
+					if (world == null || server == null || Double.isNaN(x) || Double.isNaN(y) || Double.isNaN(z) || Float.isNaN(Y) || Float.isNaN(P)) {
 						ShareData.getLogger().warning(String.format("[WARPS] 错误的warp数据: %s %s [%s, %s, %s] [%s,%s]", server, world, x, y, z, Y, P));
 					} else {
 						WARPS.put(name, new ShareLocation(x, y, z, Y, P, world, server));
@@ -216,7 +216,7 @@ public final class ConfigManager {
 		 * @return data
 		 * @throws IOException IOE
 		 */
-		protected HashMap<String, ShareLocation> load0(@NonNull UUID uid) throws IOException {
+		private HashMap<String, ShareLocation> load0(@NonNull UUID uid) throws IOException {
 			HashMap<String, ShareLocation>	m		= new HashMap<>();
 			val								f		= HOME.getFile(uid, false);
 			val								warps	= PlayerConfFile.YAML.load(f);
@@ -230,7 +230,7 @@ public final class ConfigManager {
 				val	z		= warp.getDouble("z", Double.NaN);
 				val	Y		= warp.getFloat("yaw", Float.NaN);
 				val	P		= warp.getFloat("pitch", Float.NaN);
-				if (world == null || server == null || x == Double.NaN || y == Double.NaN || z == Double.NaN || Y == Float.NaN || P == Float.NaN) {
+				if (world == null || server == null || Double.isNaN(x) || Double.isNaN(y) || Double.isNaN(z) || Float.isNaN(Y) || Float.isNaN(P)) {
 					ShareData.getLogger()
 							.warning(String.format("[HOMES] 错误的home数据: %s: %s %s [%s, %s, %s] [%s,%s]", f.getName(), server, world, x, y, z, Y, P));
 				} else {
@@ -247,7 +247,7 @@ public final class ConfigManager {
 		 * @param map data
 		 * @throws IOException IOE
 		 */
-		protected void save0(@NonNull UUID uid, HashMap<String, ShareLocation> map) throws IOException {
+		private void save0(@NonNull UUID uid, HashMap<String, ShareLocation> map) throws IOException {
 			val warps = new Configuration();
 			for (val e : map.entrySet()) {
 				val	name	= e.getKey();
@@ -460,8 +460,7 @@ public final class ConfigManager {
 		for (val key : sg.getKeys()) {
 			val group = sg.getStringList(key);
 			for (val server : group) {
-				HashSet<String> canTp = GROUPS.get(server);
-				if (canTp == null) GROUPS.put(server, canTp = new HashSet<>());
+				HashSet<String> canTp = GROUPS.computeIfAbsent(server, k -> new HashSet<>());
 				canTp.addAll(group);
 			}
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("加载组 " + key + ": " + group);

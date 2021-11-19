@@ -28,7 +28,8 @@ public final class TabHandler {
 		if (server == null || player == null) return;
 		val serverName = server.getInfo().getName();
 		Core.getHomes(player).forEach((name, loc) -> {
-			if (Core.canTp(serverName, loc.getServer())) list.add(name);
+			if (name.toLowerCase().startsWith(request) && Core.canTp(serverName, loc.getServer()))//
+				list.add(name);
 		});
 	}
 
@@ -48,7 +49,7 @@ public final class TabHandler {
 		if (server == null) return;
 		val serverName = server.getInfo().getName();
 		ConfigManager.WARPS.forEach((name, loc) -> {
-			if (Core.canTp(serverName, loc.getServer())) list.add(name);
+			if (name.toLowerCase().startsWith(request) && Core.canTp(serverName, loc.getServer())) list.add(name);
 		});
 	}
 

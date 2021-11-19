@@ -18,6 +18,14 @@ setting:
   #在其他(插件)加载完毕后再注册命令, 此项适用于/tp等命令被ess,CMI等插件覆盖掉时启用
   #测试项, 可能会存在问题
   register-after-all: false
+  #back相关设置
+  back:
+    #使用tp事件来记录back位置
+    use-tp-event: false
+    #使用事件记录传送位置时, 刚加入服务器多少毫秒不记录(防止入服回城等初始传送被错误的记录)
+    event-after-join: 3000
+    #使用事件记录传送位置时, 小于此距离(单位: 格, 球形)的传送将被忽略(防止例如限制移动等操作被误记录)
+    event-ignore-distance: 5
 #所有的命令, 删除某个节点将关闭对应的命令
 cmd:
  reload:
@@ -126,6 +134,9 @@ message:
   version-no-recommend: '&c服务器版本不一致: %s <-> %s'
   cmd:
     help: '&7yuanluServerDo'
+    back:
+      non-back: '&c暂时没有保存上一个位置信息'
+      backing: '&7正在回到上一位置'
     tp:
       receiver: ''
       third-mover: ''
@@ -147,7 +158,7 @@ message:
       sender:
         json: '["",{"text":"&7请求已发送给 &2%2$s\n"},{"text":"&7想要取消这个传送请求，请输入 &2/tpacancel","clickEvent":{"action":"run_command","value":"/tpcancel %1$s"},"hoverEvent":{"action":"show_text","value":["",{"text":"取消传送","bold":true}]}}]'
         msg:
-        - 请求已发送给 &2%2$s
+        - '请求已发送给 &2%2$s'
         - '&7想要取消这个传送请求，请输入 &2/tpacancel'
       accept-wait: "&2%2$s &7接受了您的传送请求, 将在 &2%3$s &7秒后启动"
       accept: "&7正在传送至 &2%2$s"
