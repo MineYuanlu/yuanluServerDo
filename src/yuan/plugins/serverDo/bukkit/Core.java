@@ -1075,8 +1075,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		if ((player == null) || EVENT_JOIN_SLEEP.contains(player.getUniqueId())) return;
 		val	f	= e.getFrom();
 		val	t	= e.getTo();
-		if (f == null || t == null ) return;
-		if (Objects.equals(f.getWorld(),t.getWorld())&&f.distanceSquared(t) < Conf.getTpEventMinDistanceSquare())return;
+		if (f == null || t == null) return;
+		if (Objects.equals(f.getWorld(), t.getWorld()) && f.distanceSquared(t) < Conf.getTpEventMinDistanceSquare()) return;
 		BackHandler.recordLocation(player, f);
 	}
 

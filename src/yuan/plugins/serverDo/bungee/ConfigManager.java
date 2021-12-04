@@ -92,7 +92,7 @@ public final class ConfigManager {
 			@Override
 			protected void load0() throws IOException {
 				val warps = YAML.load(getFile());
-				for (val name : warps.getKeys()) {
+				for (String name : warps.getKeys()) {
 					val	warp	= warps.getSection(name);
 
 					val	world	= warp.getString("world", null);
