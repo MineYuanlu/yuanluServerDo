@@ -384,6 +384,9 @@ public final class ConfigManager {
 	/** 自动保存延时 */
 	private @Getter @Setter static long						saveDelay	= 1000 * 60;
 
+	/** 是否使用AT功能 */
+	private @Getter @Setter static boolean					useAt		= true;
+
 	/**
 	 * 检测是否启用服务器
 	 *
@@ -437,6 +440,7 @@ public final class ConfigManager {
 		val tabReplace = config.getString("player-tab-replace", "yl★:" + Tool.randomString(8));
 		setTabReplace(tabReplace);
 		setSaveDelay(config.getLong("save-delay", getSaveDelay()));
+		setUseAt(config.getBoolean("use-at", isUseAt()));
 		loadGroup(config);
 
 		serverInfo = Channel.ServerInfo.sendS(tabReplace, Main.getMain().getDescription().getVersion());

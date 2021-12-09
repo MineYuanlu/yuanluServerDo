@@ -70,7 +70,9 @@ public enum Channel {
 	/** 转换地标 */
 	TRANS_WARP(TransWarp.class),
 	/** 返回 */
-	BACK(Back.class);
+	BACK(Back.class),
+	/** 播放音效 */
+	PLAY_SOUND(PlaySound.class);
 
 	/**
 	 * 返回数据包
@@ -950,6 +952,61 @@ public enum Channel {
 				throw new RuntimeException(e);
 			}
 		}
+	}
+
+	/**
+	 * 播放音效数据包
+	 *
+	 * @author yuanlu
+	 */
+	@NoArgsConstructor(access = AccessLevel.PRIVATE)
+	public static final class PlaySound extends Package {
+		/**
+		 * 音效类型
+		 *
+		 * @author yuanlu
+		 *
+		 */
+		public static enum Sounds {
+			/** At玩家时的音效 */
+			AT;
+
+			/** SOUNDS */
+			private static final Sounds[] SOUNDS = values();
+		}
+
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
+		/**
+		 * 获取音效
+		 *
+		 * @param buf 数据
+		 * @return 音效
+		 */
+		public static Sounds getSound(byte[] buf) {
+			try (val in = DataIn.pool(buf)) {
+				return Sounds.SOUNDS[in.readInt()];
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * 发送到Client
+		 *
+		 * @param sounds 音效
+		 * @return 数据包
+		 */
+		public static byte[] play(Sounds sounds) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeInt(sounds.ordinal());
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
 	}
 
 	/**

@@ -25,3 +25,6 @@ timeAmend: 300000
 
 #自动保存延时(ms)
 save-delay: 60000
+
+#是否启用at
+use-at: true

@@ -12,6 +12,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -25,9 +27,11 @@ import lombok.val;
 import net.md_5.bungee.api.config.ServerInfo;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.connection.Server;
+import net.md_5.bungee.api.event.ChatEvent;
 import net.md_5.bungee.api.event.PluginMessageEvent;
 import net.md_5.bungee.api.event.ServerConnectEvent.Reason;
 import net.md_5.bungee.api.event.ServerConnectedEvent;
+import net.md_5.bungee.api.event.TabCompleteEvent;
 import net.md_5.bungee.api.event.TabCompleteResponseEvent;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.Plugin;
@@ -35,6 +39,7 @@ import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
 import net.md_5.bungee.event.EventHandler;
+import yuan.plugins.serverDo.At;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.Tool;
@@ -86,6 +91,33 @@ public class Main extends Plugin implements Listener {
 			}
 		}
 		return found;
+
+	}
+
+	/**
+	 * 获取玩家<br>
+	 * 模糊搜索, 借鉴Bukkit
+	 *
+	 * @param sender 发起者, 当其不为null时, 会检查服务器组
+	 * @param name   玩家名
+	 * @return 玩家
+	 */
+	public static List<ProxiedPlayer> getPlayers(ProxiedPlayer sender, @NonNull String name) {
+		ProxiedPlayer found = getMain().getProxy().getPlayer(name);
+		if (found != null) return Collections.singletonList(found);
+
+		String	lowerName	= name.toLowerCase(Locale.ENGLISH);
+		val		list		= new ArrayList<ProxiedPlayer>();
+		val		var6		= getMain().getProxy().getPlayers().iterator();
+		val		server		= sender == null ? null : sender.getServer().getInfo().getName();
+		while (var6.hasNext()) {
+			val	player	= var6.next();
+			val	pn		= player.getName();
+			if (pn.toLowerCase(Locale.ENGLISH).startsWith(lowerName) && Core.canTp(server == null, server, player)) {
+				list.add(player);
+			}
+		}
+		return list;
 
 	}
 
@@ -205,6 +237,21 @@ public class Main extends Plugin implements Listener {
 		} catch (Throwable e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	/**
+	 * EVENT
+	 *
+	 * @param e Chat
+	 * @deprecated BUNGEE
+	 */
+	@Deprecated
+	@EventHandler
+	public void onChat(ChatEvent e) {
+		if (!ConfigManager.isUseAt()) return;
+		val	ats		= At.at(e.getMessage(), name -> getProxy().getPlayer(name) != null);
+		val	pack	= Channel.PlaySound.play(Channel.PlaySound.Sounds.AT);
+		ats.map(getProxy()::getPlayer).forEach(player -> send(player, pack));
 	}
 
 	@Override
@@ -471,6 +518,7 @@ public class Main extends Plugin implements Listener {
 //					if (server.getInfo().getName().equals(targetServer.getName())) {//TODO BUG 未实际执行m.connect
 //						send(player, Channel.Tp.s7S_tpThirdReceive(true, false));
 //					} else
+
 					m.connect(targetServer, (success, e) -> {
 						if (e != null) e.printStackTrace();
 						send(player, Channel.Tp.s7S_tpThirdReceive(success, e != null));
@@ -572,17 +620,39 @@ public class Main extends Plugin implements Listener {
 	/**
 	 * EVENT
 	 *
-	 * @param e 服务器连接
+	 * @param e Tab响应
 	 * @deprecated BUNGEE
 	 */
 	@Deprecated
 	@EventHandler
-	public void onServerConnected(TabCompleteResponseEvent e) {
+	public void onTab(TabCompleteEvent e) {
+		if (!ConfigManager.isUseAt()) return;
+		String	line	= e.getCursor();
+		int		atIndex;
+		if (line == null || (atIndex = line.lastIndexOf('@')) < 0 || (line.indexOf(' ', atIndex) >= 0)) return;
+		line = line.substring(atIndex + 1);
+		val	player	= e.getSender() instanceof ProxiedPlayer ? (ProxiedPlayer) e.getSender() : null;
+		val	rawList	= getPlayers(player, line);
+		if (rawList.isEmpty()) return;
+		val tarList = e.getSuggestions();
+		tarList.clear();
+		rawList.stream().map(ProxiedPlayer::getName).forEach(tarList::add);
+	}
+
+	/**
+	 * EVENT
+	 *
+	 * @param e Tab响应
+	 * @deprecated BUNGEE
+	 */
+	@Deprecated
+	@EventHandler
+	public void onTab(TabCompleteResponseEvent e) {
 		TabHandler.TabCompleteResponse(e);
 	}
 
 	/**
-	 *
+	 * 时间修正
 	 */
 	private void startTimeAmendLoop() {
 		val timeAmend = ConfigManager.getConfig().getLong("timeAmend", 1000 * 60 * 5);

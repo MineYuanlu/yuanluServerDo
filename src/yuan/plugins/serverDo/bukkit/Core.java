@@ -26,6 +26,7 @@ import java.util.function.IntConsumer;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Sound;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.ConfigurationSection;
@@ -33,6 +34,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -40,16 +42,19 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.val;
 import lombok.experimental.FieldDefaults;
+import yuan.plugins.serverDo.At;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.Channel.Package.BiBoolConsumer;
 import yuan.plugins.serverDo.Channel.Package.BiPlayerConsumer;
 import yuan.plugins.serverDo.Channel.Package.BoolConsumer;
+import yuan.plugins.serverDo.Channel.PlaySound.Sounds;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.ShareData.TabType;
 import yuan.plugins.serverDo.ShareLocation;
@@ -380,6 +385,32 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 	}
 
+	@SuppressWarnings("javadoc")
+	@FieldDefaults(makeFinal = true)
+	@AllArgsConstructor
+	private static enum SoundHandler {
+		AT(Sounds.AT, Sound.BLOCK_ANVIL_PLACE, 1, 2);
+
+		private static final EnumMap<Sounds, SoundHandler> MAP = new EnumMap<>(Sounds.class);
+		static {
+			for (val s : SoundHandler.values()) MAP.put(s.target, s);
+			Arrays.stream(Sounds.values())//
+					.filter(s -> !MAP.containsKey(s))//
+					.map(s -> "[SOUND] 未映射的音效: " + s)//
+					.forEach(ShareData.getLogger()::warning);
+		}
+
+		private static void play(Player player, Channel.PlaySound.Sounds sounds) {
+			val sound = MAP.get(sounds);
+			if (sound != null) player.playSound(player.getLocation(), sound.sound, sound.volume, sound.pitch);
+		}
+
+		Sounds	target;
+		Sound	sound;
+		float	volume;
+		float	pitch;
+	}
+
 	/** tab处理器 */
 	public static final class TabHandler {
 		/** tab替换内容 */
@@ -563,7 +594,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 */
 		private static void toToLocal(@NonNull Player mover, @NonNull Location target, boolean noRecord) {
 			if (!noRecord) BackHandler.recordLocation(mover, (String) null);
-			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(target, PlayerTeleportEvent.TeleportCause.COMMAND));
+			val loc = SafeLoc.getSafeLocation(mover, target);
+			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(loc, PlayerTeleportEvent.TeleportCause.COMMAND));
 		}
 
 		/**
@@ -580,8 +612,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 				checkDelay(mover, Conf.delay, () -> toToLocal(mover, target, -1, needCooldown, noRecord));
 				return;
 			}
-			if (!noRecord) BackHandler.recordLocation(mover, (String) null);
-			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(target, PlayerTeleportEvent.TeleportCause.COMMAND));
+			toToLocal(mover, target.getLocation(), noRecord);
 			if (needCooldown) checkCooldown(mover);
 		}
 
@@ -723,10 +754,10 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/** 回调等待 */
 	private static final EnumMap<Channel, Map<UUID, ArrayList<ListenCallBackObj>>> CALL_BACK_WAITER = new EnumMap<>(Channel.class);
-
 	static {
 		for (val c : Channel.values()) CALL_BACK_WAITER.put(c, new HashMap<>());
 	}
+
 	/** 版本检查通过的玩家集合 */
 	private static final HashSet<UUID>					ALLOW_PLAYERS	= new HashSet<>();
 
@@ -735,7 +766,6 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/** 清理监听器 */
 	private static final ArrayList<Consumer<Player>>	CLEAR_LISTENER	= new ArrayList<>();
-
 	static {
 		registerClearListener(p -> {
 			val u = p.getUniqueId();
@@ -745,6 +775,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			ALLOW_PLAYERS.remove(u);
 		});
 	}
+
 	/** 当启用tp event时，玩家加入服务器后禁用记录数秒 */
 	private static final HashSet<UUID> EVENT_JOIN_SLEEP = new HashSet<>(Conf.getTpEventJoinSleep() > 0 ? 8 : 0);
 
@@ -1017,6 +1048,20 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 */
 	@Deprecated
 	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerChat(@NonNull AsyncPlayerChatEvent e) {
+		val msg = e.getMessage();
+		if (msg == null) return;
+		val format = e.getFormat();
+		e.setMessage(At.format(format, msg, name -> Bukkit.getPlayerExact(name) != null));
+	}
+
+	/**
+	 *
+	 * @param e 事件
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
 	public void onPlayerJoin(@NonNull PlayerJoinEvent e) {
 		val p = e.getPlayer();
 		if (p == null) return;
@@ -1075,8 +1120,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		if ((player == null) || EVENT_JOIN_SLEEP.contains(player.getUniqueId())) return;
 		val	f	= e.getFrom();
 		val	t	= e.getTo();
-		if (f == null || t == null) return;
-		if (Objects.equals(f.getWorld(), t.getWorld()) && f.distanceSquared(t) < Conf.getTpEventMinDistanceSquare()) return;
+		if (f == null || t == null || (Objects.equals(f.getWorld(), t.getWorld()) && f.distanceSquared(t) < Conf.getTpEventMinDistanceSquare())) return;
 		BackHandler.recordLocation(player, f);
 	}
 
@@ -1156,6 +1200,9 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			callBack(player, type, null, h -> Channel.TransWarp.parseC(message, (IntConsumer) h));
 			break;
 		}
+		case PLAY_SOUND:
+			SoundHandler.play(player, Channel.PlaySound.getSound(message));
+			break;
 		}
 	}
 }
