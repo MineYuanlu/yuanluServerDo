@@ -6,6 +6,7 @@
 package yuan.plugins.serverDo.bungee;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -165,6 +166,7 @@ public class Main extends Plugin implements Listener {
 		Configuration	config			= null;
 		try {
 			config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(configFile);
+		} catch (FileNotFoundException e) {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
