@@ -110,7 +110,7 @@ public enum Channel {
 		 * @see #s1S_tellTp(String, ShareLocation, String)
 		 */
 		public static void p1S_tellTp(byte[] buf, BiConsumer<String, ShareLocation> playerAndBackLoc) {
-			try (val in = DataIn.pool(buf, 0)) {
+			try (val in = DataIn.pool(buf, 1)) {
 				val	player	= in.readUTF();
 				val	loc		= in.readLocation();
 				loc.setServer(in.readUTF());
