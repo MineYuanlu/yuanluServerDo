@@ -6,6 +6,7 @@
 
 - [bstats Bukkit](https://bstats.org/plugin/bukkit/yuanluServerDo/12395)
 - [bstats Bungee](https://bstats.org/plugin/bungeecord/yuanluServerDo/12396)
+- ![最新版本 badge](https://update.yuanlu.bid/ico/v/mc-bukkit/yuanluServerDo "最新版本")
 
 ## 替代yuanluServerTp
 
@@ -48,3 +49,7 @@
 - CMI
 	- Home
 	- Warp
+
+## 实现了At功能
+
+在聊天中使用@+玩家名, 可以向对方发送提示音
