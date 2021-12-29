@@ -15,9 +15,9 @@ setting:
   teleport-cooldown: 100
   request-overtime: 120
   use-safeLocation: false
-  #在其他(插件)加载完毕后再注册命令, 此项适用于/tp等命令被ess,CMI等插件覆盖掉时启用
+  #在load步骤加载命令, 此项适用于/tp等命令被ess,CMI等插件覆盖掉时启用
   #测试项, 可能会存在问题
-  register-after-all: false
+  preload: true
   #back相关设置
   back:
     #使用tp事件来记录back位置

@@ -3,7 +3,7 @@ main: yuan.plugins.serverDo.bukkit.Main
 version: ${project.version}
 description: ${project.description}
 author: yuanlu
-website: http://dx.mapland.cn:48083/yuanlu/yuanluServerDo
+website: https://git.yuanlu.bid/yuanlu/yuanluServerDo
 api-version: 1.13
 
-softdepend: ['CMI','CMILib']
+softdepend: ['CMI','CMILib','Essentials']

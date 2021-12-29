@@ -594,7 +594,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 */
 		private static void toToLocal(@NonNull Player mover, @NonNull Location target, boolean noRecord) {
 			if (!noRecord) BackHandler.recordLocation(mover, (String) null);
-			val loc = SafeLoc.getSafeLocation(mover, target);
+			val loc = Conf.isSafeLocation() ? SafeLoc.getSafeLocation(mover, target) : target;
 			Bukkit.getScheduler().runTask(Main.getMain(), () -> mover.teleport(loc, PlayerTeleportEvent.TeleportCause.COMMAND));
 		}
 

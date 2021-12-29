@@ -24,7 +24,7 @@ public class At {
 	/** At字符 */
 	public static final String	AT_STR		= String.valueOf(AT_CHAR);
 	/** At颜色 */
-	public static final String	AT_COLOR	= ChatColor.COLOR_CHAR + "b" + ChatColor.COLOR_CHAR + "l";
+	public static final String	AT_COLOR	= ChatColor.AQUA.toString();
 
 	/**
 	 * 获取msg中所有at的玩家
@@ -61,11 +61,15 @@ public class At {
 	 */
 	public static String format(String format, @NonNull String msg, @NonNull Predicate<String> names) {
 		if (msg.indexOf(AT_CHAR) < 0) return msg;
+
 		format = format == null ? "" : getFormatColor(format);
+		if (format.isEmpty()) format = ChatColor.RESET.toString();
+
 		val ats = Arrays.stream((format + msg).split(AT_STR, -1))// 按At分割
 				.map(At::new)//
 				.toArray(At[]::new);
 		for (int i = 1; i < ats.length; i++) ats[i].previous(ats[i - 1]);
+
 		val msgNew = new StringBuilder();
 		Arrays.stream(ats)//
 				.map(at -> at.toString(names))//
@@ -119,9 +123,20 @@ public class At {
 	 */
 	private String toString(Predicate<String> names) {
 		if (names.test(first)) {
-			return String.format("%s@%s%s", AT_COLOR, str, ChatColor.getLastColors(ChatColor.COLOR_CHAR + "r" + color));
+			return String.format("%s%c%s%s%s", //
+					AT_COLOR, //
+					AT_CHAR, //
+					first, //
+					ChatColor.getLastColors(ChatColor.COLOR_CHAR + "r" + color), //
+					str.substring(first.length())//
+			);
 		} else {
 			return AT_STR + str;
 		}
+	}
+
+	@Override
+	public String toString() {
+		return String.format("At [str=%s, first=%s, color=%s]", str, first, color.replace(ChatColor.COLOR_CHAR, '&'));
 	}
 }

@@ -12,19 +12,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.MultiLineChart;
 import org.bstats.charts.SimplePie;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -268,9 +264,7 @@ public class Main extends JavaPlugin implements Listener {
 
 	@Override
 	public void onEnable() {
-		ShareData.setLogger(getLogger());
-		checkYuanluConfig();
-		ShareData.setDEBUG(DEBUG);
+
 		bstats();
 		update();
 
@@ -280,52 +274,36 @@ public class Main extends JavaPlugin implements Listener {
 		}
 
 		Tool.load(Channel.class);
+		Tool.load(SafeLoc.class);
+
 		// 启用插件时自动发出
-		main = this;
-		getLogger().info("§a" + ShareData.SHOW_NAME + "-启动");
-		config		= loadFile("config.yml");
 		prefix		= config.getString("Prefix", "");
 		langLost	= config.getString("message.LanguageFileIsLost", LANG_LOST);
 		getServer().getPluginManager().registerEvents(Core.INSTANCE, this); // 注册监听器
 
-		registerCmd(config.getBoolean("setting.register-after-all", false), () -> CommandManager.init(config.getConfigurationSection("cmd")));
+		if (!config.getBoolean("setting.preload")) {
+			CommandManager.init(config.getConfigurationSection("cmd"));
+		}
+
 		getServer().getMessenger().registerOutgoingPluginChannel(this, ShareData.BC_CHANNEL);
 		getServer().getMessenger().registerIncomingPluginChannel(this, ShareData.BC_CHANNEL, Core.INSTANCE);
 		Core.init(config);
+
+		getLogger().info("§a" + ShareData.SHOW_NAME + "-启动");
 	}
 
-	/**
-	 * 注册命令
-	 *
-	 * @param raa 是否在其他插件加载完毕后再注册
-	 * @param r   注册函数
-	 * @return 是否立即注册
-	 */
-	private boolean registerCmd(boolean raa, Runnable r) {
-		if (!raa) {
-			getLogger().info("开始注册命令");
-			r.run();
-			return true;
-		}
-		getLogger().info("已启用 register-after-all, 正在等待其它插件加载完毕");
-		val notEnable = Arrays.stream(getServer().getPluginManager().getPlugins())//
-				.filter(p -> !p.isEnabled())//
-				.map(Plugin::getName)//
-				.collect(Collectors.toSet());
-		if (notEnable.isEmpty()) return registerCmd(false, r);
-		Bukkit.getServer().getPluginManager().registerEvents(new Listener() {
-			private boolean finish = false;
+	@Override
+	public void onLoad() {
+		main = this;
+		ShareData.setLogger(getLogger());
 
-			@EventHandler
-			public void listener(PluginEnableEvent e) {
-				if (finish) return;
-				notEnable.remove(e.getPlugin().getName());
-				if (!notEnable.isEmpty()) return;
-				finish = true;
-				registerCmd(false, r);
-			}
-		}, main);
-		return false;
+		checkYuanluConfig();
+		ShareData.setDEBUG(DEBUG);
+
+		config = loadFile("config.yml");
+		if (config.getBoolean("setting.preload")) {
+			CommandManager.init(config.getConfigurationSection("cmd"));
+		}
 	}
 
 	/** 重载插件 */

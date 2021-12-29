@@ -251,7 +251,7 @@ public class Main extends Plugin implements Listener {
 		if (!ConfigManager.isUseAt()) return;
 		val	ats		= At.at(e.getMessage(), name -> getProxy().getPlayer(name) != null);
 		val	pack	= Channel.PlaySound.play(Channel.PlaySound.Sounds.AT);
-		ats.map(getProxy()::getPlayer).forEach(player -> send(player, pack));
+		ats.distinct().map(getProxy()::getPlayer).forEach(player -> send(player, pack));
 	}
 
 	@Override
@@ -626,6 +626,7 @@ public class Main extends Plugin implements Listener {
 	@Deprecated
 	@EventHandler
 	public void onTab(TabCompleteEvent e) {
+		System.out.println(e.getCursor());
 		if (!ConfigManager.isUseAt()) return;
 		String	line	= e.getCursor();
 		int		atIndex;
@@ -637,6 +638,7 @@ public class Main extends Plugin implements Listener {
 		val tarList = e.getSuggestions();
 		tarList.clear();
 		rawList.stream().map(ProxiedPlayer::getName).forEach(tarList::add);
+		System.out.println(tarList);
 	}
 
 	/**
