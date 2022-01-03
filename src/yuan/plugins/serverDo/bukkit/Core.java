@@ -189,7 +189,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	@Data
 	@FieldDefaults(level = AccessLevel.PRIVATE)
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
-	private static final class DatasConf {
+	static final class DatasConf {
 		/** 无传送延时的权限 */
 		String	noDelayPermission			= null;
 		/** 传送延时(秒) */
@@ -741,10 +741,10 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	}
 
 	/** 配置数据 */
-	private static final DatasConf	Conf		= new DatasConf();
+	static final DatasConf		Conf		= new DatasConf();
 
 	/** 单例 */
-	public static final Core		INSTANCE	= new Core();
+	public static final Core	INSTANCE	= new Core();
 	/*
 	 * tp,tpa,tpahere,tphere tpaccept,tpcancel
 	 *
@@ -849,7 +849,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		Conf.noCooldownPermission	= conf.getString("setting.permission.no-cooldown", Conf.noCooldownPermission);
 		Conf.cooldown				= conf.getLong("setting.teleport-cooldown", Conf.cooldown);
 		Conf.overtime				= conf.getLong("setting.request-overtime", Conf.overtime);
-		Conf.safeLocation			= conf.getBoolean("setting.use-safeLocation", Conf.safeLocation);
+//		Conf.safeLocation			= conf.getBoolean("setting.use-safeLocation", Conf.safeLocation);
+		Conf.safeLocation			= false;
 		Conf.useTpEvent				= conf.getBoolean("setting.back.use-tp-event", Conf.useTpEvent);
 		if (Conf.isUseTpEvent()) {
 			Conf.tpEventJoinSleep			= conf.getLong("setting.back.event-after-join", Conf.tpEventJoinSleep);
@@ -869,17 +870,19 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	/**
 	 * 监听回调
 	 *
-	 * @param player  玩家
-	 * @param channel 通道
-	 * @param checker 验证数据
-	 * @param maxTime 等待时间
-	 * @param handler 处理器
+	 * @param player     玩家
+	 * @param channel    通道
+	 * @param checker    验证数据
+	 * @param msgTimeout 在超时后是否显示消息
+	 * @param maxTime    等待时间
+	 * @param handler    处理器
 	 */
-	public static void listenCallBack(@NonNull Player player, @NonNull Channel channel, Object checker, long maxTime, @NonNull Object handler) {
+	public static void listenCallBack(@NonNull Player player, @NonNull Channel channel, Object checker, boolean msgTimeout, long maxTime,
+			@NonNull Object handler) {
 		val map = CALL_BACK_WAITER.get(channel);
 		synchronized (map) {
 			WaitMaintain.add(map, player.getUniqueId(), new ListenCallBackObj(checker, handler), maxTime, ArrayList::new,
-					() -> M_TIME_OUT.send(player, channel));
+					msgTimeout ? () -> M_TIME_OUT.send(player, channel) : null);
 		}
 
 	}
@@ -891,9 +894,10 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 * @param channel 通道
 	 * @param checker 验证数据
 	 * @param handler 处理器
+	 * @see #listenCallBack(Player, Channel, Object, boolean, long, Object)
 	 */
 	public static void listenCallBack(@NonNull Player player, @NonNull Channel channel, Object checker, @NonNull Object handler) {
-		listenCallBack(player, channel, checker, WaitMaintain.T_Net, handler);
+		listenCallBack(player, channel, checker, true, WaitMaintain.T_Net, handler);
 	}
 
 	/**

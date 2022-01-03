@@ -115,6 +115,11 @@ public class At {
 		color = ChatColor.getLastColors(at.color + color);
 	}
 
+	@Override
+	public String toString() {
+		return String.format("At [str=%s, first=%s, color=%s]", str, first, color.replace(ChatColor.COLOR_CHAR, '&'));
+	}
+
 	/**
 	 * 检测名字并转为at段
 	 *
@@ -133,10 +138,5 @@ public class At {
 		} else {
 			return AT_STR + str;
 		}
-	}
-
-	@Override
-	public String toString() {
-		return String.format("At [str=%s, first=%s, color=%s]", str, first, color.replace(ChatColor.COLOR_CHAR, '&'));
 	}
 }

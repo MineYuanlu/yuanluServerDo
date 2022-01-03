@@ -20,6 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang.time.StopWatch;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -46,7 +47,7 @@ public abstract class SafeLoc {
 	/**
 	 * 实现(基于{@code org.spigotmc.spigot-api 1.15.1-R0.1-SNAPSHOT}设计)<br>
 	 * 基础实现
-	 * 
+	 *
 	 * @author yuanlu
 	 */
 	@LimitImpl(tar = "1.7.10", type = VersionCmp.GT)
@@ -54,12 +55,19 @@ public abstract class SafeLoc {
 	private static class Impl extends SafeLoc {
 		@Override
 		public Location getSafeLocation0(@NonNull Player player, @NonNull Location location) {
-			location = location.clone();
-			if (isSafe(player, location, true)//
-					|| searchVertical(player, location)//
-					|| searchNear(player, location)//
-			) return centerLoc(location);
-			return location;
+			StopWatch stopWatch = new StopWatch();
+			stopWatch.start();
+			try {
+				location = location.clone();
+				if (isSafe(player, location, true)//
+						|| searchVertical(player, location)//
+						|| searchNear(player, location)//
+				) return centerLoc(location);
+				return location;
+			} finally {
+				stopWatch.stop();
+				if (ShareData.isDEBUG()) ShareData.getLogger().info("[SAFE LOC] 耗时 getSafeLocation0: " + stopWatch.getTime() + " ms");
+			}
 		}
 
 		@Override
@@ -82,37 +90,51 @@ public abstract class SafeLoc {
 
 		@Override
 		boolean searchNear(Player player, Location l) {
-			Location tmp = l.clone();
-			for (Vec3i pos : SEARCH_POS) {
-				pos.set(l, tmp);
-				if (isSafe(player, tmp, false)) {
-					l.add(pos.x, pos.y, pos.z);
-					return true;
+			StopWatch stopWatch = new StopWatch();
+			stopWatch.start();
+			try {
+				Location tmp = l.clone();
+				for (Vec3i pos : SEARCH_POS) {
+					pos.set(l, tmp);
+					if (isSafe(player, tmp, false)) {
+						l.add(pos.x, pos.y, pos.z);
+						return true;
+					}
 				}
+				return false;
+			} finally {
+				stopWatch.stop();
+				if (ShareData.isDEBUG()) ShareData.getLogger().info("[SAFE LOC] 耗时 searchNear: " + stopWatch.getTime() + " ms");
 			}
-			return false;
 		}
 
 		@Override
 		boolean searchVertical(Player player, Location l) {
-			val	Y		= l.getBlockY();
-			val	world	= l.getWorld();
-			for (int i = Y + 1, max = world.getHighestBlockYAt(l.getBlockX(), l.getBlockZ()) + 1; i <= max; i++) {
-				l.setY(i);
-				if (isSafe(player, l, false)) return true;
+			StopWatch stopWatch = new StopWatch();
+			stopWatch.start();
+			try {
+				val	Y		= l.getBlockY();
+				val	world	= l.getWorld();
+				for (int i = Y + 1, max = world.getHighestBlockYAt(l.getBlockX(), l.getBlockZ()) + 1; i <= max; i++) {
+					l.setY(i);
+					if (isSafe(player, l, false)) return true;
+				}
+				for (int i = Y - 1, min = 0; i > min; i++) {
+					l.setY(i);
+					if (isSafe(player, l, false)) return true;
+				}
+				l.setY(Y);
+				return false;
+			} finally {
+				stopWatch.stop();
+				if (ShareData.isDEBUG()) ShareData.getLogger().info("[SAFE LOC] 耗时 searchVertical: " + stopWatch.getTime() + " ms");
 			}
-			for (int i = Y - 1, min = 0; i > min; i++) {
-				l.setY(i);
-				if (isSafe(player, l, false)) return true;
-			}
-			l.setY(Y);
-			return false;
 		}
 	}
 
 	/**
 	 * 1.7.10以下的特殊配置
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -130,7 +152,7 @@ public abstract class SafeLoc {
 
 	/**
 	 * 实例限制
-	 * 
+	 *
 	 * @author yuanlu
 	 *
 	 */
@@ -174,7 +196,7 @@ public abstract class SafeLoc {
 
 	/**
 	 * 版本比较
-	 * 
+	 *
 	 * @author yuanlu
 	 */
 	@AllArgsConstructor
@@ -281,7 +303,7 @@ public abstract class SafeLoc {
 
 		/**
 		 * 测试某个实例是否可以使用
-		 * 
+		 *
 		 * @param c 实现类
 		 * @return 是否可以使用
 		 */
@@ -292,7 +314,7 @@ public abstract class SafeLoc {
 
 		/**
 		 * 返回版本名称
-		 * 
+		 *
 		 * @param c 实现类
 		 * @return 版本名称
 		 */
@@ -310,7 +332,7 @@ public abstract class SafeLoc {
 
 		/**
 		 * 实际测试
-		 * 
+		 *
 		 * @param m1 服务器版本匹配器
 		 * @param m2 目标版本匹配器
 		 * @return 是否通过
@@ -321,7 +343,7 @@ public abstract class SafeLoc {
 
 		/**
 		 * 测试
-		 * 
+		 *
 		 * @param targetVersion 目标版本
 		 * @return 是否通过
 		 */

@@ -274,7 +274,6 @@ public class Main extends JavaPlugin implements Listener {
 		}
 
 		Tool.load(Channel.class);
-		Tool.load(SafeLoc.class);
 
 		// 启用插件时自动发出
 		prefix		= config.getString("Prefix", "");
@@ -288,6 +287,8 @@ public class Main extends JavaPlugin implements Listener {
 		getServer().getMessenger().registerOutgoingPluginChannel(this, ShareData.BC_CHANNEL);
 		getServer().getMessenger().registerIncomingPluginChannel(this, ShareData.BC_CHANNEL, Core.INSTANCE);
 		Core.init(config);
+
+		if (Core.Conf.isSafeLocation()) SafeLoc.init(loadFile("blocks.yml"));
 
 		getLogger().info("§a" + ShareData.SHOW_NAME + "-启动");
 	}

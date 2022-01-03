@@ -122,7 +122,7 @@ public final class CmdTpa extends TabTp {
 				} else {
 					msg("sender", player, name, display);
 					addTpReq(player, name, display);
-					Core.listenCallBack(player, Channel.TP, "5-" + name, WaitMaintain.T_User, (BoolConsumer) allow -> {
+					Core.listenCallBack(player, Channel.TP, "5-" + name, false, WaitMaintain.T_User, (BoolConsumer) allow -> {
 						if (allow) {
 							Core.tpTo(player, name, wait, true);
 							msg(wait > 0 ? "accept-wait" : "accept", player, name, display, wait);
