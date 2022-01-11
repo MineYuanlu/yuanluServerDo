@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>bid.yuanlu</groupId>
 	<artifactId>yuanluServerDo</artifactId>
-	<version>1.1.5</version><!-- -SNAPSHOT -->
+	<version>1.1.6</version><!-- -SNAPSHOT -->
 	<name>yuanluServerDo</name>
 	<description>Provide players with a series of cross server operations</description>
 	<repositories>
