@@ -626,7 +626,6 @@ public class Main extends Plugin implements Listener {
 	@Deprecated
 	@EventHandler
 	public void onTab(TabCompleteEvent e) {
-		System.out.println(e.getCursor());
 		if (!ConfigManager.isUseAt()) return;
 		String	line	= e.getCursor();
 		int		atIndex;
@@ -638,7 +637,6 @@ public class Main extends Plugin implements Listener {
 		val tarList = e.getSuggestions();
 		tarList.clear();
 		rawList.stream().map(ProxiedPlayer::getName).forEach(tarList::add);
-		System.out.println(tarList);
 	}
 
 	/**

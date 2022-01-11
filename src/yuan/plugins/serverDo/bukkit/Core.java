@@ -495,7 +495,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 */
 		private static void checkDelay(@NonNull Player player, long time, Runnable r) {
 			WaitMaintain.add(BAN_MOVE, player.getUniqueId(), time * 1000, r);
-			if (ShareData.isDEBUG()) System.out.println(BAN_MOVE);
+			if (ShareData.isDEBUG()) ShareData.getLogger().info("[Delay] BAN_MOVE: " + BAN_MOVE);
 		}
 
 		/**
