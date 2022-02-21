@@ -7,6 +7,7 @@
 - [bstats Bukkit](https://bstats.org/plugin/bukkit/yuanluServerDo/12395)
 - [bstats Bungee](https://bstats.org/plugin/bungeecord/yuanluServerDo/12396)
 - ![最新版本 badge](https://update.yuanlu.bid/ico/v/mc-bukkit/yuanluServerDo "最新版本")
+- ![bStats Players](https://img.shields.io/bstats/players/12396?label=%E7%8E%A9%E5%AE%B6%E6%95%B0%E9%87%8F) ![bStats Servers](https://img.shields.io/bstats/servers/12396?label=%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%95%B0%E9%87%8F)
 
 ## 替代yuanluServerTp
 

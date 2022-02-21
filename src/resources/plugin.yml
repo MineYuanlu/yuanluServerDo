@@ -6,4 +6,5 @@ author: yuanlu
 website: https://git.yuanlu.bid/yuanlu/yuanluServerDo
 api-version: 1.13
 
-softdepend: ['CMI','CMILib','Essentials']
+# softdepend: ['CMI','CMILib','Essentials']
+loadbefore: ['CMI','CMILib','Essentials']
