@@ -1,0 +1,6 @@
+name: yuanluServerDo
+main: yuan.plugins.serverDo.bungee.Main
+version: ${parent.version}
+description: ${parent.description}
+author: yuanlu
+website: ${parent.url}

@@ -1,0 +1,9 @@
+{
+"id":"yuanlu-server-do",
+"name":"yuanluServerDo",
+"version":"${project.version}",
+"url":"https://git.yuanlu.bid/yuanlu/yuanluServerDo",
+"authors":["yuanlu"],
+"main":"yuan.plugins.serverDo.velocity.Main",
+"description":"${project.description}"
+}

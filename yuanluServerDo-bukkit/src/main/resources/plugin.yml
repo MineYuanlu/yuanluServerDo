@@ -1,0 +1,10 @@
+name: yuanluServerDo
+main: yuan.plugins.serverDo.bukkit.Main
+version: ${parent.version}
+description: ${parent.description}
+author: yuanlu
+website: ${parent.url}
+api-version: 1.13
+
+# softdepend: ['CMI','CMILib','Essentials']
+loadbefore: ['CMI','CMILib','Essentials']

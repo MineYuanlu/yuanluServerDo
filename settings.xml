@@ -1,0 +1,12 @@
+<!-- 此处配置 CODING Maven 仓库凭据 -->
+<settings>
+    <!-- omitted xml -->
+    <servers>
+        <server>
+            <!--仓库 ID-->
+            <id>${CODING_MAVEN_REPO_ID}</id>
+            <username>${CODING_MAVEN_REG_USERNAME}</username>
+            <password>${CODING_MAVEN_REG_PASSWORD}</password>
+        </server>
+    </servers>
+</settings>

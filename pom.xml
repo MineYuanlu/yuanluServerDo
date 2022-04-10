@@ -1,177 +1,117 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<groupId>bid.yuanlu</groupId>
-	<artifactId>yuanluServerDo</artifactId>
-	<version>1.1.7</version><!-- -SNAPSHOT -->
-	<name>yuanluServerDo</name>
-	<description>Provide players with a series of cross server operations</description>
-	<repositories>
-		<!-- This adds the Bstats Maven repository to the build -->
-		<!-- <repository> <id>bstats-repo</id> <url>https://repo.bstats.org/content/repositories/releases/</url> 
-			</repository> -->
-		<!-- This adds the Spigot Maven repository to the build -->
-		<repository>
-			<id>spigot-repo</id>
-			<url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
-		</repository>
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 
-		<repository>
-			<id>jitpack.io</id>
-			<url>https://jitpack.io</url>
-		</repository>
-	</repositories>
-	<build>
-		<sourceDirectory>src</sourceDirectory>
-		<resources>
-			<resource>
-				<directory>src/resources</directory> <!-- (your resources folder location) -->
-				<filtering>true</filtering> <!-- this is the important part, it's what replaces, filters, all placeholders 
-					in the resources folder (such as ${project.version} in plugin.yml) -->
-			</resource>
-		</resources>
-		<plugins>
-			<!-- <plugin> <artifactId>maven-antrun-plugin</artifactId> <executions> 
-				<execution> <id>copy</id> <phase>install</phase> <configuration> <tasks> 
-				<copy todir="D:\game\mc-server\1.16.4\plugins" overwrite="true"> <fileset 
-				dir="${project.build.directory}"> <include name="${project.artifactId}-${project.version}.jar" 
-				/> </fileset> </copy> <copy todir="D:\game\mc-server\1.16.4-2\plugins" overwrite="true"> 
-				<fileset dir="${project.build.directory}"> <include name="${project.artifactId}-${project.version}.jar" 
-				/> </fileset> </copy> <copy todir="D:\game\mc-server\bc-1\plugins" overwrite="true"> 
-				<fileset dir="${project.build.directory}"> <include name="${project.artifactId}-${project.version}.jar" 
-				/> </fileset> </copy> </tasks> </configuration> <goals> <goal>run</goal> 
-				</goals> </execution> </executions> </plugin> --><!---->
-			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-				</configuration>
-			</plugin>
+    <groupId>bid.yuanlu</groupId>
+    <artifactId>yuanluServerDo</artifactId>
+    <version>1.2.0-SNAPSHOT</version>
+    <name>YuanluServerDo</name>
+    <description>Provide players with a series of cross server operations</description>
+    <packaging>pom</packaging>
+    <developers>
+        <developer>
+            <id>yuanlu</id>
+            <name>yuanlu</name>
+            <email>2573580691@qq.com</email>
+        </developer>
+    </developers>
+    <url>https://git.yuanlu.bid/yuanlu/yuanluServerDo</url>
+    <properties>
+        <java.version>1.8</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
 
-			<!-- 打包依赖 -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.1.1</version>
-				<configuration>
-					<relocations>
-						<relocation>
-							<pattern>org.bstats</pattern>
-							<!-- Replace this with your package! -->
-							<shadedPattern>yuan.plugins.ServerDo.bstats</shadedPattern>
-						</relocation>
-						<relocation>
-							<pattern>cn.mapland.yuanlu.updater</pattern>
-							<!-- Replace this with your package! -->
-							<shadedPattern>yuan.plugins.ServerDo.updater</shadedPattern>
-						</relocation>
-					</relocations>
-				</configuration>
-				<executions>
-					<execution>
-						<phase>package</phase>
-						<goals>
-							<goal>shade</goal>
-						</goals>
-						<configuration>
-							<minimizeJar>true</minimizeJar>
-							<filters>
-								<filter>
-									<artifact>*:*</artifact>
-									<excludes>
-										<exclude>META-INF/*.SF</exclude>
-										<exclude>META-INF/*.DSA</exclude>
-										<exclude>META-INF/*.RSA</exclude>
-									</excludes>
-								</filter>
-							</filters>
-							<artifactSet>
-								<includes>
-									<!-- <include>groupId:artifactId[[:type]:classifier]</include> -->
-									<!-- https://blog.csdn.net/yangguosb/article/details/80619481 -->
-								</includes>
-								<!--<excludes> <exclude></exclude> </excludes> -->
-							</artifactSet>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
-	</build>
-	<dependencies>
-		<!-- https://mvnrepository.com/artifact/org.bstats/bstats-bukkit -->
-		<dependency>
-			<groupId>org.bstats</groupId>
-			<artifactId>bstats-bukkit</artifactId>
-			<version>2.2.1</version>
-			<scope>compile</scope>
-		</dependency>
-		<!-- https://mvnrepository.com/artifact/org.bstats/bstats-bungeecord -->
-		<dependency>
-			<groupId>org.bstats</groupId>
-			<artifactId>bstats-bungeecord</artifactId>
-			<version>2.2.1</version>
-			<scope>compile</scope>
-		</dependency>
-		<!-- https://mvnrepository.com/artifact/org.json/json -->
-		<dependency>
-			<groupId>org.json</groupId>
-			<artifactId>json</artifactId>
-			<version>20160810</version>
-		</dependency>
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.8.1</version>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>3.2.4</version>
+                    <configuration>
+                        <relocations>
+                            <relocation>
+                                <pattern>org.bstats</pattern>
+                                <shadedPattern>yuan.plugins.serverDo.bstats</shadedPattern>
+                            </relocation>
+                            <relocation>
+                                <pattern>cn.mapland.yuanlu.updater</pattern>
+                                <shadedPattern>yuan.plugins.serverDo.updater</shadedPattern>
+                            </relocation>
+                        </relocations>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>shade</goal>
+                            </goals>
+                            <configuration>
+                                <createDependencyReducedPom>false</createDependencyReducedPom>
+                                <filters>
+                                    <filter>
+                                        <artifact>*:*</artifact>
+                                        <excludes>
+                                            <exclude>META-INF/*.SF</exclude>
+                                            <exclude>META-INF/*.DSA</exclude>
+                                            <exclude>META-INF/*.RSA</exclude>
+                                        </excludes>
+                                    </filter>
+                                </filters>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 
-		<!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<version>1.18.22</version>
-			<scope>provided</scope>
-		</dependency>
-		<!--This adds the Spigot API artifact to the build -->
-		<dependency>
-			<groupId>org.spigotmc</groupId>
-			<artifactId>spigot-api</artifactId>
-			<version>1.15.1-R0.1-SNAPSHOT</version>
-			<scope>provided</scope>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/net.md-5/bungeecord-api -->
-		<dependency>
-			<groupId>net.md-5</groupId>
-			<artifactId>bungeecord-api</artifactId>
-			<version>1.16-R0.4</version>
-			<scope>provided</scope>
-		</dependency>
-
-		<!-- CMI -->
-		<dependency>
-			<groupId>CMI</groupId>
-			<artifactId>CMI</artifactId>
-			<version>9.0.2.6</version>
-			<scope>system</scope>
-			<systemPath>${project.basedir}/lib/CMI9.0.2.6.jar</systemPath>
-		</dependency>
-
-		<!-- CMILib -->
-		<dependency>
-			<groupId>CMI</groupId>
-			<artifactId>CMILib</artifactId>
-			<version>1.0.3.4</version>
-			<scope>system</scope>
-			<systemPath>${project.basedir}/lib/CMILib1.0.3.4.jar</systemPath>
-		</dependency>
-		<dependency>
-			<groupId>com.gitee.yl_yuanlu</groupId>
-			<artifactId>UpdaterClient-bukkit</artifactId>
-			<version>1.0.8</version>
-			<scope>compile</scope>
-		</dependency>
-	</dependencies>
-	<properties>
-		<maven.compiler.target>1.8</maven.compiler.target>
-		<maven.compiler.source>1.8</maven.compiler.source>
-	</properties>
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.22</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+    <repositories>
+        <repository>
+            <id>yl-yuanlu-mcsp-main</id>
+            <url>https://yl-yuanlu-maven.pkg.coding.net/repository/mcsp/main/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+    <modules>
+        <module>yuanluserverdo-common</module>
+        <module>yuanluserverdo-bukkit</module>
+        <module>yuanluserverdo-bungeecord</module>
+        <module>yuanluserverdo-velocity</module>
+        <module>yuanluServerDo-bukkit-bungeecord</module>
+        <module>yuanluServerDo-bukkit-velocity</module>
+    </modules>
+    <!-- omitted xml -->
+    <distributionManagement>
+        <repository>
+            <id>yl-yuanlu-mcsp-main</id>
+            <name>main</name>
+            <url>https://yl-yuanlu-maven.pkg.coding.net/repository/mcsp/main/</url>
+        </repository>
+    </distributionManagement>
 </project>
