@@ -271,6 +271,14 @@ message:
     set-home:
       success: "&7成功设置家 &2%s"
       fail: "&7家数量已达上限: &2%s"
+    spawn:
+      tp: "&7正在传送至出生点 &2%s&7(&2%s&7)"
+      not-found: "&7找不到出生点 &2%s"
+    del-spawn:
+      success: "&7成功删除出生点 &2%s"
+      fail: "&7找不到出生点 &2%s"
+    set-spawn:
+      success: "&7成功设置出生点 &2%s"
     trans:
       help: "&7输入指令：&2/ysd-trans <plugin> <func> &7从某插件转换数据"
       not-found: "&7找不到名为 &2&s &7的转换器"
