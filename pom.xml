@@ -6,7 +6,7 @@
 
     <groupId>bid.yuanlu</groupId>
     <artifactId>yuanluServerDo</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.2.0-SNAPSHOT-2</version>
     <name>YuanluServerDo</name>
     <description>Provide players with a series of cross server operations</description>
     <packaging>pom</packaging>
