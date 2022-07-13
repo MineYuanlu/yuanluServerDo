@@ -1,0 +1,89 @@
+on:
+  release:
+    types:
+      - "published"
+
+name: Upload Release Asset
+
+jobs:
+  build:
+    name: Upload Release Asset
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - name: Get release
+        id: get_release
+        uses: bruceadams/get-release@v1.2.3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: get-pom-version
+        id: pom-version
+        uses: CptMokoena/maven-get-version-action@main
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+
+      - name: Upload Release Asset (Bukkit)
+        id: upload-release-asset-bukkit
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./yuanluServerDo-bukkit/target/yuanluServerDo-bukkit-${{ steps.pom-version.outputs.version }}.jar
+          asset_name: yuanluServerDo-bukkit-${{ steps.pom-version.outputs.version }}.jar
+          asset_content_type: application/java-archive
+
+      - name: Upload Release Asset (Bukkit Bungeecord)
+        id: upload-release-asset-bukkit-bungeecord
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./yuanluServerDo-bukkit-bungeecord/target/yuanluServerDo-bukkit-bungeecord-${{ steps.pom-version.outputs.version }}.jar
+          asset_name: yuanluServerDo-bukkit-bungeecord-${{ steps.pom-version.outputs.version }}.jar
+          asset_content_type: application/java-archive
+
+      - name: Upload Release Asset (Bukkit Velocity)
+        id: upload-release-asset-bukkit-velocity
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./yuanluServerDo-bukkit-velocity/target/yuanluServerDo-bukkit-velocity-${{ steps.pom-version.outputs.version }}.jar
+          asset_name: yuanluServerDo-bukkit-velocity-${{ steps.pom-version.outputs.version }}.jar
+          asset_content_type: application/java-archive
+
+      - name: Upload Release Asset (Bungeecord)
+        id: upload-release-asset-bungeecord
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./yuanluServerDo-bungeecord/target/yuanluServerDo-bungeecord-${{ steps.pom-version.outputs.version }}.jar
+          asset_name: yuanluServerDo-bungeecord-${{ steps.pom-version.outputs.version }}.jar
+          asset_content_type: application/java-archive
+
+      - name: Upload Release Asset (Velocity)
+        id: upload-release-asset-velocity
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./yuanluServerDo-velocity/target/yuanluServerDo-velocity-${{ steps.pom-version.outputs.version }}.jar
+          asset_name: yuanluServerDo-velocity-${{ steps.pom-version.outputs.version }}.jar
+          asset_content_type: application/java-archive
