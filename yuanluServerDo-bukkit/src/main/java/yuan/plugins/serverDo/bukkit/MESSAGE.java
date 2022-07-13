@@ -5,9 +5,7 @@
  */
 package yuan.plugins.serverDo.bukkit;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.Bukkit;
@@ -20,6 +18,7 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.val;
 import yuan.plugins.serverDo.Tool;
+
 
 /**
  * 语言文件
@@ -53,15 +52,19 @@ public interface MESSAGE {
 	final class JsonMsg extends MsgReal {
 		private final @NonNull @Getter String json, msg;
 
-		private JsonMsg(@NonNull String json, String metaMsg) {
+		private JsonMsg(@NonNull String json, @NonNull String metaMsg) {
 			this.json	= " "/* 减少字符串拼接次数 */ + json;
 			msg			= metaMsg;
+		}
+
+		static void send(CommandSender sender, String cmd) {
+			Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "tellraw " + sender.getName() + cmd);
 		}
 
 		@Override
 		public void send(CommandSender sender, Map<String, Object> args) {
 			String cmd = Tool.parseVar(json, '<', '>', args);
-			Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "tellraw " + sender.getName() + cmd);
+			send(sender,cmd);
 		}
 
 		@Override
@@ -72,7 +75,35 @@ public interface MESSAGE {
 			} catch (IllegalArgumentException e) {
 				Main.getMain().getLogger().warning("错误的格式化: " + cmd + ", 参数: " + Arrays.deepToString(args));
 			}
-			Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "tellraw " + sender.getName() + cmd);
+			send(sender,cmd);
+		}
+
+	}	final class MultiJsonMsg extends MsgReal {
+		private final @NonNull @Getter String json;
+		private final @NonNull @Getter String  msg;
+
+		private MultiJsonMsg(@NonNull List<String> json, @NonNull String metaMsg) {
+			val sj=new StringJoiner("\0");
+			json.forEach(sj::add);
+			this.json	=sj.toString();
+			msg			= metaMsg;
+		}
+
+		@Override
+		public void send(CommandSender sender, Map<String, Object> args) {
+			String cmd = Tool.parseVar(json, '<', '>', args);
+			for (val msg : cmd.split("\0"))JsonMsg.send(sender,msg);
+		}
+
+		@Override
+		public void send(CommandSender sender, Object... args) {
+			String cmd = this.json;
+			if (args.length != 0) try {
+				cmd = String.format(cmd, args);
+			} catch (IllegalArgumentException e) {
+				Main.getMain().getLogger().warning("错误的格式化: " + cmd + ", 参数: " + Arrays.deepToString(args));
+			}
+			for (val msg : cmd.split("\0"))JsonMsg.send(sender,msg);
 		}
 
 	}
@@ -106,6 +137,9 @@ public interface MESSAGE {
 
 		static Msg get(@NonNull String node, int type, @NonNull String json, String metaMsg) {
 			return cache(node, type, new JsonMsg(json, metaMsg));
+		}
+		static Msg get(@NonNull String node, int type, @NonNull List<String> json, String metaMsg) {
+			return cache(node, type, new MultiJsonMsg(json, metaMsg));
 		}
 
 		static void reload() {

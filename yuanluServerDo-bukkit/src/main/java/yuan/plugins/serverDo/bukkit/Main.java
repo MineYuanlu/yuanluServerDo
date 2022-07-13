@@ -232,8 +232,15 @@ public class Main extends JavaPlugin implements Listener {
 			val msg = mes(real + ".msg", type | 4);
 			if (notSenior) return msg;
 			else {
-				String json = config.getString(node + ".json", null);
-				if (json != null) return Msg.get(node, type, t(json), msg.getMsg());
+				val jsonNode = node + ".json";
+				if (config.isString(jsonNode)) {
+					String json = config.getString(jsonNode, null);
+					if (json != null) return Msg.get(node,type,t(json),msg.getMsg());
+				} else if (config.isList(jsonNode)) {
+					val msgs = config.getStringList(jsonNode);
+					msgs.replaceAll(Main::t);
+					return Msg.get(node,type,msgs,msg.getMsg());
+				} else return msg;
 			}
 		} else if (config.isList(node)) {
 			List<String>		l	= config.getStringList(node);
