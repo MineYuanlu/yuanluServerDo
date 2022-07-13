@@ -99,10 +99,10 @@
         </repository>
     </repositories>
     <modules>
-        <module>yuanluserverdo-common</module>
-        <module>yuanluserverdo-bukkit</module>
-        <module>yuanluserverdo-bungeecord</module>
-        <module>yuanluserverdo-velocity</module>
+        <module>yuanluServerDo-common</module>
+        <module>yuanluServerDo-bukkit</module>
+        <module>yuanluServerDo-bungeecord</module>
+        <module>yuanluServerDo-velocity</module>
         <module>yuanluServerDo-bukkit-bungeecord</module>
         <module>yuanluServerDo-bukkit-velocity</module>
     </modules>
