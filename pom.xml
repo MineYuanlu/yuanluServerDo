@@ -6,7 +6,7 @@
 
     <groupId>bid.yuanlu</groupId>
     <artifactId>yuanluServerDo</artifactId>
-    <version>1.2.0-SNAPSHOT-4</version>
+    <version>1.2.0-SNAPSHOT-5</version>
     <name>YuanluServerDo</name>
     <description>Provide players with a series of cross server operations</description>
     <packaging>pom</packaging>
@@ -82,21 +82,21 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.22</version>
+            <version>1.18.24</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
     <repositories>
-        <repository>
-            <id>yl-yuanlu-mcsp-main</id>
-            <url>https://yl-yuanlu-maven.pkg.coding.net/repository/mcsp/main/</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
+<!--        <repository>-->
+<!--            <id>yl-yuanlu-mcsp-main</id>-->
+<!--            <url>https://yl-yuanlu-maven.pkg.coding.net/repository/mcsp/main/</url>-->
+<!--            <releases>-->
+<!--                <enabled>true</enabled>-->
+<!--            </releases>-->
+<!--            <snapshots>-->
+<!--                <enabled>true</enabled>-->
+<!--            </snapshots>-->
+<!--        </repository>-->
     </repositories>
     <modules>
         <module>yuanluServerDo-common</module>
@@ -108,10 +108,10 @@
     </modules>
     <!-- omitted xml -->
     <distributionManagement>
-        <repository>
-            <id>yl-yuanlu-mcsp-main</id>
-            <name>main</name>
-            <url>https://yl-yuanlu-maven.pkg.coding.net/repository/mcsp/main/</url>
-        </repository>
+<!--        <repository>-->
+<!--            <id>yl-yuanlu-mcsp-main</id>-->
+<!--            <name>main</name>-->
+<!--            <url>https://yl-yuanlu-maven.pkg.coding.net/repository/mcsp/main/</url>-->
+<!--        </repository>-->
     </distributionManagement>
 </project>

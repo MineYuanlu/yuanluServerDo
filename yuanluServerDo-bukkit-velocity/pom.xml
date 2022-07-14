@@ -7,7 +7,7 @@
     <parent>
         <groupId>bid.yuanlu</groupId>
         <artifactId>yuanluServerDo</artifactId>
-        <version>1.2.0-SNAPSHOT-4</version>
+        <version>1.2.0-SNAPSHOT-5</version>
     </parent>
 
     <artifactId>yuanluServerDo-bukkit-velocity</artifactId>

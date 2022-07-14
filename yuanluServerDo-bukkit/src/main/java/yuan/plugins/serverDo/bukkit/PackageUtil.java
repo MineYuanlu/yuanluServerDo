@@ -3,6 +3,7 @@ package yuan.plugins.serverDo.bukkit;
 import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -101,7 +102,7 @@ public class PackageUtil {
 		String[]		jarInfo		= jarPath.split("!");
 		String			jarFilePath	= jarInfo[0].substring(jarInfo[0].indexOf("/"));
 		String			packagePath	= jarInfo[1].substring(1);
-		try (JarFile jarFile = new JarFile(jarFilePath)) {
+		try (JarFile jarFile = new JarFile(URLDecoder.decode(jarFilePath))) {
 			Enumeration<JarEntry> entrys = jarFile.entries();
 			while (entrys.hasMoreElements()) {
 				JarEntry	jarEntry	= entrys.nextElement();
