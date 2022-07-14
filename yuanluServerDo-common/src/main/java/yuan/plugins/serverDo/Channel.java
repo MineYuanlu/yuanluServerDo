@@ -83,7 +83,7 @@ public enum Channel {
 	@EqualsAndHashCode(callSuper = false)
 	public static final class Back extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析:传送坐标
@@ -181,7 +181,7 @@ public enum Channel {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Cooldown extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 发送至Client
@@ -491,7 +491,7 @@ public enum Channel {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Home extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析: 设置家
@@ -657,7 +657,7 @@ public enum Channel {
 			}
 		}
 
-//
+		//
 
 		/**
 		 * 设置家
@@ -888,7 +888,7 @@ public enum Channel {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Permission extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析Client
@@ -974,7 +974,7 @@ public enum Channel {
 		}
 
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 获取音效
@@ -1017,7 +1017,7 @@ public enum Channel {
 	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class ServerInfo extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析Server
@@ -1065,7 +1065,7 @@ public enum Channel {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class TimeAmend extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析Client
@@ -1216,7 +1216,7 @@ public enum Channel {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Tp extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析: C1搜索用户并发送传送请求
@@ -1666,7 +1666,7 @@ public enum Channel {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class TpLoc extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析: 传送坐标
@@ -1776,7 +1776,7 @@ public enum Channel {
 	@ToString
 	public static final class TransHome extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析: 响应
@@ -1877,7 +1877,7 @@ public enum Channel {
 	@ToString
 	public static final class TransWarp extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析: 响应
@@ -1970,7 +1970,7 @@ public enum Channel {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Vanish extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析
@@ -2027,7 +2027,7 @@ public enum Channel {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class VersionCheck extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析Client
@@ -2110,7 +2110,7 @@ public enum Channel {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Warp extends Package {
 		/** 此数据包ID */
-		private static @Getter int ID;
+		protected static @Getter int ID;
 
 		/**
 		 * 解析: 设置地标
