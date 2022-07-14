@@ -4,18 +4,15 @@
 package yuan.plugins.serverDo.bukkit.cmds;
 
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
+import lombok.*;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.configuration.ConfigurationSection;
 
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
-import lombok.Value;
-import lombok.val;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.bukkit.MESSAGE;
 import yuan.plugins.serverDo.bukkit.Main;
@@ -31,19 +28,19 @@ import yuan.plugins.serverDo.bukkit.PackageUtil;
 public final class CommandManager implements MESSAGE {
 	/** 命令信息 */
 	@Value
-	static final class CmdInfo {
+	static class CmdInfo {
 		/**
 		 * 获取命令信息
 		 *
 		 * @param conf 配置节点
 		 * @return 命令信息
 		 */
-		private static CmdInfo getCmdInfo(ConfigurationSection conf) {
-			val	names			= conf.getStringList("names");
+		private static @NonNull CmdInfo getCmdInfo(@NonNull ConfigurationSection conf) {
+			val	names			=conf.isString("names")? Collections.singletonList(conf.getString("names",null)) : conf.getStringList("names");
 			val	permission		= conf.getString("permission", null);
 			val	usageMessage	= conf.getString("usageMessage", "");
 			val	description		= conf.getString("description", "");
-			return new CmdInfo(description, usageMessage, names, permission, conf);
+			return new CmdInfo(description, usageMessage, names.stream().filter(Objects::nonNull).filter(s->!s.isEmpty()).collect(Collectors.toList()), permission, conf);
 		}
 
 		/** 描述 */
@@ -133,8 +130,8 @@ public final class CommandManager implements MESSAGE {
 			val			b		= cmdm.register(Main.getMain().getName(), cmd);
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[D] register cmd: " + b + ", fbn:" + Main.getMain().getName() + ": " + cmd.getName());
 		} catch (Exception e2) {
-			System.err.println("CAN NOT REGISTER COMMAND: " + e2.toString());
-			Main.getMain().getLogger().warning("CAN NOT REGISTER COMMAND: " + e2.toString());
+			System.err.println("CAN NOT REGISTER COMMAND: " + e2);
+			Main.getMain().getLogger().warning("CAN NOT REGISTER COMMAND: " + e2);
 		}
 		return cmd;
 	}
