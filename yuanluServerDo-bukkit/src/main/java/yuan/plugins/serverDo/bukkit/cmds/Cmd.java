@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import lombok.NonNull;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -128,7 +129,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	}
 
 	@Override
-	public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+	public boolean execute(@NonNull CommandSender sender, @NonNull String commandLabel, String @NonNull [] args) {
 		bstatsExecute(this);
 		val cq = new CallbackQueue();
 		cq.task(() -> checkPlayer(sender, cq), //

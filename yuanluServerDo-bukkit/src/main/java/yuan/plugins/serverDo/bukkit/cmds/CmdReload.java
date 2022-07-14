@@ -3,6 +3,7 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
+import lombok.NonNull;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 
@@ -22,7 +23,7 @@ public final class CmdReload extends Cmd {
 	}
 
 	@Override
-	public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+	public boolean execute(@NonNull CommandSender sender, @NonNull String commandLabel, String @NonNull [] args) {
 		if (sender instanceof ConsoleCommandSender) {
 			Main.getMain().reload();
 			msg("success", sender);

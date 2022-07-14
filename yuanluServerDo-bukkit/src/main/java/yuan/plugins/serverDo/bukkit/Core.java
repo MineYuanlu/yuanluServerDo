@@ -7,23 +7,8 @@
  */
 package yuan.plugins.serverDo.bukkit;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.IntConsumer;
-
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Sound;
@@ -34,34 +19,22 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.plugin.messaging.PluginMessageListener;
-
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-import lombok.Value;
-import lombok.val;
-import lombok.experimental.FieldDefaults;
-import yuan.plugins.serverDo.At;
-import yuan.plugins.serverDo.Channel;
+import yuan.plugins.serverDo.*;
 import yuan.plugins.serverDo.Channel.Package.BiBoolConsumer;
 import yuan.plugins.serverDo.Channel.Package.BiPlayerConsumer;
 import yuan.plugins.serverDo.Channel.Package.BoolConsumer;
 import yuan.plugins.serverDo.Channel.PlaySound.Sounds;
-import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.ShareData.TabType;
-import yuan.plugins.serverDo.ShareLocation;
-import yuan.plugins.serverDo.Tool;
-import yuan.plugins.serverDo.WaitMaintain;
 import yuan.plugins.serverDo.bukkit.cmds.CmdTpaccept;
 import yuan.plugins.serverDo.bukkit.cmds.CmdVanish;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 /**
  * Bukkit端的核心组件
@@ -93,7 +66,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param player 玩家
 		 * @return 玩家的back坐标/null
 		 */
-		public static final ShareLocation getBack(@NonNull Player player) {
+		public static ShareLocation getBack(@NonNull Player player) {
 			return BACKS.get(player.getName());
 		}
 
@@ -104,7 +77,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param type   通道类型(必须为BACK)
 		 * @param buf    数据包
 		 */
-		private static final void handleBackMessage(Player player, Channel type, byte[] buf) {
+		private static void handleBackMessage(Player player, Channel type, byte[] buf) {
 			if (type != Channel.BACK) throw new InternalError("Bad Type");
 			byte id = Channel.getSubId(buf);
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] BACK: " + id);
@@ -124,7 +97,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param player 玩家
 		 * @param loc    本地坐标
 		 */
-		private static final void recordLocation(@NonNull Player player, @NonNull Location loc) {
+		private static void recordLocation(@NonNull Player player, @NonNull Location loc) {
 			BACKS.put(player.getName(), toSLoc(loc));
 		}
 
@@ -134,7 +107,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param player   玩家
 		 * @param toServer 玩家即将传送的服务器(null为本地)
 		 */
-		private static final void recordLocation(@NonNull Player player, String toServer) {
+		private static void recordLocation(@NonNull Player player, String toServer) {
 			recordLocation(player, toServer, null);
 		}
 
@@ -146,7 +119,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param toServer 玩家即将传送的服务器
 		 * @param toPlayer 玩家即将传送的玩家
 		 */
-		private static final void recordLocation(@NonNull Player player, String toServer, String toPlayer) {
+		private static void recordLocation(@NonNull Player player, String toServer, String toPlayer) {
 			val	name	= player.getName();
 			val	loc		= toSLoc(player.getLocation());
 			if (toServer == null && toPlayer == null) {
@@ -214,7 +187,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 
 	/** 监听回调的对象 */
 	@Value
-	private static final class ListenCallBackObj {
+	private static class ListenCallBackObj {
 		/** 检查数据 */
 		Object	checker;
 		/** 处理器 */
@@ -239,9 +212,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 *
 	 */
 	public static final class Permissions {
-		@SuppressWarnings("javadoc")
 		@Value
-		public static final class PerAmount {
+		public static class PerAmount {
 			PerAmountNode[]	nodes;
 			int				def;
 
@@ -257,9 +229,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			}
 		}
 
-		@SuppressWarnings("javadoc")
 		@Value
-		public static final class PerAmountNode implements Comparable<PerAmountNode> {
+		public static class PerAmountNode implements Comparable<PerAmountNode> {
 			String	permission;
 			int		amount;
 
@@ -385,10 +356,9 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		}
 	}
 
-	@SuppressWarnings("javadoc")
 	@FieldDefaults(makeFinal = true)
 	@AllArgsConstructor
-	private static enum SoundHandler {
+	private enum SoundHandler {
 		AT(Sounds.AT, Sound.BLOCK_ANVIL_PLACE, 1, 2);
 
 		private static final EnumMap<Sounds, SoundHandler> MAP = new EnumMap<>(Sounds.class);
@@ -454,7 +424,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		/** 传送类型接收者消息 */
 		private static final Msg[] tpTypeReceiverMsg;
 		static {
-			String str[] = "tp tpa tphere tpahere mover target".split(" ");
+			String[] str = "tp tpa tphere tpahere mover target".split(" ");
 			tpTypeReceiverMsg = new Msg[str.length];
 			for (int i = 0; i < 4; i++) tpTypeReceiverMsg[i] = Main.getMain().mes("cmd." + str[i] + ".receiver");
 			for (int i = 4; i < 6; i++) tpTypeReceiverMsg[i] = Main.getMain().mes("cmd.tp.third-" + str[i]);
@@ -558,9 +528,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 				handler = h -> Channel.Tp.p4S_tpRespReceive(buf, (BoolConsumer) h);
 				break;
 			case 0x5:
-				Channel.Tp.p5S_tpResp(buf, (who, allow) -> {
-					callBack(player, type, id + "-" + who, h -> ((BoolConsumer) h).accept(allow));
-				});
+				Channel.Tp.p5S_tpResp(buf, (who, allow) -> callBack(player, type, id + "-" + who, h -> ((BoolConsumer) h).accept(allow)));
 				break;
 			case 0x7:
 				handler = h -> Channel.Tp.p7S_tpThirdReceive(buf, (BiBoolConsumer) h);
@@ -952,8 +920,10 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 * @param loc Bukkit坐标
 	 * @return Share坐标
 	 */
-	public static @NonNull ShareLocation toSLoc(Location loc) {
-		return new ShareLocation(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch(), loc.getWorld().getName());
+	public static @NonNull ShareLocation toSLoc(@NonNull Location loc) {
+		val w = loc.getWorld();
+		if (w == null) throw new NullPointerException("World is null: " + loc);
+		return new ShareLocation(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch(), w.getName());
 	}
 
 	/**
@@ -1094,8 +1064,12 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	public void onPlayerMove(@NonNull PlayerMoveEvent e) {
 		val uid = e.getPlayer().getUniqueId();
 		if (!TpHandler.BAN_MOVE.contains(uid)) return;
-		val distance = e.getFrom().distanceSquared(e.getTo());
-		if (distance < 0.05) return;
+		val to=e.getTo();
+		val from=e.getFrom();
+		if (to!=null&&to.getWorld()!=null&&Objects.equals(from.getWorld(),to.getWorld())){
+			val distance = from.distanceSquared(to);
+			if (distance < 0.05) return;
+		}
 		TpHandler.BAN_MOVE.remove(uid);
 		TPCANCEL_MOVE.send(e.getPlayer());
 	}
@@ -1131,9 +1105,10 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	/** @deprecated BUKKIT */
 	@Deprecated
 	@Override
-	public void onPluginMessageReceived(String c, Player player, byte[] message) {
+	public void onPluginMessageReceived(@NonNull String c, @NonNull Player player, byte[] message) {
 		if (!ShareData.BC_CHANNEL.equals(c)) return;
 		Channel type = Channel.byId(ShareData.readInt(message, 0, -1));
+		if (type == null) return;
 		if (!ALLOW_PLAYERS.contains(player.getUniqueId())) {
 			if (type != Channel.VERSION_CHECK) return;
 			boolean allow = Channel.VersionCheck.parseC(message);

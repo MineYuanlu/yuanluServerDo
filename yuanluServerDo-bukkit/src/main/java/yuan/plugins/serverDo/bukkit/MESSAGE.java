@@ -26,7 +26,6 @@ import yuan.plugins.serverDo.Tool;
  * @author yuanlu
  *
  */
-@SuppressWarnings("javadoc")
 public interface MESSAGE {
 	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	final class EmptyMsg extends MsgReal {
@@ -38,12 +37,12 @@ public interface MESSAGE {
 		}
 
 		@Override
-		public void send(CommandSender sender, Map<String, Object> args) {
+		public void send(@NonNull CommandSender sender, @NonNull Map<String, Object> args) {
 
 		}
 
 		@Override
-		public void send(CommandSender sender, Object... args) {
+		public void send(@NonNull CommandSender sender, Object @NonNull ... args) {
 
 		}
 
@@ -62,13 +61,13 @@ public interface MESSAGE {
 		}
 
 		@Override
-		public void send(CommandSender sender, Map<String, Object> args) {
+		public void send(@NonNull CommandSender sender, @NonNull Map<String, Object> args) {
 			String cmd = Tool.parseVar(json, '<', '>', args);
 			send(sender,cmd);
 		}
 
 		@Override
-		public void send(CommandSender sender, Object... args) {
+		public void send(@NonNull CommandSender sender, Object @NonNull ... args) {
 			String cmd = this.json;
 			if (args.length != 0) try {
 				cmd = String.format(cmd, args);
@@ -90,13 +89,13 @@ public interface MESSAGE {
 		}
 
 		@Override
-		public void send(CommandSender sender, Map<String, Object> args) {
+		public void send(@NonNull CommandSender sender, @NonNull Map<String, Object> args) {
 			String cmd = Tool.parseVar(json, '<', '>', args);
 			for (val msg : cmd.split("\0"))JsonMsg.send(sender,msg);
 		}
 
 		@Override
-		public void send(CommandSender sender, Object... args) {
+		public void send(@NonNull CommandSender sender, Object @NonNull ... args) {
 			String cmd = this.json;
 			if (args.length != 0) try {
 				cmd = String.format(cmd, args);
@@ -183,7 +182,7 @@ public interface MESSAGE {
 		 * @param sender 发送的对象
 		 * @param args   参数
 		 */
-		public void send(CommandSender sender, Map<String, Object> args) {
+		public void send(@NonNull CommandSender sender, @NonNull Map<String, Object> args) {
 			getReal().send(sender, args);
 		}
 
@@ -193,7 +192,7 @@ public interface MESSAGE {
 		 * @param sender 发送的对象
 		 * @param args   参数
 		 */
-		public void send(CommandSender sender, Object... args) {
+		public void send(@NonNull CommandSender sender, @NonNull Object @NonNull ... args) {
 			getReal().send(sender, args);
 		}
 
@@ -213,7 +212,7 @@ public interface MESSAGE {
 		 * @param sender 发送的对象
 		 * @param args   参数
 		 */
-		public abstract void send(CommandSender sender, Map<String, Object> args);
+		public abstract void send(@NonNull CommandSender sender, @NonNull Map<String, Object> args);
 
 		/**
 		 * 发送一条消息
@@ -221,7 +220,7 @@ public interface MESSAGE {
 		 * @param sender 发送的对象
 		 * @param args   参数
 		 */
-		public abstract void send(CommandSender sender, Object... args);
+		public abstract void send(@NonNull CommandSender sender, @NonNull Object @NonNull  ... args);
 
 		@Override
 		public String toString() {
@@ -235,13 +234,13 @@ public interface MESSAGE {
 		private final @NonNull @Getter String msg;
 
 		@Override
-		public void send(CommandSender sender, @NonNull Map<String, Object> args) {
+		public void send(@NonNull CommandSender sender, @NonNull Map<String, Object> args) {
 			String msg = Tool.parseVar(this.msg, '<', '>', args);
 			sender.sendMessage(msg);
 		}
 
 		@Override
-		public void send(CommandSender sender, Object... args) {
+		public void send(@NonNull CommandSender sender, @NonNull Object @NonNull ... args) {
 			String msg = this.msg;
 			if (args.length != 0) try {
 				msg = String.format(msg, args);
