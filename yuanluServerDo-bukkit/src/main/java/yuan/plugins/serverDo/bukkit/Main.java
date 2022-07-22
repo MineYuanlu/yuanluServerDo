@@ -273,7 +273,7 @@ public class Main extends JavaPlugin implements Listener {
 	public void onEnable() {
 
 		bstats();
-		update();
+//		update();
 
 		if (ShareData.isDEBUG()) {
 			MESSAGE_LOST_NODE = loadFile("lang-lost.yml");

@@ -83,7 +83,7 @@ public interface MESSAGE {
 
 		private MultiJsonMsg(@NonNull List<String> json, @NonNull String metaMsg) {
 			val sj=new StringJoiner("\0");
-			json.forEach(sj::add);
+			json.stream().map(" "::concat).forEach(sj::add);
 			this.json	=sj.toString();
 			msg			= metaMsg;
 		}
