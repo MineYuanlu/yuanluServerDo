@@ -1,6 +1,12 @@
 # yuanluerServerDo
 
-让跨服玩家无缝执行命令
+让跨服玩家无缝执行命令  
+Allow players on the group server to seamlessly execute commands across servers
+
+理论全版本支持  
+Theory full version support
+
+
 
 统计数据
 
