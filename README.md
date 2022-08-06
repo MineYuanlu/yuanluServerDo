@@ -6,6 +6,8 @@ Allow players on the group server to seamlessly execute commands across servers
 理论全版本支持  
 Theory full version support
 
+## 交流
+[discord](https://discord.gg/5SZNhTkqJg)
 
 
 ## 统计数据
