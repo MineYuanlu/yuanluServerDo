@@ -82,8 +82,8 @@ public final class TabHandler {
 		if (list.size() != 1) return;
 		val str = list.get(0);
 		if (str != null) {
-			val	type	= TabType.getType("", str);
-			val	request	= TabType.getValue("", str);
+			val	type	= TabType.getType(ConfigManager.getTabReplace(), str);
+			val	request	= TabType.getValue(ConfigManager.getTabReplace(), str);
 			if (type == null || request == null) return;
 			list.clear();
 			switch (type) {

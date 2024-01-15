@@ -281,7 +281,7 @@ public final class Main {
 
 		if (Files.isRegularFile(configFile)) try (val in = Files.newInputStream(configFile)) {
 			config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(in);
-		} catch (FileNotFoundException e) {
+		} catch (FileNotFoundException ignored) {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

@@ -126,7 +126,7 @@ public class Main extends Plugin implements Listener {
 	 * @param player 玩家
 	 * @param buf    数据
 	 */
-	public static void send(ProxiedPlayer player, @NonNull byte[] buf) {
+	public static void send(ProxiedPlayer player, byte @NonNull [] buf) {
 		val server = player.getServer();
 		send(server, buf);
 		if (isDEBUG()) getMain().getLogger().info("发送: " + server.getInfo().getName() + " " + Arrays.toString(buf));
@@ -138,7 +138,7 @@ public class Main extends Plugin implements Listener {
 	 * @param server 服务器
 	 * @param buf    数据
 	 */
-	public static void send(Server server, @NonNull byte[] buf) {
+	public static void send(Server server, byte @NonNull [] buf) {
 		server.sendData(ShareData.BC_CHANNEL, buf);
 		if (isDEBUG()) getMain().getLogger().info("发送: " + server.getInfo().getName() + " " + Arrays.toString(buf));
 	}
@@ -151,7 +151,7 @@ public class Main extends Plugin implements Listener {
 	 * @return true if the message was sent immediately, false otherwise if queue is
 	 *         true, it has been queued, if itis false it has been discarded.
 	 */
-	public static boolean send(ServerInfo server, @NonNull byte[] buf) {
+	public static boolean send(ServerInfo server, byte @NonNull [] buf) {
 		val result = server.sendData(ShareData.BC_CHANNEL, buf, false);
 		if (isDEBUG()) getMain().getLogger().info("发送: " + server.getName() + " " + Arrays.toString(buf));
 		return result;
@@ -165,7 +165,7 @@ public class Main extends Plugin implements Listener {
 	 * @return true if the message was sent immediately, false otherwise if queue is
 	 *         true, it has been queued, if itis false it has been discarded.
 	 */
-	public static boolean sendQueue(ServerInfo server, @NonNull byte[] buf) {
+	public static boolean sendQueue(ServerInfo server, byte @NonNull [] buf) {
 		val result = server.sendData(ShareData.BC_CHANNEL, buf, true);
 		if (isDEBUG()) getMain().getLogger().info("发送: " + server.getName() + " " + Arrays.toString(buf));
 		return result;
@@ -197,7 +197,7 @@ public class Main extends Plugin implements Listener {
 		Configuration	config			= null;
 		try {
 			config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(configFile);
-		} catch (FileNotFoundException e) {
+		} catch (FileNotFoundException ignored) {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

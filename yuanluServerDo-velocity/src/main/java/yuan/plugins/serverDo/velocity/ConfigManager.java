@@ -31,6 +31,7 @@ import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.LRUCache;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.ShareLocation;
+import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.Tool.ThrowableFunction;
 import yuan.plugins.serverDo.Tool.ThrowableRunnable;
 import yuan.plugins.serverDo.WaitMaintain;
@@ -151,7 +152,6 @@ public final class ConfigManager {
 		/**
 		 * 实际加载
 		 *
-		 *
 		 * @throws IOException IOE
 		 */
 		protected abstract void load0() throws IOException;
@@ -168,7 +168,6 @@ public final class ConfigManager {
 
 		/**
 		 * 实际保存
-		 *
 		 *
 		 * @throws IOException IOE
 		 */
@@ -355,6 +354,9 @@ public final class ConfigManager {
 	/** 配置文件 */
 	private static @Getter Configuration					config;
 
+	/** tab替换 */
+	private static @Getter @Setter String					tabReplace;
+
 	/** 服务器信息 */
 	private static byte[]									serverInfo;
 	/** 出错 */
@@ -426,11 +428,13 @@ public final class ConfigManager {
 	 */
 	public static void init(Configuration config) {
 		ConfigManager.config = config;
+		val tabReplace = config.getString("player-tab-replace", "yl★:" + Tool.randomString(8));
+		setTabReplace(tabReplace);
 		setSaveDelay(config.getLong("save-delay", getSaveDelay()));
 		setUseAt(config.getBoolean("use-at", isUseAt()));
 		loadGroup(config);
 
-		serverInfo = Channel.ServerInfo.sendS("", Main.getPluginContainer().getDescription().getVersion().orElse("Unknown"));
+		serverInfo = Channel.ServerInfo.sendS(tabReplace, Main.getPluginContainer().getDescription().getVersion().orElse("Unknown"));
 
 		Arrays.stream(ConfFile.values()).forEach(ConfFile::load);
 

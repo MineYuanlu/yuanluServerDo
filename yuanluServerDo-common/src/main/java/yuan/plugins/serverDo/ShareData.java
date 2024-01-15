@@ -7,17 +7,17 @@
  */
 package yuan.plugins.serverDo;
 
-import java.nio.charset.Charset;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.logging.Logger;
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.val;
+
+import java.nio.charset.Charset;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.logging.Logger;
 
 /**
  * 共享数据
@@ -37,12 +37,12 @@ public final class ShareData {
 	public enum TabType {
 		TP_ALL, TP_NORMAL, WARP, HOME, AT;
 
-		private static int								length;
+		private static final int						length;
 		private static final HashMap<String, TabType>	DATAS	= new HashMap<>();
 		static {
 			val vs = values();
 			length = Integer.toString(vs.length - 1, Character.MAX_VALUE).length();
-			char emptyChar[] = new char[length];
+			char[] emptyChar = new char[length];
 			Arrays.fill(emptyChar, '_');
 			String empty = new String(emptyChar);
 			for (val v : vs) {
