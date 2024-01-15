@@ -7,7 +7,7 @@
     <parent>
         <groupId>bid.yuanlu</groupId>
         <artifactId>yuanluServerDo</artifactId>
-        <version>1.2.0-SNATHOST-7</version>
+        <version>1.2.1-SNATHOST</version>
     </parent>
 
     <artifactId>yuanluServerDo-velocity</artifactId>
