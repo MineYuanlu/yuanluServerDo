@@ -3,13 +3,7 @@
  */
 package yuan.plugins.serverDo.velocity;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.UUID;
-import java.util.function.Function;
-
 import com.velocitypowered.api.proxy.Player;
-
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import yuan.plugins.serverDo.Channel;
@@ -17,24 +11,28 @@ import yuan.plugins.serverDo.Channel.TransHome;
 import yuan.plugins.serverDo.Channel.TransWarp;
 import yuan.plugins.serverDo.ShareLocation;
 
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.UUID;
+import java.util.function.Function;
+
 /**
  * 转换处理器
  *
  * @author yuanlu
- *
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class TransHandler {
 	/** 所有接收到的家 */
-	private static final HashMap<UUID, LinkedHashMap<String, ShareLocation>>	HOMES			= new HashMap<>();
+	private static final HashMap<UUID, LinkedHashMap<String, ShareLocation>>  HOMES         = new HashMap<>();
 	/** 所有接收到的家 */
-	private static final Function<UUID, LinkedHashMap<String, ShareLocation>>	HOMES_MF		= x -> new LinkedHashMap<>();
-	/** 所有接收到的家计数器 */
-	private static int															HOMES_COUNTER	= 0;
+	private static final Function<UUID, LinkedHashMap<String, ShareLocation>> HOMES_MF      = x -> new LinkedHashMap<>();
 	/** 所有接收到的地标 */
-	private static final LinkedHashMap<String, ShareLocation>					WARPS			= new LinkedHashMap<>();
+	private static final LinkedHashMap<String, ShareLocation>                 WARPS         = new LinkedHashMap<>();
+	/** 所有接收到的家计数器 */
+	private static       int                                                  HOMES_COUNTER = 0;
 	/** 所有接收到的地标计数器 */
-	private static int															WARPS_COUNTER	= 0;
+	private static       int                                                  WARPS_COUNTER = 0;
 
 	/**
 	 * 接收家数据
@@ -48,8 +46,8 @@ public final class TransHandler {
 			HOMES_COUNTER = 0;
 
 			HOMES.forEach((uuid, homes) -> //
-			homes.forEach((name, loc) -> //
-			Core.setHome(uuid, name, loc)));
+					homes.forEach((name, loc) -> //
+							Core.setHome(uuid, name, loc)));
 			HOMES.clear();
 		} else {
 			HOMES_COUNTER++;
@@ -81,6 +79,7 @@ public final class TransHandler {
 	 *
 	 * @param player 玩家
 	 * @param loc    坐标
+	 *
 	 * @return 传入的坐标
 	 */
 	private static ShareLocation setServer(Player player, ShareLocation loc) {

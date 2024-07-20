@@ -5,28 +5,42 @@
  */
 package yuan.plugins.serverDo.bukkit;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-
+import lombok.*;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
-
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-import lombok.val;
 import yuan.plugins.serverDo.Tool;
 
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 语言文件
  *
  * @author yuanlu
- *
  */
 public interface MESSAGE {
+	Msg NO_PERMISSION    = mes("no-permission");
+	Msg CMD_HELP         = mes("cmd.help");
+	Msg NOT_PLAYER       = mes("not-player");
+	Msg M_TIME_OUT       = mes("basic.message-time-out");
+	Msg BAD_VERSION      = mes("basic.version-bad");
+	Msg BC_ERROR         = mes("basic.bungee-error");
+	Msg BC_PLAYER_OFF    = mes("basic.bungee-player-offline");
+	Msg TPCANCEL_MOVE    = mes("tpcancel-move");
+	Msg VER_NO_RECOMMEND = mes("version-no-recommend");
+
+	static Msg mes(String node) {
+		return Main.getMain().mes(node);
+	}
+
+	static Msg mes(String node, int type) {
+		return Main.getMain().mes(node, type);
+	}
+
+	static String strMes(String node, int type) {
+		return mes(node, type).getMsg();
+	}
+
 	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	final class EmptyMsg extends MsgReal {
 		public static final EmptyMsg INSTANCE = new EmptyMsg();
@@ -49,11 +63,12 @@ public interface MESSAGE {
 	}
 
 	final class JsonMsg extends MsgReal {
-		private final @NonNull @Getter String json, msg;
+		private final @NonNull
+		@Getter String json, msg;
 
 		private JsonMsg(@NonNull String json, @NonNull String metaMsg) {
-			this.json	= " "/* 减少字符串拼接次数 */ + json;
-			msg			= metaMsg;
+			this.json = " "/* 减少字符串拼接次数 */ + json;
+			msg = metaMsg;
 		}
 
 		static void send(CommandSender sender, String cmd) {
@@ -63,7 +78,7 @@ public interface MESSAGE {
 		@Override
 		public void send(@NonNull CommandSender sender, @NonNull Map<String, Object> args) {
 			String cmd = Tool.parseVar(json, '<', '>', args);
-			send(sender,cmd);
+			send(sender, cmd);
 		}
 
 		@Override
@@ -74,24 +89,28 @@ public interface MESSAGE {
 			} catch (IllegalArgumentException e) {
 				Main.getMain().getLogger().warning("错误的格式化: " + cmd + ", 参数: " + Arrays.deepToString(args));
 			}
-			send(sender,cmd);
+			send(sender, cmd);
 		}
 
-	}	final class MultiJsonMsg extends MsgReal {
-		private final @NonNull @Getter String json;
-		private final @NonNull @Getter String  msg;
+	}
+
+	final class MultiJsonMsg extends MsgReal {
+		private final @NonNull
+		@Getter String json;
+		private final @NonNull
+		@Getter String msg;
 
 		private MultiJsonMsg(@NonNull List<String> json, @NonNull String metaMsg) {
-			val sj=new StringJoiner("\0");
+			val sj = new StringJoiner("\0");
 			json.stream().map(" "::concat).forEach(sj::add);
-			this.json	=sj.toString();
-			msg			= metaMsg;
+			this.json = sj.toString();
+			msg = metaMsg;
 		}
 
 		@Override
 		public void send(@NonNull CommandSender sender, @NonNull Map<String, Object> args) {
 			String cmd = Tool.parseVar(json, '<', '>', args);
-			for (val msg : cmd.split("\0"))JsonMsg.send(sender,msg);
+			for (val msg : cmd.split("\0")) JsonMsg.send(sender, msg);
 		}
 
 		@Override
@@ -102,7 +121,7 @@ public interface MESSAGE {
 			} catch (IllegalArgumentException e) {
 				Main.getMain().getLogger().warning("错误的格式化: " + cmd + ", 参数: " + Arrays.deepToString(args));
 			}
-			for (val msg : cmd.split("\0"))JsonMsg.send(sender,msg);
+			for (val msg : cmd.split("\0")) JsonMsg.send(sender, msg);
 		}
 
 	}
@@ -116,9 +135,11 @@ public interface MESSAGE {
 	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	@Getter
 	final class Msg {
-		private static final Map<String, MsgReal>	MSG_REALS	= new ConcurrentHashMap<>();
+		private static final Map<String, MsgReal> MSG_REALS = new ConcurrentHashMap<>();
 
-		private static final Map<String, Msg>		MSGS		= new ConcurrentHashMap<>();
+		private static final Map<String, Msg> MSGS = new ConcurrentHashMap<>();
+		private @NonNull
+		final                String           key;
 
 		private static Msg cache(String node, int type, MsgReal instance) {
 			val key = type + "-" + node;
@@ -137,27 +158,18 @@ public interface MESSAGE {
 		static Msg get(@NonNull String node, int type, @NonNull String json, String metaMsg) {
 			return cache(node, type, new JsonMsg(json, metaMsg));
 		}
+
 		static Msg get(@NonNull String node, int type, @NonNull List<String> json, String metaMsg) {
 			return cache(node, type, new MultiJsonMsg(json, metaMsg));
 		}
 
 		static void reload() {
-			val	msgs	= new ArrayList<>(MSGS.values());
-			val	m		= Main.getMain();
+			val msgs = new ArrayList<>(MSGS.values());
+			val m = Main.getMain();
 			for (val msg : msgs) {
 				val arg = msg.key.split("-", 2);
 				m.mes(arg[1], Integer.parseInt(arg[0]));
 			}
-		}
-
-		private @NonNull final String key;
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj) return true;
-			if ((obj == null) || (getClass() != obj.getClass())) return false;
-			Msg other = (Msg) obj;
-			return key.equals(other.key);
 		}
 
 		public String getMsg() {
@@ -174,6 +186,19 @@ public interface MESSAGE {
 		@Override
 		public int hashCode() {
 			return key.hashCode();
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) return true;
+			if ((obj == null) || (getClass() != obj.getClass())) return false;
+			Msg other = (Msg) obj;
+			return key.equals(other.key);
+		}
+
+		@Override
+		public String toString() {
+			return getMsg();
 		}
 
 		/**
@@ -194,11 +219,6 @@ public interface MESSAGE {
 		 */
 		public void send(@NonNull CommandSender sender, @NonNull Object @NonNull ... args) {
 			getReal().send(sender, args);
-		}
-
-		@Override
-		public String toString() {
-			return getMsg();
 		}
 	}
 
@@ -220,7 +240,7 @@ public interface MESSAGE {
 		 * @param sender 发送的对象
 		 * @param args   参数
 		 */
-		public abstract void send(@NonNull CommandSender sender, @NonNull Object @NonNull  ... args);
+		public abstract void send(@NonNull CommandSender sender, @NonNull Object @NonNull ... args);
 
 		@Override
 		public String toString() {
@@ -231,7 +251,8 @@ public interface MESSAGE {
 
 	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	final class StrMsg extends MsgReal {
-		private final @NonNull @Getter String msg;
+		private final @NonNull
+		@Getter String msg;
 
 		@Override
 		public void send(@NonNull CommandSender sender, @NonNull Map<String, Object> args) {
@@ -250,31 +271,5 @@ public interface MESSAGE {
 			sender.sendMessage(msg);
 		}
 
-	}
-
-	Msg	NO_PERMISSION		= mes("no-permission");
-
-	Msg	CMD_HELP			= mes("cmd.help");
-
-	Msg	NOT_PLAYER			= mes("not-player");
-
-	Msg	M_TIME_OUT			= mes("basic.message-time-out");
-	Msg	BAD_VERSION			= mes("basic.version-bad");
-	Msg	BC_ERROR			= mes("basic.bungee-error");
-	Msg	BC_PLAYER_OFF		= mes("basic.bungee-player-offline");
-
-	Msg	TPCANCEL_MOVE		= mes("tpcancel-move");
-	Msg	VER_NO_RECOMMEND	= mes("version-no-recommend");
-
-	static Msg mes(String node) {
-		return Main.getMain().mes(node);
-	}
-
-	static Msg mes(String node, int type) {
-		return Main.getMain().mes(node, type);
-	}
-
-	static String strMes(String node, int type) {
-		return mes(node, type).getMsg();
 	}
 }

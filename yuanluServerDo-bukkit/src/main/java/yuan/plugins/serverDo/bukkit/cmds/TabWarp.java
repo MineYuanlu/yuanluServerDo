@@ -3,23 +3,21 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
-import java.util.Collections;
-import java.util.List;
-
 import lombok.NonNull;
+import lombok.val;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-
-import lombok.val;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.ShareData.TabType;
 import yuan.plugins.serverDo.bukkit.Core;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * tab
  *
  * @author yuanlu
- *
  */
 public abstract class TabWarp extends Cmd {
 

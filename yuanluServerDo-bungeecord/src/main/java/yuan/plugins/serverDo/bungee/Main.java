@@ -5,21 +5,6 @@
  */
 package yuan.plugins.serverDo.bungee;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-
-import org.bstats.bungeecord.Metrics;
-import org.bstats.charts.MultiLineChart;
-import org.bstats.charts.SimplePie;
-
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.val;
@@ -37,28 +22,36 @@ import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
 import net.md_5.bungee.event.EventHandler;
+import org.bstats.bungeecord.Metrics;
+import org.bstats.charts.MultiLineChart;
+import org.bstats.charts.SimplePie;
 import yuan.plugins.serverDo.At;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.Tool;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.util.*;
+
 /**
  * BC端
  *
  * @author yuanlu
- *
  */
 public class Main extends Plugin implements Listener {
-	/** 实例 */
-	private static @Getter Main		main;
 	/** 插件名称 用于信息提示 模板自动生成 */
-	public final static String		SHOW_NAME	= ShareData.SHOW_NAME;
-
+	public final static    String  SHOW_NAME = ShareData.SHOW_NAME;
+	/** 实例 */
+	private static @Getter Main    main;
 	/** 调试模式 */
-	private static @Getter boolean	DEBUG		= false;
+	private static @Getter boolean DEBUG     = false;
 
 	/** 时间修正循环器 */
-	private static Thread			timeAmendLooper;
+	private static Thread timeAmendLooper;
 
 	/**
 	 * 获取玩家<br>
@@ -66,27 +59,28 @@ public class Main extends Plugin implements Listener {
 	 *
 	 * @param sender 发起者, 当其不为null时, 会检查服务器组
 	 * @param name   玩家名
+	 *
 	 * @return 玩家
 	 */
 	public static ProxiedPlayer getPlayer(ProxiedPlayer sender, @NonNull String name) {
-		val				server	= sender == null ? null : sender.getServer().getInfo().getName();
-		ProxiedPlayer	found	= getMain().getProxy().getPlayer(name);
+		val server = sender == null ? null : sender.getServer().getInfo().getName();
+		ProxiedPlayer found = getMain().getProxy().getPlayer(name);
 		if (found != null) {
 			if (Core.canTp(server == null, server, found)) return found;
 			return null;
 		}
 
-		String	lowerName	= name.toLowerCase(Locale.ENGLISH);
-		int		delta		= Integer.MAX_VALUE;
-		val		var6		= getMain().getProxy().getPlayers().iterator();
+		String lowerName = name.toLowerCase(Locale.ENGLISH);
+		int delta = Integer.MAX_VALUE;
+		val var6 = getMain().getProxy().getPlayers().iterator();
 		while (var6.hasNext()) {
-			val	player	= var6.next();
-			val	pn		= player.getName();
+			val player = var6.next();
+			val pn = player.getName();
 			if (pn.toLowerCase(Locale.ENGLISH).startsWith(lowerName) && Core.canTp(server == null, server, player)) {
 				int curDelta = Math.abs(pn.length() - lowerName.length());
 				if (curDelta < delta) {
-					found	= player;
-					delta	= curDelta;
+					found = player;
+					delta = curDelta;
 				}
 				if (curDelta == 0) break;
 			}
@@ -101,17 +95,18 @@ public class Main extends Plugin implements Listener {
 	 *
 	 * @param sender 发起者, 当其不为null时, 会检查服务器组
 	 * @param name   玩家名
+	 *
 	 * @return 玩家
 	 */
 	public static List<ProxiedPlayer> getPlayers(ProxiedPlayer sender, @NonNull String name) {
 
-		String	lowerName	= name.toLowerCase(Locale.ENGLISH);
-		val		list		= new ArrayList<ProxiedPlayer>();
-		val		var6		= getMain().getProxy().getPlayers().iterator();
-		val		server		= sender == null ? null : sender.getServer().getInfo().getName();
+		String lowerName = name.toLowerCase(Locale.ENGLISH);
+		val list = new ArrayList<ProxiedPlayer>();
+		val var6 = getMain().getProxy().getPlayers().iterator();
+		val server = sender == null ? null : sender.getServer().getInfo().getName();
 		while (var6.hasNext()) {
-			val	player	= var6.next();
-			val	pn		= player.getName();
+			val player = var6.next();
+			val pn = player.getName();
 			if (pn.toLowerCase(Locale.ENGLISH).startsWith(lowerName) && Core.canTp(server == null, server, player)) {
 				list.add(player);
 			}
@@ -148,8 +143,9 @@ public class Main extends Plugin implements Listener {
 	 *
 	 * @param server 服务器
 	 * @param buf    数据
+	 *
 	 * @return true if the message was sent immediately, false otherwise if queue is
-	 *         true, it has been queued, if itis false it has been discarded.
+	 * true, it has been queued, if itis false it has been discarded.
 	 */
 	public static boolean send(ServerInfo server, byte @NonNull [] buf) {
 		val result = server.sendData(ShareData.BC_CHANNEL, buf, false);
@@ -162,8 +158,9 @@ public class Main extends Plugin implements Listener {
 	 *
 	 * @param server 服务器
 	 * @param buf    数据
+	 *
 	 * @return true if the message was sent immediately, false otherwise if queue is
-	 *         true, it has been queued, if itis false it has been discarded.
+	 * true, it has been queued, if itis false it has been discarded.
 	 */
 	public static boolean sendQueue(ServerInfo server, byte @NonNull [] buf) {
 		val result = server.sendData(ShareData.BC_CHANNEL, buf, true);
@@ -171,13 +168,13 @@ public class Main extends Plugin implements Listener {
 		return result;
 	}
 
-	/** */
+	/**  */
 	private void bstats() {
 		// All you have to do is adding the following two lines in your onEnable method.
 		// You can find the plugin ids of your plugins on the page
 		// https://bstats.org/what-is-my-plugin-id
-		int		pluginId	= 12396;						// <-- Replace with the id of your plugin!
-		Metrics	metrics		= new Metrics(this, pluginId);
+		int pluginId = 12396;                        // <-- Replace with the id of your plugin!
+		Metrics metrics = new Metrics(this, pluginId);
 
 		metrics.addCustomChart(new SimplePie("pls_count", () -> {
 			int count = 0;
@@ -192,9 +189,9 @@ public class Main extends Plugin implements Listener {
 
 	/** 检查中央配置文件 */
 	private void checkYuanluConfig() {
-		val				yuanluFolder	= new File(getDataFolder().getParentFile(), "yuanlu");
-		val				configFile		= new File(yuanluFolder, "config.yml");
-		Configuration	config			= null;
+		val yuanluFolder = new File(getDataFolder().getParentFile(), "yuanlu");
+		val configFile = new File(yuanluFolder, "config.yml");
+		Configuration config = null;
 		try {
 			config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(configFile);
 		} catch (FileNotFoundException ignored) {
@@ -215,7 +212,9 @@ public class Main extends Plugin implements Listener {
 	 * 加载配置
 	 *
 	 * @param fileName 配置文件名，例如{@code "config.yml"}
+	 *
 	 * @return 配置文件
+	 *
 	 * @author yuanlu
 	 */
 	public Configuration loadFile(String fileName) {
@@ -243,7 +242,9 @@ public class Main extends Plugin implements Listener {
 	 *
 	 * @param fileName 配置文件名，例如{@code "config.yml"}
 	 * @param oldNames 配置文件旧的命名, 如果发现则会自动重命名
+	 *
 	 * @return 配置文件
+	 *
 	 * @author yuanlu
 	 */
 	public Configuration loadFile(String fileName, String... oldNames) {
@@ -271,21 +272,16 @@ public class Main extends Plugin implements Listener {
 	 * EVENT
 	 *
 	 * @param e Chat
+	 *
 	 * @deprecated BUNGEE
 	 */
 	@Deprecated
 	@EventHandler
 	public void onChat(ChatEvent e) {
 		if (!ConfigManager.isUseAt()) return;
-		val	ats		= At.at(e.getMessage(), name -> getProxy().getPlayer(name) != null);
-		val	pack	= Channel.PlaySound.play(Channel.PlaySound.Sounds.AT);
+		val ats = At.at(e.getMessage(), name -> getProxy().getPlayer(name) != null);
+		val pack = Channel.PlaySound.play(Channel.PlaySound.Sounds.AT);
 		ats.distinct().map(getProxy()::getPlayer).forEach(player -> send(player, pack));
-	}
-
-	@Override
-	public void onDisable() {
-		if (timeAmendLooper != null) timeAmendLooper = null;
-		ConfigManager.closeSave();
 	}
 
 	@Override
@@ -303,6 +299,12 @@ public class Main extends Plugin implements Listener {
 		getLogger().info(SHOW_NAME + "-启动(bungee)");
 
 		startTimeAmendLoop();
+	}
+
+	@Override
+	public void onDisable() {
+		if (timeAmendLooper != null) timeAmendLooper = null;
+		ConfigManager.closeSave();
 	}
 
 	/**
@@ -381,9 +383,9 @@ public class Main extends Plugin implements Listener {
 			break;
 		case 4:
 			Channel.Home.p4C_listHome(buf, () -> {
-				val					serverName	= server.getInfo().getName();
-				val					WARPS		= Core.getHomes(player);
-				ArrayList<String>	w1			= new ArrayList<>(), w2 = new ArrayList<>();
+				val serverName = server.getInfo().getName();
+				val WARPS = Core.getHomes(player);
+				ArrayList<String> w1 = new ArrayList<>(), w2 = new ArrayList<>();
 				WARPS.forEach((name, loc) -> (Core.canTp(serverName, loc.getServer()) ? w1 : w2).add(name));
 				send(player, Channel.Home.s4S_listHomeResp(w1, w2));
 			});
@@ -398,6 +400,7 @@ public class Main extends Plugin implements Listener {
 	 * EVENT
 	 *
 	 * @param e 插件消息
+	 *
 	 * @deprecated BUNGEE
 	 */
 	@Deprecated
@@ -406,16 +409,16 @@ public class Main extends Plugin implements Listener {
 		if (!ShareData.BC_CHANNEL.equals(e.getTag())) return;
 		e.setCancelled(true);
 		if (!(e.getSender() instanceof Server)) return;
-		ProxiedPlayer	player	= (ProxiedPlayer) e.getReceiver();
-		Server			server	= (Server) e.getSender();
-		val				message	= e.getData();
-		val				id		= ShareData.readInt(message, 0, -1);
-		val				type	= Channel.byId(id);
+		ProxiedPlayer player = (ProxiedPlayer) e.getReceiver();
+		Server server = (Server) e.getSender();
+		val message = e.getData();
+		val id = ShareData.readInt(message, 0, -1);
+		val type = Channel.byId(id);
 		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] receive: " + player.getName() + "-" + type + ": " + Arrays.toString(message));
 		switch (Objects.requireNonNull(type, "unknown type id: " + id)) {
 		case PERMISSION: {
-			val	permission	= Channel.Permission.parseC(message);
-			val	allow		= player.hasPermission(permission);
+			val permission = Channel.Permission.parseC(message);
+			val allow = player.hasPermission(permission);
 			send(player, Channel.Permission.sendC(permission, allow));
 			break;
 		}
@@ -429,8 +432,8 @@ public class Main extends Plugin implements Listener {
 			break;
 		}
 		case COOLDOWN: {
-			val	end		= Channel.Cooldown.parseC(message) + Core.getTimeAmend(server.getInfo());
-			val	uuid	= player.getUniqueId();
+			val end = Channel.Cooldown.parseC(message) + Core.getTimeAmend(server.getInfo());
+			val uuid = player.getUniqueId();
 			for (val s : getProxy().getServers().values()) {
 				send(s, Channel.Cooldown.broadcast(uuid, end - Core.getTimeAmend(s)));
 			}
@@ -441,8 +444,8 @@ public class Main extends Plugin implements Listener {
 			break;
 		}
 		case VANISH: {
-			val	always	= Channel.Vanish.parse(message);
-			val	inHide	= Core.switchVanish(player, always);
+			val always = Channel.Vanish.parse(message);
+			val inHide = Core.switchVanish(player, always);
 			send(player, Channel.Vanish.sendC(inHide));
 			break;
 		}
@@ -536,16 +539,16 @@ public class Main extends Plugin implements Listener {
 			break;
 		case 0x6:
 			Channel.Tp.p6C_tpThird(buf, (mover, target) -> {
-				val	m	= getProxy().getPlayer(mover);
-				val	t	= getProxy().getPlayer(target);
+				val m = getProxy().getPlayer(mover);
+				val t = getProxy().getPlayer(target);
 				if (m == null || t == null) {
 					send(player, Channel.Tp.s7S_tpThirdReceive(false, false));
 				} else {
 					send(t, Channel.Tp.s8S_tpThird(m.getName()));
 					val targetServer = t.getServer().getInfo();
-//					if (server.getInfo().getName().equals(targetServer.getName())) {//TODO BUG 未实际执行m.connect
-//						send(player, Channel.Tp.s7S_tpThirdReceive(true, false));
-//					} else
+					//					if (server.getInfo().getName().equals(targetServer.getName())) {//TODO BUG 未实际执行m.connect
+					//						send(player, Channel.Tp.s7S_tpThirdReceive(true, false));
+					//					} else
 
 					m.connect(targetServer, (success, e) -> {
 						if (e != null) e.printStackTrace();
@@ -556,8 +559,8 @@ public class Main extends Plugin implements Listener {
 			break;
 		case 0x9:
 			Channel.Tp.p9C_tpReqThird(buf, (mover, target, code) -> {
-				val	m	= getPlayer((code & 1) > 0 ? null : player, mover);
-				val	t	= getPlayer((code & 1) > 0 ? null : player, target);
+				val m = getPlayer((code & 1) > 0 ? null : player, mover);
+				val t = getPlayer((code & 1) > 0 ? null : player, target);
 				if (m != null && t != null) {
 					send(m, Channel.Tp.s2S_tpReq(t.getName(), t.getDisplayName(), 4));
 					send(t, Channel.Tp.s2S_tpReq(m.getName(), m.getDisplayName(), 5));
@@ -618,9 +621,9 @@ public class Main extends Plugin implements Listener {
 			break;
 		case 4:
 			Channel.Warp.p4C_listWarp(buf, () -> {
-				val					serverName	= server.getInfo().getName();
-				val					WARPS		= ConfigManager.WARPS;
-				ArrayList<String>	w1			= new ArrayList<>(), w2 = new ArrayList<>();
+				val serverName = server.getInfo().getName();
+				val WARPS = ConfigManager.WARPS;
+				ArrayList<String> w1 = new ArrayList<>(), w2 = new ArrayList<>();
 				WARPS.forEach((name, loc) -> (Core.canTp(serverName, loc.getServer()) ? w1 : w2).add(name));
 				send(player, Channel.Warp.s4S_listWarpResp(w1, w2));
 			});
@@ -635,6 +638,7 @@ public class Main extends Plugin implements Listener {
 	 * EVENT
 	 *
 	 * @param e 服务器连接
+	 *
 	 * @deprecated BUNGEE
 	 */
 	@Deprecated
@@ -649,6 +653,7 @@ public class Main extends Plugin implements Listener {
 	 * EVENT
 	 *
 	 * @param e Tab响应
+	 *
 	 * @deprecated BUNGEE
 	 */
 	@Deprecated

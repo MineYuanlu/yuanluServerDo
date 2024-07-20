@@ -9,8 +9,8 @@ Allow players on the group server to seamlessly execute commands across servers
 Theory full version support
 
 ## 交流
-[discord](https://discord.gg/5SZNhTkqJg)
 
+[discord](https://discord.gg/5SZNhTkqJg)
 
 ## 统计数据
 
@@ -18,18 +18,18 @@ Theory full version support
 - [bstats Bungee](https://bstats.org/plugin/bungeecord/yuanluServerDo/12396)
 - ![最新版本 badge](https://update.yuanlu.bid/ico/v/mc-bukkit/yuanluServerDo "最新版本")
 - ![bStats Players](https://img.shields.io/bstats/players/12396?label=%E7%8E%A9%E5%AE%B6%E6%95%B0%E9%87%8F) ![bStats Servers](https://img.shields.io/bstats/servers/12396?label=%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%95%B0%E9%87%8F)
-![bStats Count](https://bstats.org/signatures/bungeecord/yuanluServerDo.svg)
+  ![bStats Count](https://bstats.org/signatures/bungeecord/yuanluServerDo.svg)
 
 ## 下载
+
 __支持服务器: Bukkit (Spigot、Paper)__  
 __支持代理器: BungeeCord、Velocity__
 
 同一个版本有多个文件可供选择, 文件名中包含Bukkit的即代表可以在Bukkit及其分支（Spigot、Paper）上运行，其它同理  
-例如，你选择使用BungeeCord及Paper，你有以下几种选择:  
-1. 下载`yuanluServerDo-bukkit-[version].jar`及`yuanluServerDo-bungeecord-[version].jar`, 分别放入Paper和BungeeCord  
+例如，你选择使用BungeeCord及Paper，你有以下几种选择:
+
+1. 下载`yuanluServerDo-bukkit-[version].jar`及`yuanluServerDo-bungeecord-[version].jar`, 分别放入Paper和BungeeCord
 2. 直接下载`yuanluServerDo-bukkit-bungeecord-[version].jar`放入Paper和BungeeCord
-
-
 
 ## 替代yuanluServerTp
 
@@ -70,8 +70,8 @@ __支持代理器: BungeeCord、Velocity__
 当前支持的插件及数据:
 
 - CMI
-	- Home
-	- Warp
+    - Home
+    - Warp
 
 ## 实现了At功能
 

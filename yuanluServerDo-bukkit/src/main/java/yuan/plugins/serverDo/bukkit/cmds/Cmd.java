@@ -7,18 +7,11 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import lombok.NonNull;
+import lombok.val;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-
-import lombok.val;
 import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Core.CallbackQueue;
@@ -26,18 +19,39 @@ import yuan.plugins.serverDo.bukkit.MESSAGE;
 import yuan.plugins.serverDo.bukkit.Main;
 import yuan.plugins.serverDo.bukkit.cmds.CommandManager.CmdInfo;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Cmd
  *
  * @author yuanlu
- *
  */
 public abstract class Cmd extends Command implements MESSAGE {
-	/** 所有的信息 */
-	private static final HashMap<String, Msg>							MSGS			= new HashMap<>();
-
 	/** 执行计数 */
-	public static final HashMap<Class<? extends Cmd>, AtomicInteger>	EXECUTE_COUNT	= new HashMap<>();
+	public static final  HashMap<Class<? extends Cmd>, AtomicInteger> EXECUTE_COUNT = new HashMap<>();
+	/** 所有的信息 */
+	private static final HashMap<String, Msg>                         MSGS          = new HashMap<>();
+	/** 此命令名称 */
+	protected final      String                                       cmdName;
+
+	/**
+	 * 构造一个命令
+	 *
+	 * @param name 名称
+	 */
+	Cmd(String name) {
+		super(name);
+		val info = getCmdInfo();
+		setDescription(info.getDescription());
+		setUsage(info.getUsageMessage());
+		setPermission(info.getPermission());
+
+		cmdName = getCmdName(getClass());
+	}
 
 	/**
 	 * bstats统计: 执行命令
@@ -55,6 +69,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * @param prefix   前缀
 	 * @param nullList 当前缀内容为空时返回的列表(做默认值用)
 	 * @param dataList 数据列表
+	 *
 	 * @return 新列表
 	 */
 	protected static List<String> get(String prefix, List<String> nullList, List<String> dataList) {
@@ -75,6 +90,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * 获取cmd名称
 	 *
 	 * @param cmd 命令
+	 *
 	 * @return 命令名称
 	 */
 	public static String getCmdName(Class<? extends Cmd> cmd) {
@@ -89,32 +105,15 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 *
 	 * @param cmd  命令
 	 * @param type 消息类型
+	 *
 	 * @return 消息
 	 */
 	protected static Msg msg(Class<? extends Cmd> cmd, String type) {
-		val	key	= getCmdName(cmd) + "." + type;
-		Msg	msg	= MSGS.get(key);
+		val key = getCmdName(cmd) + "." + type;
+		Msg msg = MSGS.get(key);
 		if (msg != null) return msg;
 		MSGS.put(key, msg = Main.getMain().mes("cmd." + key));
 		return msg;
-	}
-
-	/** 此命令名称 */
-	protected final String cmdName;
-
-	/**
-	 * 构造一个命令
-	 *
-	 * @param name 名称
-	 */
-	Cmd(String name) {
-		super(name);
-		val info = getCmdInfo();
-		setDescription(info.getDescription());
-		setUsage(info.getUsageMessage());
-		setPermission(info.getPermission());
-
-		cmdName = getCmdName(getClass());
 	}
 
 	/**
@@ -143,6 +142,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 *
 	 * @param sender Source object which is executing this command
 	 * @param args   All arguments passed to the command, split via ' '
+	 *
 	 * @return true if the command was successful, otherwise false
 	 */
 	protected abstract boolean execute0(CommandSender sender, String[] args);
@@ -156,6 +156,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * 返回此命令的某个消息
 	 *
 	 * @param type 消息类型
+	 *
 	 * @return 消息
 	 */
 	protected final Msg msg(String type) {
@@ -167,6 +168,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 *
 	 * @param type   消息类型
 	 * @param sender 目标
+	 *
 	 * @return true
 	 */
 	protected final boolean msg(String type, CommandSender sender) {
@@ -180,6 +182,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * @param type   消息类型
 	 * @param sender 目标
 	 * @param args   参数
+	 *
 	 * @return true
 	 */
 	protected final boolean msg(String type, CommandSender sender, Map<String, Object> args) {
@@ -193,6 +196,7 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 * @param type   消息类型
 	 * @param sender 目标
 	 * @param args   参数
+	 *
 	 * @return true
 	 */
 	protected final boolean msg(String type, CommandSender sender, Object... args) {
@@ -205,11 +209,12 @@ public abstract class Cmd extends Command implements MESSAGE {
 	 *
 	 * @param type 消息类型
 	 * @param code 消息格式
+	 *
 	 * @return 消息
 	 */
 	protected final Msg msg(String type, int code) {
-		val	key	= cmdName + "." + type;
-		Msg	msg	= MSGS.get(key + code);
+		val key = cmdName + "." + type;
+		Msg msg = MSGS.get(key + code);
 		if (msg != null) return msg;
 		MSGS.put(key + code, msg = Main.getMain().mes("cmd." + key, code));
 		return msg;

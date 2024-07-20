@@ -1,36 +1,51 @@
 package yuan.plugins.serverDo;
 
-import java.util.Arrays;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
-
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
-import lombok.val;
 import lombok.experimental.FieldDefaults;
+import lombok.val;
+
+import java.util.Arrays;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 /**
  * At的帮助类, 用于分析msg中的at字段
  *
  * @author yuanlu
- *
  */
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @AllArgsConstructor
 public class At {
 	/** At字符 */
-	public static final char	AT_CHAR		= '@';
+	public static final char   AT_CHAR  = '@';
 	/** At字符 */
-	public static final String	AT_STR		= String.valueOf(AT_CHAR);
+	public static final String AT_STR   = String.valueOf(AT_CHAR);
 	/** At颜色 */
-	public static final String	AT_COLOR	= ChatColor.AQUA.toString();
+	public static final String AT_COLOR = ChatColor.AQUA.toString();
+	/** 当前字段的完整字符 */
+	String str;
+	/** 当前字段的首字段(假设为name) */
+	String first;
+	/** 当前字段的颜色 */
+	String color;
+
+	/**
+	 * 分析一个msg
+	 *
+	 * @param msg 分段的msg
+	 */
+	private At(String msg) {
+		this(msg, first(msg), ChatColor.getLastColors(msg));
+	}
 
 	/**
 	 * 获取msg中所有at的玩家
 	 *
 	 * @param msg   实际的聊天信息
 	 * @param names 玩家名判断
+	 *
 	 * @return at玩家的流
 	 */
 	public static Stream<String> at(@NonNull String msg, @NonNull Predicate<String> names) {
@@ -45,6 +60,7 @@ public class At {
 	 * 获取首字段
 	 *
 	 * @param msg msg
+	 *
 	 * @return 首字段
 	 */
 	private static String first(String msg) {
@@ -57,6 +73,7 @@ public class At {
 	 * @param format 由format给定msg的颜色
 	 * @param msg    实际的聊天信息
 	 * @param names  玩家名判断
+	 *
 	 * @return 处理后的实际聊天信息
 	 */
 	public static String format(String format, @NonNull String msg, @NonNull Predicate<String> names) {
@@ -81,29 +98,12 @@ public class At {
 	 * 获取聊天格式的msg颜色
 	 *
 	 * @param format 聊天格式
+	 *
 	 * @return msg的颜色
 	 */
 	private static String getFormatColor(String format) {
 		format = String.format(format, "", "\0");
 		return ChatColor.getLastColors(format.substring(0, format.indexOf('\0')));
-	}
-
-	/** 当前字段的完整字符 */
-	String	str;
-
-	/** 当前字段的首字段(假设为name) */
-	String	first;
-
-	/** 当前字段的颜色 */
-	String	color;
-
-	/**
-	 * 分析一个msg
-	 *
-	 * @param msg 分段的msg
-	 */
-	private At(String msg) {
-		this(msg, first(msg), ChatColor.getLastColors(msg));
 	}
 
 	/**
@@ -124,6 +124,7 @@ public class At {
 	 * 检测名字并转为at段
 	 *
 	 * @param names 所有玩家名
+	 *
 	 * @return 字符串
 	 */
 	private String toString(Predicate<String> names) {

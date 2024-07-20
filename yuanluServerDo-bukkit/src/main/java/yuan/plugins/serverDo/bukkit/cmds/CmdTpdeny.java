@@ -7,18 +7,16 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
-import java.util.List;
-
+import lombok.NonNull;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import lombok.NonNull;
+import java.util.List;
 
 /**
  * tpdeny命令
  *
  * @author yuanlu
- *
  */
 public final class CmdTpdeny extends Cmd {
 

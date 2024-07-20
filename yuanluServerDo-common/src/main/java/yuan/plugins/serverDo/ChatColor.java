@@ -1,9 +1,9 @@
 package yuan.plugins.serverDo;
 
+import lombok.NonNull;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import lombok.NonNull;
 
 /**
  * All supported color values for chat
@@ -103,20 +103,36 @@ public enum ChatColor {
 	 * The special character which prefixes all chat colour codes. Use this if you
 	 * need to dynamically convert colour codes from your custom format.
 	 */
-	public static final char						COLOR_CHAR	= '\u00A7';
-	private static final Map<Character, ChatColor>	BY_CHAR		= new HashMap<>();
+	public static final  char                      COLOR_CHAR = '\u00A7';
+	private static final Map<Character, ChatColor> BY_CHAR    = new HashMap<>();
+
 	static {
 		for (ChatColor color : values()) {
 			BY_CHAR.put(color.code, color);
 		}
 	}
 
+	private final char    code;
+	private final boolean isFormat;
+	private final String  toString;
+
+	private ChatColor(char code) {
+		this(code, false);
+	}
+
+	private ChatColor(char code, boolean isFormat) {
+		this.code = code;
+		this.isFormat = isFormat;
+		this.toString = new String(new char[] { COLOR_CHAR, code });
+	}
+
 	/**
 	 * Gets the color represented by the specified color code
 	 *
 	 * @param code Code to check
+	 *
 	 * @return Associative {@link ChatColor} with the given code, or null
-	 *         if it doesn't exist
+	 * if it doesn't exist
 	 */
 	public static ChatColor getByChar(char code) {
 		return BY_CHAR.get(code);
@@ -126,19 +142,20 @@ public enum ChatColor {
 	 * Gets the ChatColors used at the end of the given input string.
 	 *
 	 * @param input Input string to retrieve the colors from.
+	 *
 	 * @return Any remaining ChatColors to pass onto the next line.
 	 */
-	public static String getLastColors(@NonNull  String input) {
+	public static String getLastColors(@NonNull String input) {
 
-		String	result	= "";
-		int		length	= input.length();
+		String result = "";
+		int length = input.length();
 
 		// Search backwards from the end as it is faster
 		for (int index = length - 1; index > -1; index--) {
 			char section = input.charAt(index);
 			if (section == COLOR_CHAR && index < length - 1) {
-				char		c		= input.charAt(index + 1);
-				ChatColor	color	= getByChar(c);
+				char c = input.charAt(index + 1);
+				ChatColor color = getByChar(c);
 
 				if (color != null) {
 					result = color.toString() + result;
@@ -152,22 +169,6 @@ public enum ChatColor {
 		}
 
 		return result;
-	}
-
-	private final char		code;
-
-	private final boolean	isFormat;
-
-	private final String	toString;
-
-	private ChatColor(char code) {
-		this(code, false);
-	}
-
-	private ChatColor(char code, boolean isFormat) {
-		this.code		= code;
-		this.isFormat	= isFormat;
-		this.toString	= new String(new char[] { COLOR_CHAR, code });
 	}
 
 	/**

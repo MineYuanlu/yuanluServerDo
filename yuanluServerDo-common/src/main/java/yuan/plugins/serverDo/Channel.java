@@ -7,34 +7,17 @@
  */
 package yuan.plugins.serverDo;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+
+import java.io.*;
 import java.security.MessageDigest;
-import java.util.Collection;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.function.ObjIntConsumer;
-
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.NonNull;
-import lombok.ToString;
-import lombok.Value;
-import lombok.val;
-import lombok.experimental.FieldDefaults;
 
 /**
  * 通道数据<br>
@@ -42,7 +25,6 @@ import lombok.experimental.FieldDefaults;
  * 枚举定义了数据包类型, 其指向的实现类有此数据包下所有方法.
  *
  * @author yuanlu
- *
  */
 public enum Channel {
 	/** 版本检查 */
@@ -74,6 +56,72 @@ public enum Channel {
 	/** 播放音效 */
 	PLAY_SOUND(PlaySound.class);
 
+	/** 数据包计数 */
+	public static final  EnumMap<Channel, AtomicInteger> PACK_COUNT = new EnumMap<>(Channel.class);
+	/** 版本数据 */
+	private static final byte[]                          VERSION;
+	/** 所有数据包 */
+	private static final Channel[]                       CHANNELS   = values();
+
+	static {
+		try {
+			val sb = new StringBuilder();
+			for (val x : values()) sb.append(x.name()).append(';');
+			val md5 = MessageDigest.getInstance("MD5");
+			md5.update(sb.toString().getBytes(ShareData.CHARSET));
+			VERSION = md5.digest();
+		} catch (Exception e) {
+			throw new InternalError(e);
+		}
+		for (val x : values()) PACK_COUNT.put(x, new AtomicInteger());
+	}
+
+	/** 目标类 */
+	public final Class<? extends Package> target;
+
+	/**
+	 * 构造
+	 *
+	 * @param target 目标类
+	 */
+	Channel(Class<? extends Package> target) {
+		this.target = target;
+		try {
+			target.getDeclaredField("ID").setInt(target, ordinal());
+		} catch (Exception e) {
+			throw new InternalError(e);
+		}
+	}
+
+	/**
+	 * 解析数据包
+	 *
+	 * @param id 数据包ID
+	 *
+	 * @return 数据包类型
+	 */
+	public static Channel byId(int id) {
+		return id >= 0 && id < CHANNELS.length ? CHANNELS[id] : null;
+	}
+
+	/** @return 数据包计数 */
+	public static @NonNull HashMap<String, Integer> getPackCount() {
+		HashMap<String, Integer> m = new HashMap<>();
+		PACK_COUNT.forEach((k, v) -> m.put(k.name(), v.getAndSet(0)));
+		return m;
+	}
+
+	/**
+	 * 解析数据包子ID
+	 *
+	 * @param message 数据包
+	 *
+	 * @return 数据包子ID
+	 */
+	public static byte getSubId(byte[] message) {
+		return message[4];
+	}
+
 	/**
 	 * 返回数据包
 	 *
@@ -84,6 +132,14 @@ public enum Channel {
 	public static final class Back extends Package {
 		/** 此数据包ID */
 		protected static @Getter int ID;
+		/** 玩家 */
+		String        player;
+		/** back地址 */
+		ShareLocation loc;
+		/** 目标是否是服务器(false时to为玩家, 需要解析为server) */
+		boolean       isServer;
+		/** 目标服务器/玩家 */
+		String        to;
 
 		/**
 		 * 解析:传送坐标
@@ -111,8 +167,8 @@ public enum Channel {
 		 */
 		public static void p1S_tellTp(byte[] buf, BiConsumer<String, ShareLocation> playerAndBackLoc) {
 			try (val in = DataIn.pool(buf, 1)) {
-				val	player	= in.readUTF();
-				val	loc		= in.readLocation();
+				val player = in.readUTF();
+				val loc = in.readLocation();
 				loc.setServer(in.readUTF());
 				playerAndBackLoc.accept(player, loc);
 			} catch (IOException e) {
@@ -127,6 +183,7 @@ public enum Channel {
 		 * @param backLoc  要传送的位置
 		 * @param isServer 目标是否是服务器(如果为false将被从玩家解析为服务器再继续传递)
 		 * @param to       目标服务器/玩家
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s0C_tellTp(String player, ShareLocation backLoc, boolean isServer, String to) {
@@ -147,6 +204,7 @@ public enum Channel {
 		 * @param player     被传送的玩家
 		 * @param backLoc    要传送的位置
 		 * @param fromServer 来源服务器
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s1S_tellTp(String player, ShareLocation backLoc, String fromServer) {
@@ -159,18 +217,6 @@ public enum Channel {
 				throw new RuntimeException(e);
 			}
 		}
-
-		/** 玩家 */
-		String			player;
-
-		/** back地址 */
-		ShareLocation	loc;
-
-		/** 目标是否是服务器(false时to为玩家, 需要解析为server) */
-		boolean			isServer;
-
-		/** 目标服务器/玩家 */
-		String			to;
 	}
 
 	/**
@@ -188,6 +234,7 @@ public enum Channel {
 		 *
 		 * @param player 玩家
 		 * @param end    冷却结束时间
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] broadcast(UUID player, long end) {
@@ -204,6 +251,7 @@ public enum Channel {
 		 * 解析Client
 		 *
 		 * @param buf 数据
+		 *
 		 * @return 冷却结束时间
 		 */
 		public static long parseC(byte[] buf) {
@@ -222,8 +270,8 @@ public enum Channel {
 		 */
 		public static void parseS(byte[] buf, Map<UUID, Long> map) {
 			try (val in = DataIn.pool(buf)) {
-				val	player	= in.readUUID();
-				val	end		= in.readLong();
+				val player = in.readUUID();
+				val end = in.readLong();
 				WaitMaintain.put(map, player, end, end - System.currentTimeMillis());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
@@ -234,6 +282,7 @@ public enum Channel {
 		 * 发送至Server
 		 *
 		 * @param end 冷却结束时间
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] sendS(long end) {
@@ -248,6 +297,101 @@ public enum Channel {
 
 	/** 数据输入 */
 	private static final class DataIn extends DataInputStream {
+		/** 缓存池 */
+		private static final DataIn[] POOL = new DataIn[16];
+		/** 缓存池有效容量 */
+		private static       int      pool = 0;
+		/** 此输入器是否已经释放 */
+		private              boolean  release;
+
+		/**
+		 * 构造并初始化
+		 *
+		 * @param buf 初始化数据流
+		 */
+		private DataIn(byte[] buf) {
+			super(new ByteIn(buf));
+			release = false;
+		}
+
+		/**
+		 * 从对象池中取出一个数据输入器并初始化
+		 *
+		 * @param buf 数据
+		 *
+		 * @return 输入器
+		 */
+		public static DataIn pool(byte @NonNull [] buf) {
+			synchronized (POOL) {
+				if (pool > 0) return POOL[--pool].reset(buf);
+			}
+			return new DataIn(buf);
+		}
+
+		/**
+		 * 从对象池中取出一个数据输入器并初始化, 同时检查接收到的数据包子ID
+		 *
+		 * @param buf 数据
+		 * @param id  子包ID
+		 *
+		 * @return 数据流
+		 *
+		 * @throws IOException IOE
+		 */
+		private static DataIn pool(byte @NonNull [] buf, int id) throws IOException {
+			val in = pool(buf);
+			val packageId = in.readByte();
+			if (packageId != id) throw new IllegalArgumentException("Bad Package Id: " + packageId + ", expect: " + id);
+			return in;
+		}
+
+		@Override
+		public void close() throws IOException {
+			super.close();
+			if (release) return;
+			synchronized (POOL) {
+				if (release) return;
+				((ByteIn) super.in).clear();
+				if (pool < POOL.length) POOL[pool++] = this;
+				release = true;
+			}
+		}
+
+		/**
+		 * 读取一个Location
+		 *
+		 * @return Location
+		 *
+		 * @throws IOException IOE
+		 */
+		public ShareLocation readLocation() throws IOException {
+			return new ShareLocation(readDouble(), readDouble(), readDouble(), readFloat(), readFloat(), readUTF());
+		}
+
+		/**
+		 * 读取一个UUID
+		 *
+		 * @return UUID
+		 *
+		 * @throws IOException IOE
+		 */
+		public UUID readUUID() throws IOException {
+			return new UUID(readLong(), readLong());
+		}
+
+		/**
+		 * 初始化
+		 *
+		 * @param buf 初始化数据流
+		 *
+		 * @return this
+		 */
+		private DataIn reset(byte[] buf) {
+			((ByteIn) super.in).reset(buf);
+			release = false;
+			return this;
+		}
+
 		/** 字节输入 */
 		private static final class ByteIn extends ByteArrayInputStream {
 			/** 数据包偏移量 */
@@ -273,101 +417,11 @@ public enum Channel {
 			 * @param buf 初始化数据流
 			 */
 			public void reset(byte[] buf) {
-				super.buf	= buf;
-				this.pos	= this.mark = offsetByPackageID;
-				this.count	= buf.length;
+				super.buf = buf;
+				this.pos = this.mark = offsetByPackageID;
+				this.count = buf.length;
 			}
 
-		}
-
-		/** 缓存池 */
-		private static final DataIn[] POOL = new DataIn[16];
-		/** 缓存池有效容量 */
-		private static       int      pool = 0;
-
-		/**
-		 * 从对象池中取出一个数据输入器并初始化
-		 *
-		 * @param buf 数据
-		 * @return 输入器
-		 */
-		public static DataIn pool(byte@NonNull[] buf) {
-			synchronized (POOL) {
-				if (pool > 0) return POOL[--pool].reset(buf);
-			}
-			return new DataIn(buf);
-		}
-
-		/**
-		 * 从对象池中取出一个数据输入器并初始化, 同时检查接收到的数据包子ID
-		 *
-		 * @param buf 数据
-		 * @param id  子包ID
-		 * @return 数据流
-		 * @throws IOException IOE
-		 */
-		private static DataIn pool(byte@NonNull[] buf, int id) throws IOException {
-			val	in			= pool(buf);
-			val	packageId	= in.readByte();
-			if (packageId != id) throw new IllegalArgumentException("Bad Package Id: " + packageId + ", expect: " + id);
-			return in;
-		}
-
-		/** 此输入器是否已经释放 */
-		private boolean release;
-
-		/**
-		 * 构造并初始化
-		 *
-		 * @param buf 初始化数据流
-		 */
-		private DataIn(byte[] buf) {
-			super(new ByteIn(buf));
-			release = false;
-		}
-
-		@Override
-		public void close() throws IOException {
-			super.close();
-			if (release) return;
-			synchronized (POOL) {
-				if (release) return;
-				((ByteIn) super.in).clear();
-				if (pool < POOL.length) POOL[pool++] = this;
-				release = true;
-			}
-		}
-
-		/**
-		 * 读取一个Location
-		 *
-		 * @return Location
-		 * @throws IOException IOE
-		 */
-		public ShareLocation readLocation() throws IOException {
-			return new ShareLocation(readDouble(), readDouble(), readDouble(), readFloat(), readFloat(), readUTF());
-		}
-
-		/**
-		 * 读取一个UUID
-		 *
-		 * @return UUID
-		 * @throws IOException IOE
-		 */
-		public UUID readUUID() throws IOException {
-			return new UUID(readLong(), readLong());
-		}
-
-		/**
-		 * 初始化
-		 *
-		 * @param buf 初始化数据流
-		 * @return this
-		 */
-		private DataIn reset(byte[] buf) {
-			((ByteIn) super.in).reset(buf);
-			release = false;
-			return this;
 		}
 	}
 
@@ -378,12 +432,29 @@ public enum Channel {
 		private static final DataOut[] POOL = new DataOut[128];
 		/** 缓存池有效容量 */
 		private static       int       pool = 0;
+		/** 此输入器是否已经释放 */
+		private              boolean   release;
+
+		/**
+		 * 构造并初始化
+		 *
+		 * @param ID 包ID
+		 *
+		 * @throws IOException IO错误
+		 */
+		public DataOut(int ID) throws IOException {
+			super(new ByteArrayOutputStream());
+			release = false;
+			writeInt(ID);
+		}
 
 		/**
 		 * 从对象池中取出一个数据输出器并初始化
 		 *
 		 * @param ID 包ID
+		 *
 		 * @return 输出器
+		 *
 		 * @throws IOException IO错误
 		 */
 		public static DataOut pool(int ID) throws IOException {
@@ -398,28 +469,15 @@ public enum Channel {
 		 *
 		 * @param ID 包ID
 		 * @param id 子包ID
+		 *
 		 * @return 输出器
+		 *
 		 * @throws IOException IO错误
 		 */
 		private static DataOut pool(int ID, int id) throws IOException {
 			val out = DataOut.pool(ID);
 			out.writeByte(id);
 			return out;
-		}
-
-		/** 此输入器是否已经释放 */
-		private boolean release;
-
-		/**
-		 * 构造并初始化
-		 *
-		 * @param ID 包ID
-		 * @throws IOException IO错误
-		 */
-		public DataOut(int ID) throws IOException {
-			super(new ByteArrayOutputStream());
-			release = false;
-			writeInt(ID);
 		}
 
 		@Override
@@ -445,7 +503,9 @@ public enum Channel {
 		 * 初始化
 		 *
 		 * @param ID 包ID
+		 *
 		 * @return this
+		 *
 		 * @throws IOException IO错误
 		 */
 		private DataOut reset(int ID) throws IOException {
@@ -459,6 +519,7 @@ public enum Channel {
 		 * 写入Location
 		 *
 		 * @param l location
+		 *
 		 * @throws IOException IOE
 		 */
 		public void writeLocation(ShareLocation l) throws IOException {
@@ -474,6 +535,7 @@ public enum Channel {
 		 * 写入UUID
 		 *
 		 * @param u uuid
+		 *
 		 * @throws IOException IOE
 		 */
 		public void writeUUID(UUID u) throws IOException {
@@ -501,7 +563,7 @@ public enum Channel {
 		 *
 		 * @see #s0C_setHome(String, ShareLocation, int)
 		 */
-		public static void p0C_setHome(byte@NonNull[] buf, BiObjIntConsumer<String, ShareLocation> nameAndLocAndAmount) {
+		public static void p0C_setHome(byte @NonNull [] buf, BiObjIntConsumer<String, ShareLocation> nameAndLocAndAmount) {
 			try (val in = DataIn.pool(buf, 0)) {
 				nameAndLocAndAmount.accept(in.readUTF(), in.readLocation(), in.readInt());
 			} catch (IOException e) {
@@ -517,7 +579,7 @@ public enum Channel {
 		 *
 		 * @see #s0S_setHomeResp(boolean)
 		 */
-		public static void p0S_setHomeResp(byte@NonNull[] buf, BoolConsumer success) {
+		public static void p0S_setHomeResp(byte @NonNull [] buf, BoolConsumer success) {
 			try (val in = DataIn.pool(buf, 0)) {
 				success.accept(in.readBoolean());
 			} catch (IOException e) {
@@ -533,7 +595,7 @@ public enum Channel {
 		 *
 		 * @see #s1C_delHome(String)
 		 */
-		public static void p1C_delHome(byte@NonNull[] buf, Consumer<String> name) {
+		public static void p1C_delHome(byte @NonNull [] buf, Consumer<String> name) {
 			try (val in = DataIn.pool(buf, 1)) {
 				name.accept(in.readUTF());
 			} catch (IOException e) {
@@ -549,7 +611,7 @@ public enum Channel {
 		 *
 		 * @see #s1S_delHomeResp(boolean)
 		 */
-		public static void p1S_delHomeResp(byte@NonNull[] buf, BoolConsumer success) {
+		public static void p1S_delHomeResp(byte @NonNull [] buf, BoolConsumer success) {
 			try (val in = DataIn.pool(buf, 1)) {
 				success.accept(in.readBoolean());
 			} catch (IOException e) {
@@ -565,7 +627,7 @@ public enum Channel {
 		 *
 		 * @see #s2C_searchHome(String)
 		 */
-		public static void p2C_searchHome(byte@NonNull[] buf, Consumer<String> name) {
+		public static void p2C_searchHome(byte @NonNull [] buf, Consumer<String> name) {
 			try (val in = DataIn.pool(buf, 2)) {
 				name.accept(in.readUTF());
 			} catch (IOException e) {
@@ -581,7 +643,7 @@ public enum Channel {
 		 *
 		 * @see #s2S_searchHomeResp(String, String)
 		 */
-		public static void p2S_searchHomeResp(byte@NonNull[] buf, BiConsumer<String, String> nameAndServer) {
+		public static void p2S_searchHomeResp(byte @NonNull [] buf, BiConsumer<String, String> nameAndServer) {
 			try (val in = DataIn.pool(buf, 2)) {
 				nameAndServer.accept(in.readUTF(), in.readUTF());
 			} catch (IOException e) {
@@ -597,7 +659,7 @@ public enum Channel {
 		 *
 		 * @see #s3C_tpHome(String)
 		 */
-		public static void p3C_tpHome(byte@NonNull[] buf, Consumer<String> name) {
+		public static void p3C_tpHome(byte @NonNull [] buf, Consumer<String> name) {
 			try (val in = DataIn.pool(buf, 3)) {
 				name.accept(in.readUTF());
 			} catch (IOException e) {
@@ -613,7 +675,7 @@ public enum Channel {
 		 *
 		 * @see #s3S_tpHomeResp(boolean)
 		 */
-		public static void p3S_tpHomeResp(byte@NonNull[] buf, BoolConsumer success) {
+		public static void p3S_tpHomeResp(byte @NonNull [] buf, BoolConsumer success) {
 			try (val in = DataIn.pool(buf, 3)) {
 				success.accept(in.readBoolean());
 			} catch (IOException e) {
@@ -629,7 +691,7 @@ public enum Channel {
 		 *
 		 * @see #s4C_listHome()
 		 */
-		public static void p4C_listHome(byte@NonNull[] buf, Runnable r) {
+		public static void p4C_listHome(byte @NonNull [] buf, Runnable r) {
 			try (val ignored = DataIn.pool(buf, 4)) {
 				r.run();
 			} catch (IOException e) {
@@ -665,6 +727,7 @@ public enum Channel {
 		 * @param name   家名称
 		 * @param loc    家
 		 * @param amount 最大数量
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s0C_setHome(String name, ShareLocation loc, int amount) {
@@ -682,6 +745,7 @@ public enum Channel {
 		 * 设置家响应
 		 *
 		 * @param success 成功
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s0S_setHomeResp(boolean success) {
@@ -697,6 +761,7 @@ public enum Channel {
 		 * 删除家
 		 *
 		 * @param name 家名称
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s1C_delHome(String name) {
@@ -712,6 +777,7 @@ public enum Channel {
 		 * 删除家响应
 		 *
 		 * @param success 删除成功
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s1S_delHomeResp(boolean success) {
@@ -727,6 +793,7 @@ public enum Channel {
 		 * 搜索家
 		 *
 		 * @param name 家名称
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s2C_searchHome(String name) {
@@ -743,6 +810,7 @@ public enum Channel {
 		 *
 		 * @param name   家名称
 		 * @param server 所在服务器
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s2S_searchHomeResp(String name, String server) {
@@ -759,6 +827,7 @@ public enum Channel {
 		 * 传送家
 		 *
 		 * @param name 家名称
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s3C_tpHome(String name) {
@@ -774,6 +843,7 @@ public enum Channel {
 		 * 传送家响应
 		 *
 		 * @param success 是否成功
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s3S_tpHomeResp(boolean success) {
@@ -894,10 +964,11 @@ public enum Channel {
 		 * 解析Client
 		 *
 		 * @param buf 数据
+		 *
 		 * @return 权限节点
 		 */
 		@NonNull
-		public static String parseC(byte@NonNull[] buf) {
+		public static String parseC(byte @NonNull [] buf) {
 			try (val in = DataIn.pool(buf)) {
 				return in.readUTF();
 			} catch (IOException e) {
@@ -911,7 +982,7 @@ public enum Channel {
 		 * @param buf                数据
 		 * @param permissionAndAllow 权限,是否允许
 		 */
-		public static void parseS(byte@NonNull[] buf, ObjBoolConsumer<String> permissionAndAllow) {
+		public static void parseS(byte @NonNull [] buf, ObjBoolConsumer<String> permissionAndAllow) {
 			try (val in = DataIn.pool(buf)) {
 				permissionAndAllow.accept(in.readUTF(), in.readBoolean());
 			} catch (IOException e) {
@@ -924,9 +995,10 @@ public enum Channel {
 		 *
 		 * @param permission 权限节点
 		 * @param allow      是否拥有权限
+		 *
 		 * @return 数据包
 		 */
-		public static byte@NonNull[] sendC(String permission, boolean allow) {
+		public static byte @NonNull [] sendC(String permission, boolean allow) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeUTF(permission);
 				out.writeBoolean(allow);
@@ -940,9 +1012,10 @@ public enum Channel {
 		 * 发送至Server
 		 *
 		 * @param permission 权限节点
+		 *
 		 * @return 数据包
 		 */
-		public static byte@NonNull[] sendS(@NonNull String permission) {
+		public static byte @NonNull [] sendS(@NonNull String permission) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeUTF(permission);
 				return out.getByte();
@@ -959,20 +1032,6 @@ public enum Channel {
 	 */
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class PlaySound extends Package {
-		/**
-		 * 音效类型
-		 *
-		 * @author yuanlu
-		 *
-		 */
-		public enum Sounds {
-			/** At玩家时的音效 */
-			AT;
-
-			/** SOUNDS */
-			private static final Sounds[] SOUNDS = values();
-		}
-
 		/** 此数据包ID */
 		protected static @Getter int ID;
 
@@ -980,6 +1039,7 @@ public enum Channel {
 		 * 获取音效
 		 *
 		 * @param buf 数据
+		 *
 		 * @return 音效
 		 */
 		public static Sounds getSound(byte[] buf) {
@@ -994,6 +1054,7 @@ public enum Channel {
 		 * 发送到Client
 		 *
 		 * @param sounds 音效
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] play(Sounds sounds) {
@@ -1003,6 +1064,19 @@ public enum Channel {
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
+		}
+
+		/**
+		 * 音效类型
+		 *
+		 * @author yuanlu
+		 */
+		public enum Sounds {
+			/** At玩家时的音效 */
+			AT;
+
+			/** SOUNDS */
+			private static final Sounds[] SOUNDS = values();
 		}
 
 	}
@@ -1018,11 +1092,17 @@ public enum Channel {
 	public static final class ServerInfo extends Package {
 		/** 此数据包ID */
 		protected static @Getter int ID;
+		/** tab名称(全部) */
+		String    tab;
+		/** BC版本 */
+		String    version;
+		ProxyType proxyType;
 
 		/**
 		 * 解析Server
 		 *
 		 * @param buf 数据
+		 *
 		 * @return 权限节点
 		 */
 		public static ServerInfo parseS(byte[] buf) {
@@ -1038,9 +1118,10 @@ public enum Channel {
 		 *
 		 * @param tab     tab名称
 		 * @param version BC版本
+		 *
 		 * @return 数据包
 		 */
-		public static byte@NonNull[] sendS(@NonNull String tab, @NonNull String version, @NonNull ProxyType proxyType) {
+		public static byte @NonNull [] sendS(@NonNull String tab, @NonNull String version, @NonNull ProxyType proxyType) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeUTF(tab);
 				out.writeUTF(version);
@@ -1051,15 +1132,7 @@ public enum Channel {
 			}
 		}
 
-		/** tab名称(全部) */
-		String	tab;
-
-		/** BC版本 */
-		String	version;
-
-		ProxyType proxyType;
-
-	    public enum ProxyType{
+		public enum ProxyType {
 			BungeeCord, Velocity
 		}
 	}
@@ -1078,6 +1151,7 @@ public enum Channel {
 		 * 解析Client
 		 *
 		 * @param buf 数据
+		 *
 		 * @return 客户端时间戳
 		 */
 		public static long parseC(byte[] buf) {
@@ -1093,7 +1167,7 @@ public enum Channel {
 		 *
 		 * @return 数据包(可复用)
 		 */
-		public static byte@NonNull[] sendC() {
+		public static byte @NonNull [] sendC() {
 			try (val out = DataOut.pool(ID)) {
 				return out.getByte();
 			} catch (IOException e) {
@@ -1106,7 +1180,7 @@ public enum Channel {
 		 *
 		 * @return 数据包
 		 */
-		public static byte@NonNull[] sendS() {
+		public static byte @NonNull [] sendS() {
 			try (val out = DataOut.pool(ID)) {
 				out.writeLong(System.currentTimeMillis());
 				return out.getByte();
@@ -1131,7 +1205,7 @@ public enum Channel {
 	 * 5. B 8 C (A全名)
 	 * 6. B 7 A ()
 	 * </pre>
-	 *
+	 * <p>
 	 * /tp mover target:
 	 *
 	 * <pre>
@@ -1147,7 +1221,7 @@ public enum Channel {
 	 * 6. B 8 D (C全名)
 	 * 7. B 7 A ()
 	 * </pre>
-	 *
+	 * <p>
 	 * /tpa target:
 	 *
 	 * <pre>
@@ -1176,7 +1250,7 @@ public enum Channel {
 	 * A msg deny
 	 *
 	 * </pre>
-	 *
+	 * <p>
 	 * /tphere target:(/tp target self)
 	 *
 	 * <pre>
@@ -1190,7 +1264,7 @@ public enum Channel {
 	 * 5. B 8 A (C全名)
 	 * 6. B 7 A ()
 	 * </pre>
-	 *
+	 * <p>
 	 * /tpahere target:
 	 *
 	 * <pre>
@@ -1217,8 +1291,6 @@ public enum Channel {
 	 * 6. B 5 A (false)
 	 * A msg deny
 	 * </pre>
-	 *
-	 *
 	 */
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class Tp extends Package {
@@ -1233,7 +1305,7 @@ public enum Channel {
 		 *
 		 * @see #s0C_tpReq(String, int)
 		 */
-		public static void p0C_tpReq(byte@NonNull[] buf, ObjIntConsumer<String> targetAndType) {
+		public static void p0C_tpReq(byte @NonNull [] buf, ObjIntConsumer<String> targetAndType) {
 			try (val in = DataIn.pool(buf, 0)) {
 				targetAndType.accept(in.readUTF(), in.readInt());
 			} catch (IOException e) {
@@ -1249,7 +1321,7 @@ public enum Channel {
 		 *
 		 * @see #s1S_tpReqReceive(String, String)
 		 */
-		public static void p1S_searchResult(byte@NonNull[] buf, BiConsumer<String, String> nameAndDisplay) {
+		public static void p1S_searchResult(byte @NonNull [] buf, BiConsumer<String, String> nameAndDisplay) {
 			try (val in = DataIn.pool(buf, 1)) {
 				nameAndDisplay.accept(in.readUTF(), in.readUTF());
 			} catch (IOException e) {
@@ -1262,9 +1334,10 @@ public enum Channel {
 		 *
 		 * @param buf                   数据
 		 * @param nameAndDisplayAndType 传送者真实名字,传送者展示名字,传送类型
+		 *
 		 * @see #s2S_tpReq(String, String, int)
 		 */
-		public static void p2S_tpReq(byte@NonNull[] buf, BiObjIntConsumer<String, String> nameAndDisplayAndType) {
+		public static void p2S_tpReq(byte @NonNull [] buf, BiObjIntConsumer<String, String> nameAndDisplayAndType) {
 			try (val in = DataIn.pool(buf, 2)) {
 				nameAndDisplayAndType.accept(in.readUTF(), in.readUTF(), in.readInt());
 			} catch (IOException e) {
@@ -1277,9 +1350,10 @@ public enum Channel {
 		 *
 		 * @param buf         数据
 		 * @param whoAndAllow 目标全名,是否允许传送
+		 *
 		 * @see #s3C_tpResp(String, boolean)
 		 */
-		public static void p3C_tpResp(byte@NonNull[] buf, ObjBoolConsumer<String> whoAndAllow) {
+		public static void p3C_tpResp(byte @NonNull [] buf, ObjBoolConsumer<String> whoAndAllow) {
 			try (val in = DataIn.pool(buf, 3)) {
 				whoAndAllow.accept(in.readUTF(), in.readBoolean());
 			} catch (IOException e) {
@@ -1292,9 +1366,10 @@ public enum Channel {
 		 *
 		 * @param buf     数据
 		 * @param success 是否成功处理
+		 *
 		 * @see #s4S_tpRespReceive(boolean)
 		 */
-		public static void p4S_tpRespReceive(byte@NonNull[] buf, BoolConsumer success) {
+		public static void p4S_tpRespReceive(byte @NonNull [] buf, BoolConsumer success) {
 			try (val in = DataIn.pool(buf, 4)) {
 				success.accept(in.readBoolean());
 			} catch (IOException e) {
@@ -1307,9 +1382,10 @@ public enum Channel {
 		 *
 		 * @param buf         数据
 		 * @param whoAndAllow C2玩家全名,是否允许传送
+		 *
 		 * @see #s5S_tpResp(String, boolean)
 		 */
-		public static void p5S_tpResp(byte@NonNull[] buf, ObjBoolConsumer<String> whoAndAllow) {
+		public static void p5S_tpResp(byte @NonNull [] buf, ObjBoolConsumer<String> whoAndAllow) {
 			try (val in = DataIn.pool(buf, 5)) {
 				whoAndAllow.accept(in.readUTF(), in.readBoolean());
 			} catch (IOException e) {
@@ -1322,9 +1398,10 @@ public enum Channel {
 		 *
 		 * @param buf            数据
 		 * @param moverAndTarget 被移动者,移动目标
+		 *
 		 * @see #s6C_tpThird(String, String)
 		 */
-		public static void p6C_tpThird(byte@NonNull[] buf, BiConsumer<String, String> moverAndTarget) {
+		public static void p6C_tpThird(byte @NonNull [] buf, BiConsumer<String, String> moverAndTarget) {
 			try (val in = DataIn.pool(buf, 6)) {
 				moverAndTarget.accept(in.readUTF(), in.readUTF());
 			} catch (IOException e) {
@@ -1337,9 +1414,10 @@ public enum Channel {
 		 *
 		 * @param buf             数据
 		 * @param successAndError 是否成功传送,是否有错误
+		 *
 		 * @see #s7S_tpThirdReceive(boolean, boolean)
 		 */
-		public static void p7S_tpThirdReceive(byte@NonNull[] buf, BiBoolConsumer successAndError) {
+		public static void p7S_tpThirdReceive(byte @NonNull [] buf, BiBoolConsumer successAndError) {
 			try (val in = DataIn.pool(buf, 7)) {
 				successAndError.accept(in.readBoolean(), in.readBoolean());
 			} catch (IOException e) {
@@ -1352,9 +1430,10 @@ public enum Channel {
 		 *
 		 * @param buf  数据
 		 * @param name 被传送者
+		 *
 		 * @see #s8S_tpThird(String)
 		 */
-		public static void p8S_tpThird(byte@NonNull[] buf, Consumer<String> name) {
+		public static void p8S_tpThird(byte @NonNull [] buf, Consumer<String> name) {
 			try (val in = DataIn.pool(buf, 8)) {
 				name.accept(in.readUTF());
 			} catch (IOException e) {
@@ -1367,9 +1446,10 @@ public enum Channel {
 		 *
 		 * @param buf            数据
 		 * @param moverAndTarget 双方搜索内容
+		 *
 		 * @see #s9C_tpReqThird(String, String, int)
 		 */
-		public static void p9C_tpReqThird(byte@NonNull[] buf, BiObjIntConsumer<String, String> moverAndTarget) {
+		public static void p9C_tpReqThird(byte @NonNull [] buf, BiObjIntConsumer<String, String> moverAndTarget) {
 			try (val in = DataIn.pool(buf, 9)) {
 				moverAndTarget.accept(in.readUTF(), in.readUTF(), in.readInt());
 			} catch (IOException e) {
@@ -1382,9 +1462,10 @@ public enum Channel {
 		 *
 		 * @param buf            数据
 		 * @param moverAndTarget 双方名称及展示名
+		 *
 		 * @see #saS_tpReqThirdReceive(String, String, String, String)
 		 */
-		public static void paS_tpReqThirdReceive(byte@NonNull[] buf, BiPlayerConsumer moverAndTarget) {
+		public static void paS_tpReqThirdReceive(byte @NonNull [] buf, BiPlayerConsumer moverAndTarget) {
 			try (val in = DataIn.pool(buf, 0xa)) {
 				moverAndTarget.accept(in.readUTF(), in.readUTF(), in.readUTF(), in.readUTF());
 			} catch (IOException e) {
@@ -1397,9 +1478,10 @@ public enum Channel {
 		 *
 		 * @param buf    数据
 		 * @param target 目标名称
+		 *
 		 * @see #sbC_cancel(String)
 		 */
-		public static void pbC_cancel(byte@NonNull[] buf, Consumer<String> target) {
+		public static void pbC_cancel(byte @NonNull [] buf, Consumer<String> target) {
 			try (val in = DataIn.pool(buf, 0xb)) {
 				target.accept(in.readUTF());
 			} catch (IOException e) {
@@ -1412,9 +1494,10 @@ public enum Channel {
 		 *
 		 * @param buf  数据
 		 * @param from 目标名称
+		 *
 		 * @see #scS_cancel(String)
 		 */
-		public static void pcS_cancel(byte@NonNull[] buf, Consumer<String> from) {
+		public static void pcS_cancel(byte @NonNull [] buf, Consumer<String> from) {
 			try (val in = DataIn.pool(buf, 0xc)) {
 				from.accept(in.readUTF());
 			} catch (IOException e) {
@@ -1440,6 +1523,7 @@ public enum Channel {
 		 *
 		 * @param target 搜索内容
 		 * @param type   传送类型
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s0C_tpReq(String target, int type) {
@@ -1513,6 +1597,7 @@ public enum Channel {
 		 * S接收到响应 to C2
 		 *
 		 * @param success 是否成功处理
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s4S_tpRespReceive(boolean success) {
@@ -1529,6 +1614,7 @@ public enum Channel {
 		 *
 		 * @param who   C2玩家全名
 		 * @param allow 是否允许传送
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s5S_tpResp(String who, boolean allow) {
@@ -1564,6 +1650,7 @@ public enum Channel {
 		 *
 		 * @param success 是否成功传送
 		 * @param error   是否有错误
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s7S_tpThirdReceive(boolean success, boolean error) {
@@ -1598,6 +1685,7 @@ public enum Channel {
 		 * @param mover  搜索内容
 		 * @param target 搜索内容
 		 * @param code   附属码
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s9C_tpReqThird(String mover, String target, int code) {
@@ -1637,6 +1725,7 @@ public enum Channel {
 		 * C 取消传送
 		 *
 		 * @param target 目标名称
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] sbC_cancel(String target) {
@@ -1652,6 +1741,7 @@ public enum Channel {
 		 * S 取消传送
 		 *
 		 * @param from 请求名称
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] scS_cancel(String from) {
@@ -1696,6 +1786,7 @@ public enum Channel {
 		 *
 		 * @param buf     数据
 		 * @param success 是否成功
+		 *
 		 * @see #s0S_tpLocResp(boolean)
 		 */
 		public static void p0S_tpLocResp(byte[] buf, BoolConsumer success) {
@@ -1727,6 +1818,7 @@ public enum Channel {
 		 *
 		 * @param loc    要传送的位置
 		 * @param server 要传送的服务器
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s0C_tpLoc(ShareLocation loc, String server) {
@@ -1743,6 +1835,7 @@ public enum Channel {
 		 * 传送坐标响应
 		 *
 		 * @param success 是否成功
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s0S_tpLocResp(boolean success) {
@@ -1759,6 +1852,7 @@ public enum Channel {
 		 *
 		 * @param loc    要传送的位置
 		 * @param player 被传送的玩家
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s1S_tpLoc(ShareLocation loc, String player) {
@@ -1784,6 +1878,12 @@ public enum Channel {
 	public static final class TransHome extends Package {
 		/** 此数据包ID */
 		protected static @Getter int ID;
+		/** 玩家UUID */
+		UUID          player;
+		/** 家名称 */
+		String        name;
+		/** 家坐标 */
+		ShareLocation loc;
 
 		/**
 		 * 解析: 响应
@@ -1817,6 +1917,7 @@ public enum Channel {
 		 * 发送至Client
 		 *
 		 * @param amount 接收到的数量
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] sendC(int amount) {
@@ -1849,6 +1950,7 @@ public enum Channel {
 		 * @param player 玩家UUID
 		 * @param name   家名称
 		 * @param loc    家坐标
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] sendS(UUID player, String name, ShareLocation loc) {
@@ -1862,15 +1964,6 @@ public enum Channel {
 				throw new RuntimeException(e);
 			}
 		}
-
-		/** 玩家UUID */
-		UUID			player;
-
-		/** 家名称 */
-		String			name;
-
-		/** 家坐标 */
-		ShareLocation	loc;
 	}
 
 	/**
@@ -1885,6 +1978,10 @@ public enum Channel {
 	public static final class TransWarp extends Package {
 		/** 此数据包ID */
 		protected static @Getter int ID;
+		/** 地标名称 */
+		String        name;
+		/** 地标坐标 */
+		ShareLocation loc;
 
 		/**
 		 * 解析: 响应
@@ -1918,6 +2015,7 @@ public enum Channel {
 		 * 发送至Client
 		 *
 		 * @param amount 接收到的数量
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] sendC(int amount) {
@@ -1949,6 +2047,7 @@ public enum Channel {
 		 *
 		 * @param name 地标名称
 		 * @param loc  地标坐标
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] sendS(String name, ShareLocation loc) {
@@ -1961,12 +2060,6 @@ public enum Channel {
 				throw new RuntimeException(e);
 			}
 		}
-
-		/** 地标名称 */
-		String			name;
-
-		/** 地标坐标 */
-		ShareLocation	loc;
 	}
 
 	/**
@@ -1983,9 +2076,10 @@ public enum Channel {
 		 * 解析
 		 *
 		 * @param buf 数据
+		 *
 		 * @return 双向数据
 		 */
-		public static boolean parse(byte@NonNull[] buf) {
+		public static boolean parse(byte @NonNull [] buf) {
 			try (val in = DataIn.pool(buf)) {
 				return in.readBoolean();
 			} catch (IOException e) {
@@ -1997,9 +2091,10 @@ public enum Channel {
 		 * 发送至Client
 		 *
 		 * @param inHide 当前是否处于隐身状态
+		 *
 		 * @return 数据包
 		 */
-		public static byte@NonNull[] sendC(boolean inHide) {
+		public static byte @NonNull [] sendC(boolean inHide) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeBoolean(inHide);
 				return out.getByte();
@@ -2012,9 +2107,10 @@ public enum Channel {
 		 * 发送至Server
 		 *
 		 * @param always 是否每次上线都拥有隐身
+		 *
 		 * @return 数据包
 		 */
-		public static byte@NonNull[] sendS(boolean always) {
+		public static byte @NonNull [] sendS(boolean always) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeBoolean(always);
 				return out.getByte();
@@ -2029,7 +2125,6 @@ public enum Channel {
 	 * 将会比较由 {@link Channel} 枚举项生成的 {@link Channel#VERSION MD5} 值, 确认插件版本是否正确
 	 *
 	 * @author yuanlu
-	 *
 	 */
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class VersionCheck extends Package {
@@ -2040,12 +2135,13 @@ public enum Channel {
 		 * 解析Client
 		 *
 		 * @param buf 数据
+		 *
 		 * @return 客户端与服务器版本是否一致
 		 */
 		public static boolean parseC(byte[] buf) {
 			try (DataIn in = DataIn.pool(buf)) {
-				byte[]	ver 	= new byte[VERSION.length];
-				boolean	equal	= in.read(ver) == VERSION.length;
+				byte[] ver = new byte[VERSION.length];
+				boolean equal = in.read(ver) == VERSION.length;
 				for (int i = 0; i < VERSION.length; i++) if (!(equal = (ver[i] == VERSION[i]))) break;
 				return equal;
 			} catch (IOException e) {
@@ -2057,9 +2153,10 @@ public enum Channel {
 		 * 解析Server
 		 *
 		 * @param buf 数据
+		 *
 		 * @return 客户端与服务器版本是否一致
 		 */
-		public static boolean parseS(byte@NonNull[] buf) {
+		public static boolean parseS(byte @NonNull [] buf) {
 			try (val in = DataIn.pool(buf)) {
 				return in.readBoolean();
 			} catch (IOException e) {
@@ -2071,9 +2168,10 @@ public enum Channel {
 		 * 发送至Client
 		 *
 		 * @param equal 客户端与服务器版本是否一致
+		 *
 		 * @return 数据包
 		 */
-		public static byte@NonNull[] sendC(boolean equal) {
+		public static byte @NonNull [] sendC(boolean equal) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeBoolean(equal);
 				return out.getByte();
@@ -2086,11 +2184,13 @@ public enum Channel {
 		 * 发送至Client
 		 *
 		 * @param buf Client数据
+		 *
 		 * @return 数据包
+		 *
 		 * @see #parseC(byte[])
 		 * @see #sendC(boolean)
 		 */
-		public static byte@NonNull[] sendC(byte@NonNull[] buf) {
+		public static byte @NonNull [] sendC(byte @NonNull [] buf) {
 			return sendC(parseC(buf));
 		}
 
@@ -2099,7 +2199,7 @@ public enum Channel {
 		 *
 		 * @return 数据包
 		 */
-		public static byte@NonNull[] sendS() {
+		public static byte @NonNull [] sendS() {
 			try (val out = DataOut.pool(ID)) {
 				out.write(VERSION);
 				return out.getByte();
@@ -2127,7 +2227,7 @@ public enum Channel {
 		 *
 		 * @see #s0C_setWarp(String, ShareLocation)
 		 */
-		public static void p0C_setWarp(byte@NonNull[] buf, BiConsumer<String, ShareLocation> nameAndLoc) {
+		public static void p0C_setWarp(byte @NonNull [] buf, BiConsumer<String, ShareLocation> nameAndLoc) {
 			try (val in = DataIn.pool(buf, 0)) {
 				nameAndLoc.accept(in.readUTF(), in.readLocation());
 			} catch (IOException e) {
@@ -2143,7 +2243,7 @@ public enum Channel {
 		 *
 		 * @see #s0S_setWarpResp()
 		 */
-		public static void p0S_setWarpResp(byte@NonNull[] buf, Runnable r) {
+		public static void p0S_setWarpResp(byte @NonNull [] buf, Runnable r) {
 			try (val ignored = DataIn.pool(buf, 0)) {
 				r.run();
 			} catch (IOException e) {
@@ -2159,7 +2259,7 @@ public enum Channel {
 		 *
 		 * @see #s1C_delWarp(String)
 		 */
-		public static void p1C_delWarp(byte@NonNull[] buf, Consumer<String> name) {
+		public static void p1C_delWarp(byte @NonNull [] buf, Consumer<String> name) {
 			try (val in = DataIn.pool(buf, 1)) {
 				name.accept(in.readUTF());
 			} catch (IOException e) {
@@ -2175,7 +2275,7 @@ public enum Channel {
 		 *
 		 * @see #s1S_delWarpResp(boolean)
 		 */
-		public static void p1S_delWarpResp(byte@NonNull[] buf, BoolConsumer success) {
+		public static void p1S_delWarpResp(byte @NonNull [] buf, BoolConsumer success) {
 			try (val in = DataIn.pool(buf, 1)) {
 				success.accept(in.readBoolean());
 			} catch (IOException e) {
@@ -2191,7 +2291,7 @@ public enum Channel {
 		 *
 		 * @see #s2C_searchWarp(String)
 		 */
-		public static void p2C_searchWarp(byte@NonNull[] buf, Consumer<String> name) {
+		public static void p2C_searchWarp(byte @NonNull [] buf, Consumer<String> name) {
 			try (val in = DataIn.pool(buf, 2)) {
 				name.accept(in.readUTF());
 			} catch (IOException e) {
@@ -2207,7 +2307,7 @@ public enum Channel {
 		 *
 		 * @see #s2S_searchWarpResp(String, String)
 		 */
-		public static void p2S_searchWarpResp(byte@NonNull[] buf, BiConsumer<String, String> nameAndServer) {
+		public static void p2S_searchWarpResp(byte @NonNull [] buf, BiConsumer<String, String> nameAndServer) {
 			try (val in = DataIn.pool(buf, 2)) {
 				nameAndServer.accept(in.readUTF(), in.readUTF());
 			} catch (IOException e) {
@@ -2290,6 +2390,7 @@ public enum Channel {
 		 *
 		 * @param name 地标名称
 		 * @param loc  地标
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s0C_setWarp(String name, ShareLocation loc) {
@@ -2319,6 +2420,7 @@ public enum Channel {
 		 * 删除地标
 		 *
 		 * @param name 地标名称
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s1C_delWarp(String name) {
@@ -2334,6 +2436,7 @@ public enum Channel {
 		 * 删除地标响应
 		 *
 		 * @param success 删除删除
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s1S_delWarpResp(boolean success) {
@@ -2349,6 +2452,7 @@ public enum Channel {
 		 * 搜索地标
 		 *
 		 * @param name 地标名称
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s2C_searchWarp(String name) {
@@ -2365,6 +2469,7 @@ public enum Channel {
 		 *
 		 * @param name   地标名称
 		 * @param server 所在服务器
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s2S_searchWarpResp(String name, String server) {
@@ -2381,6 +2486,7 @@ public enum Channel {
 		 * 传送地标
 		 *
 		 * @param name 地标名称
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s3C_tpWarp(String name) {
@@ -2396,6 +2502,7 @@ public enum Channel {
 		 * 传送地标响应
 		 *
 		 * @param success 是否成功
+		 *
 		 * @return 数据包
 		 */
 		public static byte[] s3S_tpWarpResp(boolean success) {
@@ -2438,70 +2545,6 @@ public enum Channel {
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
-		}
-	}
-
-	/** 版本数据 */
-	private static final byte[]							VERSION;
-	/** 数据包计数 */
-	public static final EnumMap<Channel, AtomicInteger>	PACK_COUNT	= new EnumMap<>(Channel.class);
-
-	static {
-		try {
-			val sb = new StringBuilder();
-			for (val x : values()) sb.append(x.name()).append(';');
-			val md5 = MessageDigest.getInstance("MD5");
-			md5.update(sb.toString().getBytes(ShareData.CHARSET));
-			VERSION = md5.digest();
-		} catch (Exception e) {
-			throw new InternalError(e);
-		}
-		for (val x : values()) PACK_COUNT.put(x, new AtomicInteger());
-	}
-	/** 所有数据包 */
-	private static final Channel[] CHANNELS = values();
-
-	/**
-	 * 解析数据包
-	 *
-	 * @param id 数据包ID
-	 * @return 数据包类型
-	 */
-	public static Channel byId(int id) {
-		return id >= 0 && id < CHANNELS.length ? CHANNELS[id] : null;
-	}
-
-	/** @return 数据包计数 */
-	public static @NonNull HashMap<String, Integer> getPackCount() {
-		HashMap<String, Integer> m = new HashMap<>();
-		PACK_COUNT.forEach((k, v) -> m.put(k.name(), v.getAndSet(0)));
-		return m;
-	}
-
-	/**
-	 * 解析数据包子ID
-	 *
-	 * @param message 数据包
-	 * @return 数据包子ID
-	 */
-	public static byte getSubId(byte[] message) {
-		return message[4];
-	}
-
-	/** 目标类 */
-	public final Class<? extends Package> target;
-
-	/**
-	 * 构造
-	 *
-	 * @param target 目标类
-	 */
-	Channel(Class<? extends Package> target) {
-		this.target = target;
-		try {
-			target.getDeclaredField("ID").setInt(target, ordinal());
-		} catch (Exception e) {
-			throw new InternalError(e);
 		}
 	}
 

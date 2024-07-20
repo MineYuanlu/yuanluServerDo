@@ -3,117 +3,43 @@
  */
 package yuan.plugins.serverDo.bukkit.third;
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.IntConsumer;
-
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.entity.Player;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.val;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.Channel.Package.BiIntConsumer;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Main;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.function.IntConsumer;
+
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
 /**
  * 第三方数据
  *
  * @author yuanlu
- *
  */
 @Getter
 public abstract class Third {
-	/**
-	 * 转换方法
-	 *
-	 * @author yuanlu
-	 *
-	 */
-	@Retention(RUNTIME)
-	@Target(METHOD)
-	public @interface TransFunc {
-		/** @return 对应的转换方法 */
-		TransMethods value();
-	}
-
-	/**
-	 * 所有的转换方法
-	 *
-	 * @author yuanlu
-	 *
-	 */
-	@AllArgsConstructor
-	@Getter
-	public enum TransMethods {
-		/** @see Third#getAllHomes() */
-		ALL_HOME("all-home"),
-		/** @see Third#getAllWarps() */
-		ALL_WARP("warps");
-
-		/** 集合 */
-		private static final HashMap<String, TransMethods> VS = new HashMap<>();
-		static {
-			for (val v : values()) VS.put(v.getName().toLowerCase(), v);
-		}
-
-		/**
-		 * 通过名字获取
-		 *
-		 * @param name 名字
-		 * @return 方法
-		 */
-		public static final TransMethods getByName(String name) {
-			if (name == null) return null;
-			return VS.get(name.toLowerCase());
-		}
-
-		/** 名称 */
-		private final String name;
-
-		/**
-		 * 执行此项操作
-		 *
-		 * @param t       处理器
-		 * @param p       玩家
-		 * @param process 过程回调
-		 */
-		public void handle(Third t, Player p, BiIntConsumer process) {
-			val m = TRANS_FUNCS_CALL.get(this);
-			try {
-				m.invoke(t, p, process);
-			} catch (Throwable e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
 	/** 第三方数据 */
-	private static final HashMap<String, Third>			THIRDS				= new HashMap<>();
-	/** 所有的转换方法(处理函数) */
-	private static final EnumMap<TransMethods, Method>	TRANS_FUNCS_CALL	= new EnumMap<>(TransMethods.class);
-
-	/** 所有的转换方法(实现函数) */
-	private static final ArrayList<Method>				TRANS_FUNCS			= new ArrayList<>();
+	private static final         HashMap<String, Third>        THIRDS           = new HashMap<>();
 	/** 第三方数据的视图 */
-	public static final @NonNull Set<String>			THIRDS_VIEW			= Collections.unmodifiableSet(THIRDS.keySet());
+	public static final @NonNull Set<String>                   THIRDS_VIEW      = Collections.unmodifiableSet(THIRDS.keySet());
+	/** 所有的转换方法(处理函数) */
+	private static final         EnumMap<TransMethods, Method> TRANS_FUNCS_CALL = new EnumMap<>(TransMethods.class);
+	/** 所有的转换方法(实现函数) */
+	private static final         ArrayList<Method>             TRANS_FUNCS      = new ArrayList<>();
 
 	static {
 		try {
@@ -128,13 +54,33 @@ public abstract class Third {
 		} catch (Throwable e) {
 			e.printStackTrace();
 		}
-//		registerThird(CMI.INSTANCE);TODO
+		//		registerThird(CMI.INSTANCE);TODO
+	}
+
+	/** 目标插件名 */
+	public final @NonNull String            targetPluginName;
+	/** 别名 */
+	public final @NonNull String            name;
+	/** 所有可以完成的功能 */
+	private final         Set<TransMethods> canDos;
+
+	/**
+	 * 构造
+	 *
+	 * @param targetPluginName 目标插件名
+	 * @param name             别名
+	 */
+	public Third(@NonNull String targetPluginName, @NonNull String name) {
+		this.targetPluginName = targetPluginName;
+		this.name = name;
+		this.canDos = Collections.unmodifiableSet(canDo(this.getClass()));
 	}
 
 	/**
 	 * 获取某个转换器可以完成的功能
 	 *
 	 * @param c 转换器的类
+	 *
 	 * @return 可以完成的功能
 	 */
 	private static EnumSet<TransMethods> canDo(Class<? extends Third> c) {
@@ -154,6 +100,7 @@ public abstract class Third {
 	 * 获取处理器
 	 *
 	 * @param third 名称
+	 *
 	 * @return 处理器/null
 	 */
 	public static Third get(@NonNull String third) {
@@ -165,31 +112,11 @@ public abstract class Third {
 		THIRDS.put(third.getName().toLowerCase(), third);
 	}
 
-	/** 目标插件名 */
-	public final @NonNull String	targetPluginName;
-
-	/** 别名 */
-	public final @NonNull String	name;
-
-	/** 所有可以完成的功能 */
-	private final Set<TransMethods>	canDos;
-
-	/**
-	 * 构造
-	 *
-	 * @param targetPluginName 目标插件名
-	 * @param name             别名
-	 */
-	public Third(@NonNull String targetPluginName, @NonNull String name) {
-		this.targetPluginName	= targetPluginName;
-		this.name				= name;
-		this.canDos				= Collections.unmodifiableSet(canDo(this.getClass()));
-	}
-
 	/**
 	 * 检测此转换器是否能够完成某个功能
 	 *
 	 * @param m 功能
+	 *
 	 * @return 是否能完成
 	 */
 	public boolean canDo(TransMethods m) {
@@ -208,21 +135,21 @@ public abstract class Third {
 	}
 
 	/**
-	 * @see #getAllHomes()
-	 *
 	 * @param p       玩家
 	 * @param process 过程
+	 *
+	 * @see #getAllHomes()
 	 */
 	public final void getAllHomes(Player p, BiIntConsumer process) {
-		@NonNull val	data	= getAllHomes();
-		int				all		= 0, now = 0;
+		@NonNull val data = getAllHomes();
+		int all = 0, now = 0;
 		for (val homes : data.values()) all += homes.size();
 		if (all > 0) for (val e : data.entrySet()) {
-			val	uuid	= e.getKey();
-			val	homes	= e.getValue();
+			val uuid = e.getKey();
+			val homes = e.getValue();
 			if (!homes.isEmpty()) for (val he : homes.entrySet()) {
-				val	name	= he.getKey();
-				val	home	= he.getValue();
+				val name = he.getKey();
+				val home = he.getValue();
 				Main.send(p, Channel.TransHome.sendS(uuid, name, Core.toSLoc(home)));
 				process.accept(now++, all);
 				if (ShareData.isDEBUG()) ShareData.getLogger().info("[TRANS] " + uuid + " " + name + " " + home);
@@ -248,18 +175,18 @@ public abstract class Third {
 	}
 
 	/**
-	 * @see #getAllWarps()
-	 *
 	 * @param p       玩家
 	 * @param process 过程
+	 *
+	 * @see #getAllWarps()
 	 */
 	public final void getAllWarps(Player p, BiIntConsumer process) {
-		@NonNull val	data	= getAllWarps();
-		val				all		= data.size();
-		int				now		= 0;
+		@NonNull val data = getAllWarps();
+		val all = data.size();
+		int now = 0;
 		for (val warp : data.entrySet()) {
-			val	name	= warp.getKey();
-			val	loc		= warp.getValue();
+			val name = warp.getKey();
+			val loc = warp.getValue();
 			Main.send(p, Channel.TransWarp.sendS(name, Core.toSLoc(loc)));
 			process.accept(now++, all);
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[TRANS] " + name + " " + loc);
@@ -274,5 +201,69 @@ public abstract class Third {
 	/** @return 此第三方数据是否有效 */
 	public boolean isValid() {
 		return Bukkit.getPluginManager().getPlugin(targetPluginName) != null;
+	}
+
+	/**
+	 * 所有的转换方法
+	 *
+	 * @author yuanlu
+	 */
+	@AllArgsConstructor
+	@Getter
+	public enum TransMethods {
+		/** @see Third#getAllHomes() */
+		ALL_HOME("all-home"),
+		/** @see Third#getAllWarps() */
+		ALL_WARP("warps");
+
+		/** 集合 */
+		private static final HashMap<String, TransMethods> VS = new HashMap<>();
+
+		static {
+			for (val v : values()) VS.put(v.getName().toLowerCase(), v);
+		}
+
+		/** 名称 */
+		private final String name;
+
+		/**
+		 * 通过名字获取
+		 *
+		 * @param name 名字
+		 *
+		 * @return 方法
+		 */
+		public static final TransMethods getByName(String name) {
+			if (name == null) return null;
+			return VS.get(name.toLowerCase());
+		}
+
+		/**
+		 * 执行此项操作
+		 *
+		 * @param t       处理器
+		 * @param p       玩家
+		 * @param process 过程回调
+		 */
+		public void handle(Third t, Player p, BiIntConsumer process) {
+			val m = TRANS_FUNCS_CALL.get(this);
+			try {
+				m.invoke(t, p, process);
+			} catch (Throwable e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	/**
+	 * 转换方法
+	 *
+	 * @author yuanlu
+	 */
+	@Retention(RUNTIME)
+	@Target(METHOD)
+	public @interface TransFunc {
+		/** @return 对应的转换方法 */
+		TransMethods value();
 	}
 }

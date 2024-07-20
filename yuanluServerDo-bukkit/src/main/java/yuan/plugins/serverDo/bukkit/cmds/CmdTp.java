@@ -7,14 +7,10 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
-import java.util.StringJoiner;
-import java.util.function.BiConsumer;
-
+import lombok.val;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-
-import lombok.val;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.Channel.Package.BiPlayerConsumer;
 import yuan.plugins.serverDo.ShareData;
@@ -22,11 +18,13 @@ import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Core.Permissions;
 import yuan.plugins.serverDo.bukkit.Main;
 
+import java.util.StringJoiner;
+import java.util.function.BiConsumer;
+
 /**
  * tp命令
  *
  * @author yuanlu
- *
  */
 public final class CmdTp extends TabTp {
 	/** 默认命令 */

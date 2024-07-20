@@ -1,9 +1,11 @@
 {
-"id":"yuanlu-server-do",
-"name":"yuanluServerDo",
-"version":"${parent.version}",
-"url":"${parent.url}",
-"authors":["yuanlu"],
-"main":"yuan.plugins.serverDo.velocity.Main",
-"description":"${parent.description}"
+  "id": "yuanlu-server-do",
+  "name": "yuanluServerDo",
+  "version": "${parent.version}",
+  "url": "${parent.url}",
+  "authors": [
+    "yuanlu"
+  ],
+  "main": "yuan.plugins.serverDo.velocity.Main",
+  "description": "${parent.description}"
 }

@@ -7,20 +7,18 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
-import java.util.function.BiConsumer;
-
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Main;
+
+import java.util.function.BiConsumer;
 
 /**
  * tphere命令
  *
  * @author yuanlu
- *
  */
 public final class CmdTphere extends TabTp {
 

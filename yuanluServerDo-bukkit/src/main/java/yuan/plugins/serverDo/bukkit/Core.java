@@ -40,10 +40,516 @@ import java.util.function.IntConsumer;
  * Bukkit端的核心组件
  *
  * @author yuanlu
- *
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Core implements PluginMessageListener, MESSAGE, Listener {
+	/** 单例 */
+	public static final  Core                                                      INSTANCE         = new Core();
+	/** 配置数据 */
+	static final         DatasConf                                                 Conf             = new DatasConf();
+	/** 回调等待 */
+	private static final EnumMap<Channel, Map<UUID, ArrayList<ListenCallBackObj>>> CALL_BACK_WAITER = new EnumMap<>(Channel.class);
+	/** 版本检查通过的玩家集合 */
+	private static final HashSet<UUID>                                             ALLOW_PLAYERS    = new HashSet<>();
+	/** 传送冷却 */
+	private static final HashMap<UUID, Long>                                       COOLDOWN         = new HashMap<>();
+	/** 清理监听器 */
+	private static final ArrayList<Consumer<Player>>                               CLEAR_LISTENER   = new ArrayList<>();
+	/** 当启用tp event时，玩家加入服务器后禁用记录数秒 */
+	private static final HashSet<UUID>                                             EVENT_JOIN_SLEEP = new HashSet<>(Conf.getTpEventJoinSleep() > 0 ? 8 : 0);
+
+	static {
+		for (val c : Channel.values()) CALL_BACK_WAITER.put(c, new HashMap<>());
+	}
+
+	static {
+		registerClearListener(p -> {
+			val u = p.getUniqueId();
+			TabHandler.TAB_REPLACE.remove(u);
+			TpHandler.BAN_MOVE.remove(u);
+			CALL_BACK_WAITER.values().forEach(m -> m.remove(u));
+			ALLOW_PLAYERS.remove(u);
+		});
+	}
+
+	/**
+	 * 回调
+	 *
+	 * @param player   玩家
+	 * @param channel  通道
+	 * @param checker  验证数据
+	 * @param consumer 处理器接收
+	 *
+	 * @return 是否成功运行
+	 */
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public static boolean callBack(@NonNull Player player, @NonNull Channel channel, Object checker, Consumer consumer) {
+		val map = CALL_BACK_WAITER.get(channel);
+		synchronized (map) {
+			val objs = map.get(player.getUniqueId());
+			if (objs != null) for (Iterator<ListenCallBackObj> itr = objs.iterator(); itr.hasNext(); ) {
+				val e = itr.next();
+				if (Tool.equals(e.getChecker(), checker)) {
+					itr.remove();
+					if (ShareData.isDEBUG())
+						ShareData.getLogger().info("[callback] channel: " + channel + ", call:" + e.getChecker() + ", consumer: " + consumer);
+					if (consumer != null) try {
+						consumer.accept(e.getHandler());
+					} catch (Throwable err) {
+						throw new RuntimeException("回调函数执行失败, 玩家: " + player.getName() + ", 频道: " + channel + ", 标记: " + checker, err);
+					}
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** @param player 唤起清理 */
+	public static void callClear(Player player) {
+		synchronized (CLEAR_LISTENER) {
+			for (val consumer : CLEAR_LISTENER) {
+				consumer.accept(player);
+			}
+		}
+	}
+	/*
+	 * tp,tpa,tpahere,tphere tpaccept,tpcancel
+	 *
+	 * warp,home,spawn
+	 *
+	 */
+
+	/**
+	 * 获取等待时间
+	 *
+	 * @param player 玩家
+	 *
+	 * @return >0: 玩家的等待时间<br>
+	 * =0: 无等待时间<br>
+	 * <0: 玩家还在冷却中
+	 */
+	public static long getWaitTime(Player player) {
+		val cooldownEnd = COOLDOWN.get(player.getUniqueId());
+		val now = System.currentTimeMillis();
+		if (cooldownEnd != null && cooldownEnd - now > 0) return now - cooldownEnd;
+		if (Conf.getNoDelayPermission() != null && player.hasPermission(Conf.getNoDelayPermission())) return 0;
+		val delay = Conf.getDelay();
+		return delay > 0 ? delay : 0;
+	}
+
+	/**
+	 * 初始化数据
+	 *
+	 * @param conf 总配置文件
+	 */
+	public static void init(ConfigurationSection conf) {
+		// init Conf
+		Conf.noDelayPermission = conf.getString("setting.permission.no-delay", Conf.noCooldownPermission);
+		Conf.delay = conf.getLong("setting.teleport-delay", Conf.delay);
+		Conf.noCooldownPermission = conf.getString("setting.permission.no-cooldown", Conf.noCooldownPermission);
+		Conf.cooldown = conf.getLong("setting.teleport-cooldown", Conf.cooldown);
+		Conf.overtime = conf.getLong("setting.request-overtime", Conf.overtime);
+		//		Conf.safeLocation			= conf.getBoolean("setting.use-safeLocation", Conf.safeLocation);
+		Conf.safeLocation = false;
+		Conf.useTpEvent = conf.getBoolean("setting.back.use-tp-event", Conf.useTpEvent);
+		if (Conf.isUseTpEvent()) {
+			Conf.tpEventJoinSleep = conf.getLong("setting.back.event-after-join", Conf.tpEventJoinSleep);
+			Conf.tpEventMinDistance = conf.getDouble("setting.back.event-ignore-distance", Conf.tpEventMinDistance);
+			Conf.tpEventMinDistanceSquare = Conf.tpEventMinDistance * Conf.tpEventMinDistance;
+		} else {
+			Conf.tpEventJoinSleep = -1;
+			Conf.tpEventMinDistance = Conf.tpEventMinDistanceSquare = Double.MAX_VALUE;
+		}
+
+		WaitMaintain.setT_User(Conf.getOvertime() * 1000);
+
+		// init Permission
+		Permissions.init(conf.getConfigurationSection("setting.permission"));
+	}
+
+	/**
+	 * 监听回调
+	 *
+	 * @param player     玩家
+	 * @param channel    通道
+	 * @param checker    验证数据
+	 * @param msgTimeout 在超时后是否显示消息
+	 * @param maxTime    等待时间
+	 * @param handler    处理器
+	 */
+	public static void listenCallBack(@NonNull Player player, @NonNull Channel channel, Object checker, boolean msgTimeout, long maxTime,
+			@NonNull Object handler) {
+		val map = CALL_BACK_WAITER.get(channel);
+		synchronized (map) {
+			WaitMaintain.add(map, player.getUniqueId(), new ListenCallBackObj(checker, handler), maxTime, ArrayList::new,
+					msgTimeout ? () -> M_TIME_OUT.send(player, channel) : null);
+		}
+
+	}
+
+	/**
+	 * 监听回调
+	 *
+	 * @param player  玩家
+	 * @param channel 通道
+	 * @param checker 验证数据
+	 * @param handler 处理器
+	 *
+	 * @see #listenCallBack(Player, Channel, Object, boolean, long, Object)
+	 */
+	public static void listenCallBack(@NonNull Player player, @NonNull Channel channel, Object checker, @NonNull Object handler) {
+		listenCallBack(player, channel, checker, true, WaitMaintain.T_Net, handler);
+	}
+
+	/**
+	 * 权限检查
+	 *
+	 * @param player     玩家
+	 * @param permission 权限
+	 * @param next       成功的回调函数
+	 */
+	public static void permissionCheck(@NonNull CommandSender player, String permission, @NonNull Runnable next) {
+		if (permission == null || permission.isEmpty() || player instanceof ConsoleCommandSender || player.hasPermission(permission)) {
+			next.run();
+		} else if (player instanceof Player) {
+			Player p = ((Player) player);
+			listenCallBack(p, Channel.PERMISSION, permission, next);
+			Main.send(p, Channel.Permission.sendS(permission));
+		}
+	}
+
+	/** @param c 玩家下线时的清理监听器 */
+	static void registerClearListener(Consumer<Player> c) {
+		synchronized (CLEAR_LISTENER) {
+			CLEAR_LISTENER.add(c);
+		}
+	}
+
+	/**
+	 * 移除回调
+	 *
+	 * @param player  玩家
+	 * @param channel 通道
+	 * @param checker 验证数据
+	 *
+	 * @return 是否成功移除
+	 */
+	public static boolean removeCallBack(@NonNull Player player, @NonNull Channel channel, Object checker) {
+		return callBack(player, channel, checker, null);
+	}
+
+	/**
+	 * 转换为Bukkit坐标
+	 *
+	 * @param loc Share坐标
+	 *
+	 * @return Bukkit坐标
+	 */
+	public static @NonNull Location toBLoc(ShareLocation loc) {
+		return new Location(Bukkit.getWorld(loc.getWorld()), loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
+	}
+
+	/**
+	 * 转换为Share坐标
+	 *
+	 * @param loc Bukkit坐标
+	 *
+	 * @return Share坐标
+	 */
+	public static @NonNull ShareLocation toSLoc(@NonNull Location loc) {
+		val w = loc.getWorld();
+		if (w == null) throw new NullPointerException("World is null: " + loc);
+		return new ShareLocation(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch(), w.getName());
+	}
+
+	/**
+	 * 传送请求码转换<br>
+	 * 检测玩家是否拥有高级权限
+	 *
+	 * @param player   玩家
+	 * @param realCode 真实的请求码
+	 *
+	 * @return 转换后的请求码
+	 *
+	 * @see yuan.plugins.serverDo.Channel.Tp#s0C_tpReq(String, int)
+	 */
+	public static int tpReqCode(Player player, int realCode) {
+		if (realCode < 0) return realCode;
+		return Permissions.tpSenior(player) ? -realCode : realCode;
+	}
+
+	/**
+	 * 传送玩家到指定地点<br>
+	 * 当loc的server未指定时, 代表本地传送
+	 *
+	 * @param player 玩家
+	 * @param loc    指定坐标
+	 */
+	public static void tpTo(@NonNull Player player, @NonNull ShareLocation loc) {
+		if (loc.getServer() == null) TpHandler.toToLocal(player, toBLoc(loc), false);
+		else TpHandler.tpToRemote(player, loc, false);
+	}
+
+	/**
+	 * 传送玩家<br>
+	 * 将会先检查本地玩家, 若不存在则向BC请求 <br>
+	 * 适合一般传送
+	 *
+	 * @param mover        移动者
+	 * @param target       目标
+	 * @param waitTime     传送等待时间
+	 * @param needCooldown 是否需要检查冷却
+	 */
+	public static void tpTo(Player mover, String target, long waitTime, boolean needCooldown) {
+		tpTo(mover, target, waitTime, needCooldown, false);
+	}
+
+	/**
+	 * 传送玩家<br>
+	 * 将会先检查本地玩家, 若不存在则向BC请求<br>
+	 * 适合目标服务器加入传送
+	 *
+	 * @param mover        移动者
+	 * @param target       目标
+	 * @param waitTime     传送等待时间
+	 * @param needCooldown 是否需要检查冷却
+	 * @param noRecord     是否不记录位置(用于back)
+	 */
+	public static void tpTo(Player mover, String target, long waitTime, boolean needCooldown, boolean noRecord) {
+		val localTarget = Main.getMain().getServer().getPlayerExact(target);
+		if (localTarget != null) TpHandler.toToLocal(mover, localTarget, waitTime, needCooldown, noRecord);
+		else TpHandler.tpToRemote(mover, mover.getName(), target, waitTime, needCooldown, noRecord);
+	}
+
+	/**
+	 * 传送玩家<br>
+	 * 将会先检查本地玩家, 若不存在则向BC请求<br>
+	 * 适合第三方传送
+	 *
+	 * @param player   操控玩家
+	 * @param mover    移动者
+	 * @param target   目标
+	 * @param waitTime 传送等待时间
+	 */
+	public static void tpTo(Player player, String mover, String target, long waitTime) {
+		val localMover = Main.getMain().getServer().getPlayerExact(mover);
+		val localTarget = Main.getMain().getServer().getPlayerExact(target);
+		if (localMover != null && localTarget != null) TpHandler.toToLocal(localMover, localTarget, waitTime, false, false);
+		else TpHandler.tpToRemote(player, mover, target, waitTime, false, false);
+	}
+
+	/**
+	 * 传送玩家<br>
+	 * 将会先检查本地玩家, 若不存在则向BC请求<br>
+	 * 适合tphere
+	 *
+	 * @param mover    移动者
+	 * @param target   目标
+	 * @param waitTime 传送等待时间
+	 */
+	public static void tpTo(String mover, Player target, long waitTime) {
+		val localMover = Main.getMain().getServer().getPlayerExact(mover);
+		if (localMover != null) TpHandler.toToLocal(localMover, target, waitTime, false, false);
+		else TpHandler.tpToRemote(target, mover, target.getName(), waitTime, false, false);
+	}
+
+	/**
+	 * @param e 事件
+	 *
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerChat(@NonNull AsyncPlayerChatEvent e) {
+		val msg = e.getMessage();
+		if (msg == null) return;
+		val format = e.getFormat();
+		e.setMessage(At.format(format, msg, name -> Bukkit.getPlayerExact(name) != null));
+	}
+
+	/**
+	 * @param e 事件
+	 *
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerJoin(@NonNull PlayerJoinEvent e) {
+		val p = e.getPlayer();
+		if (p == null) return;
+
+		if (Conf.getTpEventJoinSleep() > 0) {
+			WaitMaintain.add(EVENT_JOIN_SLEEP, p.getUniqueId(), Conf.getTpEventJoinSleep());
+		}
+
+		val to = TpHandler.WAIT_JOIN_TP.remove(p.getName());
+		if (to != null) {
+			tpTo(p, to, -1, false, true);
+			return;
+		}
+
+		val toLoc = TpHandler.WAIT_JOIN_TP_LOC.remove(p.getName());
+		if (toLoc != null) TpHandler.toToLocal(p, toLoc, true);
+	}
+
+	/**
+	 * @param e 事件
+	 *
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerMove(@NonNull PlayerMoveEvent e) {
+		val uid = e.getPlayer().getUniqueId();
+		if (!TpHandler.BAN_MOVE.contains(uid)) return;
+		val to = e.getTo();
+		val from = e.getFrom();
+		if (to != null && to.getWorld() != null && Objects.equals(from.getWorld(), to.getWorld())) {
+			val distance = from.distanceSquared(to);
+			if (distance < 0.05) return;
+		}
+		TpHandler.BAN_MOVE.remove(uid);
+		TPCANCEL_MOVE.send(e.getPlayer());
+	}
+
+	/**
+	 * @param e 事件
+	 *
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerQuit(@NonNull PlayerQuitEvent e) {
+		callClear(e.getPlayer());
+	}
+
+	/**
+	 * @param e 事件
+	 *
+	 * @deprecated BUKKIT
+	 */
+	@Deprecated
+	@EventHandler(priority = EventPriority.HIGH)
+	public void onPlayerTp(@NonNull PlayerTeleportEvent e) {
+		if (!Conf.isUseTpEvent()) return;
+		val player = e.getPlayer();
+		if ((player == null) || EVENT_JOIN_SLEEP.contains(player.getUniqueId())) return;
+		val f = e.getFrom();
+		val t = e.getTo();
+		if (f == null || t == null || (Objects.equals(f.getWorld(), t.getWorld()) && f.distanceSquared(t) < Conf.getTpEventMinDistanceSquare())) return;
+		BackHandler.recordLocation(player, f);
+	}
+
+	/** @deprecated BUKKIT */
+	@Deprecated
+	@Override
+	public void onPluginMessageReceived(@NonNull String c, @NonNull Player player, byte[] message) {
+		if (!ShareData.BC_CHANNEL.equals(c)) return;
+		Channel type = Channel.byId(ShareData.readInt(message, 0, -1));
+		if (type == null) return;
+		if (!ALLOW_PLAYERS.contains(player.getUniqueId())) {
+			if (type != Channel.VERSION_CHECK) return;
+			boolean allow = Channel.VersionCheck.parseC(message);
+			if (allow) ALLOW_PLAYERS.add(player.getUniqueId());
+			else BAD_VERSION.send(player);
+			Main.send(player, Channel.VersionCheck.sendC(allow));
+			return;
+		}
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] receive: " + type + ": " + Arrays.toString(message));
+		switch (type) {
+		case PERMISSION: {
+			Channel.Permission.parseS(message, (permission, allow) -> //
+					callBack(player, type, permission, handler -> {
+						if (allow) ((Runnable) handler).run();
+						else NO_PERMISSION.send(player, permission);
+					}));
+			break;
+		}
+		case TP: {
+			TpHandler.handleTpMessage(player, type, message);
+			break;
+		}
+		case TP_LOC: {
+			TpHandler.handleTpLocMessage(player, type, message);
+			break;
+		}
+		case WARP: {
+			WarpHandler.handleWarpMessage(player, type, message);
+			break;
+		}
+		case HOME: {
+			WarpHandler.handleHomeMessage(player, type, message);
+			break;
+		}
+		case BACK: {
+			BackHandler.handleBackMessage(player, type, message);
+			break;
+		}
+		case VERSION_CHECK: {
+			Main.send(player, Channel.VersionCheck.sendC(message));
+			break;
+		}
+		case COOLDOWN: {
+			Channel.Cooldown.parseS(message, COOLDOWN);
+			break;
+		}
+		case TIME_AMEND: {
+			Main.send(player, Channel.TimeAmend.sendS());
+			break;
+		}
+		case SERVER_INFO: {
+			val info = Channel.ServerInfo.parseS(message);
+			TabHandler.TAB_REPLACE.put(player.getUniqueId(), info.getTab().intern());
+			val meVer = Main.getMain().getDescription().getVersion();
+			if (!meVer.equals(info.getVersion())) VER_NO_RECOMMEND.send(player, meVer, info.getVersion());
+			break;
+		}
+		case VANISH: {
+			val isHide = Channel.Vanish.parse(message);
+			if (!callBack(player, type, null, h -> ((BoolConsumer) h).accept(isHide)) && isHide) CmdVanish.callback(player);
+			break;
+		}
+		case TRANS_HOME: {
+			callBack(player, type, null, h -> Channel.TransHome.parseC(message, (IntConsumer) h));
+			break;
+		}
+		case TRANS_WARP: {
+			callBack(player, type, null, h -> Channel.TransWarp.parseC(message, (IntConsumer) h));
+			break;
+		}
+		case PLAY_SOUND:
+			SoundHandler.play(player, Channel.PlaySound.getSound(message));
+			break;
+		}
+	}
+
+	@FieldDefaults(makeFinal = true)
+	@AllArgsConstructor
+	private enum SoundHandler {
+		AT(Sounds.AT, Sound.BLOCK_ANVIL_PLACE, 1, 2);
+
+		private static final EnumMap<Sounds, SoundHandler> MAP = new EnumMap<>(Sounds.class);
+
+		static {
+			for (val s : SoundHandler.values()) MAP.put(s.target, s);
+			Arrays.stream(Sounds.values())//
+					.filter(s -> !MAP.containsKey(s))//
+					.map(s -> "[SOUND] 未映射的音效: " + s)//
+					.forEach(ShareData.getLogger()::warning);
+		}
+
+		Sounds target;
+		Sound  sound;
+		float  volume;
+		float  pitch;
+
+		private static void play(Player player, Channel.PlaySound.Sounds sounds) {
+			val sound = MAP.get(sounds);
+			if (sound != null) player.playSound(player.getLocation(), sound.sound, sound.volume, sound.pitch);
+		}
+	}
+
 	/**
 	 * Back处理器
 	 *
@@ -56,6 +562,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * 当玩家退出当前服务器时删除(待考虑, 例如临时退出 TODO )
 		 */
 		private static final ConcurrentHashMap<String, ShareLocation> BACKS = new ConcurrentHashMap<>();
+
 		static {
 			registerClearListener(c -> BACKS.remove(c.getName()));
 		}
@@ -64,6 +571,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * 获取Back坐标
 		 *
 		 * @param player 玩家
+		 *
 		 * @return 玩家的back坐标/null
 		 */
 		public static ShareLocation getBack(@NonNull Player player) {
@@ -120,8 +628,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param toPlayer 玩家即将传送的玩家
 		 */
 		private static void recordLocation(@NonNull Player player, String toServer, String toPlayer) {
-			val	name	= player.getName();
-			val	loc		= toSLoc(player.getLocation());
+			val name = player.getName();
+			val loc = toSLoc(player.getLocation());
 			if (toServer == null && toPlayer == null) {
 				BACKS.put(name, loc);
 			} else {
@@ -133,9 +641,9 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	/** 回调队列 */
 	public static final class CallbackQueue implements Runnable {
 		/** 队列 */
-		Runnable[]	runnables;
+		Runnable[] runnables;
 		/** 队列指针 */
-		int			index;
+		int        index;
 
 		@Override
 		public synchronized void run() {
@@ -151,8 +659,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 */
 		public synchronized void task(Runnable... tasks) {
 			if (runnables != null) throw new IllegalStateException("This callback queue is running");
-			runnables	= tasks;
-			index		= 0;
+			runnables = tasks;
+			index = 0;
 			run();
 		}
 
@@ -164,44 +672,44 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	@NoArgsConstructor(access = AccessLevel.PRIVATE)
 	static final class DatasConf {
 		/** 无传送延时的权限 */
-		String	noDelayPermission			= null;
+		String  noDelayPermission        = null;
 		/** 传送延时(秒) */
-		long	delay						= 3;
+		long    delay                    = 3;
 		/** 无冷却的权限 */
-		String	noCooldownPermission		= null;
+		String  noCooldownPermission     = null;
 		/** 冷却(秒) */
-		long	cooldown					= 100;
+		long    cooldown                 = 100;
 		/** 超时时长(秒) */
-		long	overtime					= 120;
+		long    overtime                 = 120;
 		/** 安全传送 */
-		boolean	safeLocation				= false;
+		boolean safeLocation             = false;
 		/** tp事件记录back */
-		boolean	useTpEvent					= false;
+		boolean useTpEvent               = false;
 		/** tp事件入服休眠 */
-		long	tpEventJoinSleep			= 3000;
+		long    tpEventJoinSleep         = 3000;
 		/** tp事件最小记录距离 */
-		double	tpEventMinDistance			= 5;
+		double  tpEventMinDistance       = 5;
 		/** tp事件最小记录距离平方 */
-		double	tpEventMinDistanceSquare	= tpEventMinDistance * tpEventMinDistance;
+		double  tpEventMinDistanceSquare = tpEventMinDistance * tpEventMinDistance;
 	}
 
 	/** 监听回调的对象 */
 	@Value
 	private static class ListenCallBackObj {
 		/** 检查数据 */
-		Object	checker;
+		Object checker;
 		/** 处理器 */
-		Object	handler;
+		Object handler;
+
+		@Override
+		public int hashCode() {
+			return Objects.hashCode(checker);
+		}
 
 		@Override
 		public boolean equals(Object o) {
 			if (o instanceof ListenCallBackObj) return Tool.equals(((ListenCallBackObj) o).checker, checker);
 			else return Tool.equals(o, o);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hashCode(checker);
 		}
 	}
 
@@ -209,68 +717,19 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 * 权限管理器
 	 *
 	 * @author yuanlu
-	 *
 	 */
 	public static final class Permissions {
-		@Value
-		public static class PerAmount {
-			PerAmountNode[]	nodes;
-			int				def;
-
-			/**
-			 * 获取数量
-			 *
-			 * @param sender 检测对象
-			 * @return 最大数量
-			 */
-			public int getMaxAmount(CommandSender sender) {
-				for (PerAmountNode node : nodes) if (sender.hasPermission(node.permission)) return node.amount;
-				return def;
-			}
-		}
-
-		@Value
-		public static class PerAmountNode implements Comparable<PerAmountNode> {
-			String	permission;
-			int		amount;
-
-			@Override
-			public int compareTo(PerAmountNode o) {
-				return Integer.compare(amount, o.amount);
-			}
-
-			@Override
-			public boolean equals(Object obj) {
-				if (this == obj) return true;
-				if ((obj == null) || (getClass() != obj.getClass())) return false;
-				PerAmountNode other = (PerAmountNode) obj;
-				if (permission == null) {
-					if (other.permission != null) return false;
-				} else if (!permission.equals(other.permission)) return false;
-				return true;
-			}
-
-			@Override
-			public int hashCode() {
-				final int	prime	= 31;
-				int			result	= 1;
-				result = prime * result + ((permission == null) ? 0 : permission.hashCode());
-				return result;
-			}
-
-		}
-
 		/** 所有权限 */
-		private static final HashMap<String, String>	permissions	= new HashMap<>();
-
+		private static final HashMap<String, String>    permissions = new HashMap<>();
 		/** 所有数量权限 */
-		private static final HashMap<String, PerAmount>	perAmounts	= new HashMap<>();
+		private static final HashMap<String, PerAmount> perAmounts  = new HashMap<>();
 
 		/**
 		 * 获取数量
 		 *
 		 * @param sender 检测对象
 		 * @param node   权限节点
+		 *
 		 * @return 最大数量/null(无任何权限)
 		 */
 		public static Integer getMaxAmount(CommandSender sender, String node) {
@@ -284,12 +743,13 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param sender 检测对象
 		 * @param node   权限节点
 		 * @param silent 静默检查
+		 *
 		 * @return 是否有权限
 		 */
 		public static boolean hasPermission(CommandSender sender, String node, boolean silent) {
 			if (sender.isOp()) return true;
-			val	p	= Permissions.permissions.get(node);
-			val	has	= p != null && (p.isEmpty() || sender.hasPermission(p));
+			val p = Permissions.permissions.get(node);
+			val has = p != null && (p.isEmpty() || sender.hasPermission(p));
 			if (!has && !silent) {
 				NO_PERMISSION.send(sender, p == null ? "§4OP§r" : p);
 			}
@@ -309,10 +769,10 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 					val p = conf.getString(k, null);
 					if (p != null) permissions.put(k, p);
 				} else if (conf.isConfigurationSection(k)) {
-					val							ps		= conf.getConfigurationSection(k);
-					val							psKeys	= ps.getKeys(false);
-					int							def		= 0;
-					ArrayList<PerAmountNode>	list	= new ArrayList<>(psKeys.size());
+					val ps = conf.getConfigurationSection(k);
+					val psKeys = ps.getKeys(false);
+					int def = 0;
+					ArrayList<PerAmountNode> list = new ArrayList<>(psKeys.size());
 					for (val p : psKeys) {
 						if (p.equalsIgnoreCase("default") || p.equalsIgnoreCase("def")) def = ps.getInt(p, def);
 						else try {
@@ -320,7 +780,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 							if (ps.isString(p)) list.add(new PerAmountNode(ps.getString(p), amount));
 							else if (ps.isList(p)) for (val permission : ps.getStringList(p)) list.add(new PerAmountNode(permission, amount));
 							else ShareData.getLogger()
-									.warning("[CONF] Unsupported permission section, need a string or string-list: " + ps.getCurrentPath() + "." + p);
+										.warning("[CONF] Unsupported permission section, need a string or string-list: " + ps.getCurrentPath() + "." + p);
 						} catch (NullPointerException | NumberFormatException e) {
 							ShareData.getLogger()
 									.warning("[CONF] Unsupported permission node, need a number or 'def'/'default': " + ps.getCurrentPath() + "." + p);
@@ -339,6 +799,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * <b>非静默</b>
 		 *
 		 * @param sender 检测对象
+		 *
 		 * @return 是否有权限
 		 */
 		public static boolean tpOther_(CommandSender sender) {
@@ -349,36 +810,61 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * 检测对象是否有权限
 		 *
 		 * @param sender 检测对象
+		 *
 		 * @return 是否有权限
 		 */
 		public static boolean tpSenior(CommandSender sender) {
 			return Permissions.hasPermission(sender, "tp-senior", true);
 		}
-	}
 
-	@FieldDefaults(makeFinal = true)
-	@AllArgsConstructor
-	private enum SoundHandler {
-		AT(Sounds.AT, Sound.BLOCK_ANVIL_PLACE, 1, 2);
+		@Value
+		public static class PerAmount {
+			PerAmountNode[] nodes;
+			int             def;
 
-		private static final EnumMap<Sounds, SoundHandler> MAP = new EnumMap<>(Sounds.class);
-		static {
-			for (val s : SoundHandler.values()) MAP.put(s.target, s);
-			Arrays.stream(Sounds.values())//
-					.filter(s -> !MAP.containsKey(s))//
-					.map(s -> "[SOUND] 未映射的音效: " + s)//
-					.forEach(ShareData.getLogger()::warning);
+			/**
+			 * 获取数量
+			 *
+			 * @param sender 检测对象
+			 *
+			 * @return 最大数量
+			 */
+			public int getMaxAmount(CommandSender sender) {
+				for (PerAmountNode node : nodes) if (sender.hasPermission(node.permission)) return node.amount;
+				return def;
+			}
 		}
 
-		private static void play(Player player, Channel.PlaySound.Sounds sounds) {
-			val sound = MAP.get(sounds);
-			if (sound != null) player.playSound(player.getLocation(), sound.sound, sound.volume, sound.pitch);
-		}
+		@Value
+		public static class PerAmountNode implements Comparable<PerAmountNode> {
+			String permission;
+			int    amount;
 
-		Sounds	target;
-		Sound	sound;
-		float	volume;
-		float	pitch;
+			@Override
+			public int compareTo(PerAmountNode o) {
+				return Integer.compare(amount, o.amount);
+			}
+
+			@Override
+			public int hashCode() {
+				final int prime = 31;
+				int result = 1;
+				result = prime * result + ((permission == null) ? 0 : permission.hashCode());
+				return result;
+			}
+
+			@Override
+			public boolean equals(Object obj) {
+				if (this == obj) return true;
+				if ((obj == null) || (getClass() != obj.getClass())) return false;
+				PerAmountNode other = (PerAmountNode) obj;
+				if (permission == null) {
+					if (other.permission != null) return false;
+				} else if (!permission.equals(other.permission)) return false;
+				return true;
+			}
+
+		}
 	}
 
 	/** tab处理器 */
@@ -392,6 +878,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param p    玩家
 		 * @param arg  实际参数
 		 * @param type 类型
+		 *
 		 * @return 转换结果
 		 */
 		public static List<String> getTab(Player p, String arg, TabType type) {
@@ -406,6 +893,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		 * @param player 玩家
 		 * @param arg    输入
 		 * @param all    全部列表
+		 *
 		 * @return tabReplace 补全列表(由BC解析)
 		 */
 		public static List<String> getTabReplaceTp(Player player, String arg, boolean all) {
@@ -418,32 +906,29 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 * Tp数据包处理
 	 *
 	 * @author yuanlu
-	 *
 	 */
 	public static final class TpHandler {
 		/** 传送类型接收者消息 */
-		private static final Msg[] tpTypeReceiverMsg;
+		private static final Msg[]                               tpTypeReceiverMsg;
+		/**
+		 * 等待加入服务器后传送<br>
+		 * 被传送者{@code ->}传送目标
+		 */
+		private static final ConcurrentHashMap<String, String>   WAIT_JOIN_TP     = new ConcurrentHashMap<>();
+		/**
+		 * 等待加入服务器后传送<br>
+		 * 被传送者{@code ->}传送坐标
+		 */
+		private static final ConcurrentHashMap<String, Location> WAIT_JOIN_TP_LOC = new ConcurrentHashMap<>();
+		/** 禁止移动的玩家 */
+		private static final HashSet<UUID>                       BAN_MOVE         = new HashSet<>();
+
 		static {
 			String[] str = "tp tpa tphere tpahere mover target".split(" ");
 			tpTypeReceiverMsg = new Msg[str.length];
 			for (int i = 0; i < 4; i++) tpTypeReceiverMsg[i] = Main.getMain().mes("cmd." + str[i] + ".receiver");
 			for (int i = 4; i < 6; i++) tpTypeReceiverMsg[i] = Main.getMain().mes("cmd.tp.third-" + str[i]);
 		}
-
-		/**
-		 * 等待加入服务器后传送<br>
-		 * 被传送者{@code ->}传送目标
-		 */
-		private static final ConcurrentHashMap<String, String>		WAIT_JOIN_TP		= new ConcurrentHashMap<>();
-
-		/**
-		 * 等待加入服务器后传送<br>
-		 * 被传送者{@code ->}传送坐标
-		 */
-		private static final ConcurrentHashMap<String, Location>	WAIT_JOIN_TP_LOC	= new ConcurrentHashMap<>();
-
-		/** 禁止移动的玩家 */
-		private static final HashSet<UUID>							BAN_MOVE			= new HashSet<>();
 
 		/**
 		 * 进入冷却
@@ -478,8 +963,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		@SuppressWarnings("rawtypes")
 		private static void handleTpLocMessage(Player player, Channel type, byte[] buf) {
 			if (type != Channel.TP_LOC) throw new InternalError("Bad Type");
-			byte		id		= Channel.getSubId(buf);
-			Consumer	handler	= null;
+			byte id = Channel.getSubId(buf);
+			Consumer handler = null;
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] TP_LOC: " + id);
 			switch (id) {
 			case 0:
@@ -509,8 +994,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		private static void handleTpMessage(Player player, Channel type, byte[] buf) {
 			if (type != Channel.TP) throw new InternalError("Bad Type");
-			byte		id		= Channel.getSubId(buf);
-			Consumer	handler	= null;
+			byte id = Channel.getSubId(buf);
+			Consumer handler = null;
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] TP: " + id);
 			switch (id) {
 			case 0x1:
@@ -632,7 +1117,6 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	 * 地标(含Home)处理器
 	 *
 	 * @author yuanlu
-	 *
 	 */
 	public static final class WarpHandler {
 		/**
@@ -645,8 +1129,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		private static void handleHomeMessage(Player player, Channel type, byte[] buf) {
 			if (type != Channel.HOME) throw new InternalError("Bad Type");
-			byte		id		= Channel.getSubId(buf);
-			Consumer	handler	= null;
+			byte id = Channel.getSubId(buf);
+			Consumer handler = null;
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] HOME: " + id);
 			switch (Channel.getSubId(buf)) {
 			case 0:
@@ -681,8 +1165,8 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		private static void handleWarpMessage(Player player, Channel type, byte[] buf) {
 			if (type != Channel.WARP) throw new InternalError("Bad Type");
-			byte		id		= Channel.getSubId(buf);
-			Consumer	handler	= null;
+			byte id = Channel.getSubId(buf);
+			Consumer handler = null;
 			if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] WARP: " + id);
 			switch (Channel.getSubId(buf)) {
 			case 0:
@@ -705,483 +1189,6 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 				break;
 			}
 			if (handler != null) callBack(player, type, id, handler);
-		}
-	}
-
-	/** 配置数据 */
-	static final DatasConf		Conf		= new DatasConf();
-
-	/** 单例 */
-	public static final Core	INSTANCE	= new Core();
-	/*
-	 * tp,tpa,tpahere,tphere tpaccept,tpcancel
-	 *
-	 * warp,home,spawn
-	 *
-	 */
-
-	/** 回调等待 */
-	private static final EnumMap<Channel, Map<UUID, ArrayList<ListenCallBackObj>>> CALL_BACK_WAITER = new EnumMap<>(Channel.class);
-	static {
-		for (val c : Channel.values()) CALL_BACK_WAITER.put(c, new HashMap<>());
-	}
-
-	/** 版本检查通过的玩家集合 */
-	private static final HashSet<UUID>					ALLOW_PLAYERS	= new HashSet<>();
-
-	/** 传送冷却 */
-	private static final HashMap<UUID, Long>			COOLDOWN		= new HashMap<>();
-
-	/** 清理监听器 */
-	private static final ArrayList<Consumer<Player>>	CLEAR_LISTENER	= new ArrayList<>();
-	static {
-		registerClearListener(p -> {
-			val u = p.getUniqueId();
-			TabHandler.TAB_REPLACE.remove(u);
-			TpHandler.BAN_MOVE.remove(u);
-			CALL_BACK_WAITER.values().forEach(m -> m.remove(u));
-			ALLOW_PLAYERS.remove(u);
-		});
-	}
-
-	/** 当启用tp event时，玩家加入服务器后禁用记录数秒 */
-	private static final HashSet<UUID> EVENT_JOIN_SLEEP = new HashSet<>(Conf.getTpEventJoinSleep() > 0 ? 8 : 0);
-
-	/**
-	 * 回调
-	 *
-	 * @param player   玩家
-	 * @param channel  通道
-	 * @param checker  验证数据
-	 * @param consumer 处理器接收
-	 * @return 是否成功运行
-	 */
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public static boolean callBack(@NonNull Player player, @NonNull Channel channel, Object checker, Consumer consumer) {
-		val map = CALL_BACK_WAITER.get(channel);
-		synchronized (map) {
-			val objs = map.get(player.getUniqueId());
-			if (objs != null) for (Iterator<ListenCallBackObj> itr = objs.iterator(); itr.hasNext();) {
-				val e = itr.next();
-				if (Tool.equals(e.getChecker(), checker)) {
-					itr.remove();
-					if (ShareData.isDEBUG())
-						ShareData.getLogger().info("[callback] channel: " + channel + ", call:" + e.getChecker() + ", consumer: " + consumer);
-					if (consumer != null) try {
-						consumer.accept(e.getHandler());
-					} catch (Throwable err) {
-						throw new RuntimeException("回调函数执行失败, 玩家: " + player.getName() + ", 频道: " + channel + ", 标记: " + checker, err);
-					}
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	/** @param player 唤起清理 */
-	public static void callClear(Player player) {
-		synchronized (CLEAR_LISTENER) {
-			for (val consumer : CLEAR_LISTENER) {
-				consumer.accept(player);
-			}
-		}
-	}
-
-	/**
-	 * 获取等待时间
-	 *
-	 * @param player 玩家
-	 * @return >0: 玩家的等待时间<br>
-	 *         =0: 无等待时间<br>
-	 *         <0: 玩家还在冷却中
-	 */
-	public static long getWaitTime(Player player) {
-		val	cooldownEnd	= COOLDOWN.get(player.getUniqueId());
-		val	now			= System.currentTimeMillis();
-		if (cooldownEnd != null && cooldownEnd - now > 0) return now - cooldownEnd;
-		if (Conf.getNoDelayPermission() != null && player.hasPermission(Conf.getNoDelayPermission())) return 0;
-		val delay = Conf.getDelay();
-		return delay > 0 ? delay : 0;
-	}
-
-	/**
-	 * 初始化数据
-	 *
-	 * @param conf 总配置文件
-	 */
-	public static void init(ConfigurationSection conf) {
-		// init Conf
-		Conf.noDelayPermission		= conf.getString("setting.permission.no-delay", Conf.noCooldownPermission);
-		Conf.delay					= conf.getLong("setting.teleport-delay", Conf.delay);
-		Conf.noCooldownPermission	= conf.getString("setting.permission.no-cooldown", Conf.noCooldownPermission);
-		Conf.cooldown				= conf.getLong("setting.teleport-cooldown", Conf.cooldown);
-		Conf.overtime				= conf.getLong("setting.request-overtime", Conf.overtime);
-//		Conf.safeLocation			= conf.getBoolean("setting.use-safeLocation", Conf.safeLocation);
-		Conf.safeLocation			= false;
-		Conf.useTpEvent				= conf.getBoolean("setting.back.use-tp-event", Conf.useTpEvent);
-		if (Conf.isUseTpEvent()) {
-			Conf.tpEventJoinSleep			= conf.getLong("setting.back.event-after-join", Conf.tpEventJoinSleep);
-			Conf.tpEventMinDistance			= conf.getDouble("setting.back.event-ignore-distance", Conf.tpEventMinDistance);
-			Conf.tpEventMinDistanceSquare	= Conf.tpEventMinDistance * Conf.tpEventMinDistance;
-		} else {
-			Conf.tpEventJoinSleep	= -1;
-			Conf.tpEventMinDistance	= Conf.tpEventMinDistanceSquare = Double.MAX_VALUE;
-		}
-
-		WaitMaintain.setT_User(Conf.getOvertime() * 1000);
-
-		// init Permission
-		Permissions.init(conf.getConfigurationSection("setting.permission"));
-	}
-
-	/**
-	 * 监听回调
-	 *
-	 * @param player     玩家
-	 * @param channel    通道
-	 * @param checker    验证数据
-	 * @param msgTimeout 在超时后是否显示消息
-	 * @param maxTime    等待时间
-	 * @param handler    处理器
-	 */
-	public static void listenCallBack(@NonNull Player player, @NonNull Channel channel, Object checker, boolean msgTimeout, long maxTime,
-			@NonNull Object handler) {
-		val map = CALL_BACK_WAITER.get(channel);
-		synchronized (map) {
-			WaitMaintain.add(map, player.getUniqueId(), new ListenCallBackObj(checker, handler), maxTime, ArrayList::new,
-					msgTimeout ? () -> M_TIME_OUT.send(player, channel) : null);
-		}
-
-	}
-
-	/**
-	 * 监听回调
-	 *
-	 * @param player  玩家
-	 * @param channel 通道
-	 * @param checker 验证数据
-	 * @param handler 处理器
-	 * @see #listenCallBack(Player, Channel, Object, boolean, long, Object)
-	 */
-	public static void listenCallBack(@NonNull Player player, @NonNull Channel channel, Object checker, @NonNull Object handler) {
-		listenCallBack(player, channel, checker, true, WaitMaintain.T_Net, handler);
-	}
-
-	/**
-	 * 权限检查
-	 *
-	 * @param player     玩家
-	 * @param permission 权限
-	 * @param next       成功的回调函数
-	 */
-	public static void permissionCheck(@NonNull CommandSender player, String permission, @NonNull Runnable next) {
-		if (permission == null || permission.isEmpty() || player instanceof ConsoleCommandSender || player.hasPermission(permission)) {
-			next.run();
-		} else if (player instanceof Player) {
-			Player p = ((Player) player);
-			listenCallBack(p, Channel.PERMISSION, permission, next);
-			Main.send(p, Channel.Permission.sendS(permission));
-		}
-	}
-
-	/** @param c 玩家下线时的清理监听器 */
-	static void registerClearListener(Consumer<Player> c) {
-		synchronized (CLEAR_LISTENER) {
-			CLEAR_LISTENER.add(c);
-		}
-	}
-
-	/**
-	 * 移除回调
-	 *
-	 * @param player  玩家
-	 * @param channel 通道
-	 * @param checker 验证数据
-	 * @return 是否成功移除
-	 */
-	public static boolean removeCallBack(@NonNull Player player, @NonNull Channel channel, Object checker) {
-		return callBack(player, channel, checker, null);
-	}
-
-	/**
-	 * 转换为Bukkit坐标
-	 *
-	 * @param loc Share坐标
-	 * @return Bukkit坐标
-	 */
-	public static @NonNull Location toBLoc(ShareLocation loc) {
-		return new Location(Bukkit.getWorld(loc.getWorld()), loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
-	}
-
-	/**
-	 * 转换为Share坐标
-	 *
-	 * @param loc Bukkit坐标
-	 * @return Share坐标
-	 */
-	public static @NonNull ShareLocation toSLoc(@NonNull Location loc) {
-		val w = loc.getWorld();
-		if (w == null) throw new NullPointerException("World is null: " + loc);
-		return new ShareLocation(loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch(), w.getName());
-	}
-
-	/**
-	 * 传送请求码转换<br>
-	 * 检测玩家是否拥有高级权限
-	 *
-	 * @param player   玩家
-	 * @param realCode 真实的请求码
-	 * @return 转换后的请求码
-	 * @see yuan.plugins.serverDo.Channel.Tp#s0C_tpReq(String, int)
-	 */
-	public static int tpReqCode(Player player, int realCode) {
-		if (realCode < 0) return realCode;
-		return Permissions.tpSenior(player) ? -realCode : realCode;
-	}
-
-	/**
-	 * 传送玩家到指定地点<br>
-	 * 当loc的server未指定时, 代表本地传送
-	 *
-	 * @param player 玩家
-	 * @param loc    指定坐标
-	 */
-	public static void tpTo(@NonNull Player player, @NonNull ShareLocation loc) {
-		if (loc.getServer() == null) TpHandler.toToLocal(player, toBLoc(loc), false);
-		else TpHandler.tpToRemote(player, loc, false);
-	}
-
-	/**
-	 * 传送玩家<br>
-	 * 将会先检查本地玩家, 若不存在则向BC请求 <br>
-	 * 适合一般传送
-	 *
-	 * @param mover        移动者
-	 * @param target       目标
-	 * @param waitTime     传送等待时间
-	 * @param needCooldown 是否需要检查冷却
-	 */
-	public static void tpTo(Player mover, String target, long waitTime, boolean needCooldown) {
-		tpTo(mover, target, waitTime, needCooldown, false);
-	}
-
-	/**
-	 * 传送玩家<br>
-	 * 将会先检查本地玩家, 若不存在则向BC请求<br>
-	 * 适合目标服务器加入传送
-	 *
-	 * @param mover        移动者
-	 * @param target       目标
-	 * @param waitTime     传送等待时间
-	 * @param needCooldown 是否需要检查冷却
-	 * @param noRecord     是否不记录位置(用于back)
-	 */
-	public static void tpTo(Player mover, String target, long waitTime, boolean needCooldown, boolean noRecord) {
-		val localTarget = Main.getMain().getServer().getPlayerExact(target);
-		if (localTarget != null) TpHandler.toToLocal(mover, localTarget, waitTime, needCooldown, noRecord);
-		else TpHandler.tpToRemote(mover, mover.getName(), target, waitTime, needCooldown, noRecord);
-	}
-
-	/**
-	 * 传送玩家<br>
-	 * 将会先检查本地玩家, 若不存在则向BC请求<br>
-	 * 适合第三方传送
-	 *
-	 * @param player   操控玩家
-	 * @param mover    移动者
-	 * @param target   目标
-	 * @param waitTime 传送等待时间
-	 */
-	public static void tpTo(Player player, String mover, String target, long waitTime) {
-		val	localMover	= Main.getMain().getServer().getPlayerExact(mover);
-		val	localTarget	= Main.getMain().getServer().getPlayerExact(target);
-		if (localMover != null && localTarget != null) TpHandler.toToLocal(localMover, localTarget, waitTime, false, false);
-		else TpHandler.tpToRemote(player, mover, target, waitTime, false, false);
-	}
-
-	/**
-	 * 传送玩家<br>
-	 * 将会先检查本地玩家, 若不存在则向BC请求<br>
-	 * 适合tphere
-	 *
-	 * @param mover    移动者
-	 * @param target   目标
-	 * @param waitTime 传送等待时间
-	 */
-	public static void tpTo(String mover, Player target, long waitTime) {
-		val localMover = Main.getMain().getServer().getPlayerExact(mover);
-		if (localMover != null) TpHandler.toToLocal(localMover, target, waitTime, false, false);
-		else TpHandler.tpToRemote(target, mover, target.getName(), waitTime, false, false);
-	}
-
-	/**
-	 *
-	 * @param e 事件
-	 * @deprecated BUKKIT
-	 */
-	@Deprecated
-	@EventHandler(priority = EventPriority.HIGH)
-	public void onPlayerChat(@NonNull AsyncPlayerChatEvent e) {
-		val msg = e.getMessage();
-		if (msg == null) return;
-		val format = e.getFormat();
-		e.setMessage(At.format(format, msg, name -> Bukkit.getPlayerExact(name) != null));
-	}
-
-	/**
-	 *
-	 * @param e 事件
-	 * @deprecated BUKKIT
-	 */
-	@Deprecated
-	@EventHandler(priority = EventPriority.HIGH)
-	public void onPlayerJoin(@NonNull PlayerJoinEvent e) {
-		val p = e.getPlayer();
-		if (p == null) return;
-
-		if (Conf.getTpEventJoinSleep() > 0) {
-			WaitMaintain.add(EVENT_JOIN_SLEEP, p.getUniqueId(), Conf.getTpEventJoinSleep());
-		}
-
-		val to = TpHandler.WAIT_JOIN_TP.remove(p.getName());
-		if (to != null) {
-			tpTo(p, to, -1, false, true);
-			return;
-		}
-
-		val toLoc = TpHandler.WAIT_JOIN_TP_LOC.remove(p.getName());
-		if (toLoc != null) TpHandler.toToLocal(p, toLoc, true);
-	}
-
-	/**
-	 *
-	 * @param e 事件
-	 * @deprecated BUKKIT
-	 */
-	@Deprecated
-	@EventHandler(priority = EventPriority.HIGH)
-	public void onPlayerMove(@NonNull PlayerMoveEvent e) {
-		val uid = e.getPlayer().getUniqueId();
-		if (!TpHandler.BAN_MOVE.contains(uid)) return;
-		val to=e.getTo();
-		val from=e.getFrom();
-		if (to!=null&&to.getWorld()!=null&&Objects.equals(from.getWorld(),to.getWorld())){
-			val distance = from.distanceSquared(to);
-			if (distance < 0.05) return;
-		}
-		TpHandler.BAN_MOVE.remove(uid);
-		TPCANCEL_MOVE.send(e.getPlayer());
-	}
-
-	/**
-	 *
-	 * @param e 事件
-	 * @deprecated BUKKIT
-	 */
-	@Deprecated
-	@EventHandler(priority = EventPriority.HIGH)
-	public void onPlayerQuit(@NonNull PlayerQuitEvent e) {
-		callClear(e.getPlayer());
-	}
-
-	/**
-	 *
-	 * @param e 事件
-	 * @deprecated BUKKIT
-	 */
-	@Deprecated
-	@EventHandler(priority = EventPriority.HIGH)
-	public void onPlayerTp(@NonNull PlayerTeleportEvent e) {
-		if (!Conf.isUseTpEvent()) return;
-		val player = e.getPlayer();
-		if ((player == null) || EVENT_JOIN_SLEEP.contains(player.getUniqueId())) return;
-		val	f	= e.getFrom();
-		val	t	= e.getTo();
-		if (f == null || t == null || (Objects.equals(f.getWorld(), t.getWorld()) && f.distanceSquared(t) < Conf.getTpEventMinDistanceSquare())) return;
-		BackHandler.recordLocation(player, f);
-	}
-
-	/** @deprecated BUKKIT */
-	@Deprecated
-	@Override
-	public void onPluginMessageReceived(@NonNull String c, @NonNull Player player, byte[] message) {
-		if (!ShareData.BC_CHANNEL.equals(c)) return;
-		Channel type = Channel.byId(ShareData.readInt(message, 0, -1));
-		if (type == null) return;
-		if (!ALLOW_PLAYERS.contains(player.getUniqueId())) {
-			if (type != Channel.VERSION_CHECK) return;
-			boolean allow = Channel.VersionCheck.parseC(message);
-			if (allow) ALLOW_PLAYERS.add(player.getUniqueId());
-			else BAD_VERSION.send(player);
-			Main.send(player, Channel.VersionCheck.sendC(allow));
-			return;
-		}
-		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] receive: " + type + ": " + Arrays.toString(message));
-		switch (type) {
-		case PERMISSION: {
-			Channel.Permission.parseS(message, (permission, allow) -> //
-			callBack(player, type, permission, handler -> {
-				if (allow) ((Runnable) handler).run();
-				else NO_PERMISSION.send(player, permission);
-			}));
-			break;
-		}
-		case TP: {
-			TpHandler.handleTpMessage(player, type, message);
-			break;
-		}
-		case TP_LOC: {
-			TpHandler.handleTpLocMessage(player, type, message);
-			break;
-		}
-		case WARP: {
-			WarpHandler.handleWarpMessage(player, type, message);
-			break;
-		}
-		case HOME: {
-			WarpHandler.handleHomeMessage(player, type, message);
-			break;
-		}
-		case BACK: {
-			BackHandler.handleBackMessage(player, type, message);
-			break;
-		}
-		case VERSION_CHECK: {
-			Main.send(player, Channel.VersionCheck.sendC(message));
-			break;
-		}
-		case COOLDOWN: {
-			Channel.Cooldown.parseS(message, COOLDOWN);
-			break;
-		}
-		case TIME_AMEND: {
-			Main.send(player, Channel.TimeAmend.sendS());
-			break;
-		}
-		case SERVER_INFO: {
-			val info = Channel.ServerInfo.parseS(message);
-			TabHandler.TAB_REPLACE.put(player.getUniqueId(), info.getTab().intern());
-			val meVer = Main.getMain().getDescription().getVersion();
-			if (!meVer.equals(info.getVersion())) VER_NO_RECOMMEND.send(player, meVer, info.getVersion());
-			break;
-		}
-		case VANISH: {
-			val isHide = Channel.Vanish.parse(message);
-			if (!callBack(player, type, null, h -> ((BoolConsumer) h).accept(isHide)) && isHide) CmdVanish.callback(player);
-			break;
-		}
-		case TRANS_HOME: {
-			callBack(player, type, null, h -> Channel.TransHome.parseC(message, (IntConsumer) h));
-			break;
-		}
-		case TRANS_WARP: {
-			callBack(player, type, null, h -> Channel.TransWarp.parseC(message, (IntConsumer) h));
-			break;
-		}
-		case PLAY_SOUND:
-			SoundHandler.play(player, Channel.PlaySound.getSound(message));
-			break;
 		}
 	}
 }

@@ -4,26 +4,6 @@
  */
 package yuan.plugins.serverDo.velocity;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Queue;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
-
-import org.bstats.charts.MultiLineChart;
-import org.bstats.charts.SimplePie;
-import org.bstats.velocity.Metrics;
-
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
@@ -44,36 +24,73 @@ import com.velocitypowered.api.proxy.messages.LegacyChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import com.velocitypowered.api.scheduler.ScheduledTask;
-
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.val;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.YamlConfiguration;
+import org.bstats.charts.MultiLineChart;
+import org.bstats.charts.SimplePie;
+import org.bstats.velocity.Metrics;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.Tool;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 /**
  * Velocity端
  *
  * @author yuanlu
- *
  */
 @Plugin(id = "yuanlu-server-do")
 public final class Main {
-	/** 调试模式 */
-	private static @Getter boolean						DEBUG			= false;
-
-	/** main */
-	@Getter private static Main							main;
 	/** 插件名称 用于信息提示 模板自动生成 */
-	public final static String							SHOW_NAME		= ShareData.SHOW_NAME;
+	public final static    String                         SHOW_NAME    = ShareData.SHOW_NAME;
 	/** BC通道标识符: {@link ShareData#BC_CHANNEL} */
-	public static final ChannelIdentifier				BC_CHANNEL		= new LegacyChannelIdentifier(ShareData.BC_CHANNEL);
+	public static final    ChannelIdentifier              BC_CHANNEL   = new LegacyChannelIdentifier(ShareData.BC_CHANNEL);
 	/** 数据包队列 */
-	private static final Map<ServerInfo, Queue<byte[]>>	PACKET_QUEUE	= new HashMap<>();
+	private static final   Map<ServerInfo, Queue<byte[]>> PACKET_QUEUE = new HashMap<>();
+	/** 调试模式 */
+	private static @Getter boolean                        DEBUG        = false;
+	/** main */
+	@Getter
+	private static         Main                           main;
+	/** server */
+	@Getter
+	private final          ProxyServer                    proxy;
+	/** logger */
+	@Getter
+	private final          Logger                         logger;
+	/** 插件目录 */
+	@Getter
+	private final          Path                           dataFolder;
+	/** bstats */
+	@Getter
+	private final          Metrics.Factory                metricsFactory;
+	/** class loader */
+	@Getter
+	private final          ClassLoader                    classLoader;
+	/** 时间修正任务 */
+	private                ScheduledTask                  timeAmendTask;
+
+	@SuppressWarnings("javadoc")
+	@Inject
+	private Main(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory, Metrics.Factory metricsFactory) {
+		main = this;
+		this.proxy = server;
+		this.logger = logger;
+		this.dataFolder = dataDirectory;
+		this.metricsFactory = metricsFactory;
+		this.classLoader = getClass().getClassLoader();
+	}
 
 	/**
 	 * 获取玩家<br>
@@ -81,31 +98,32 @@ public final class Main {
 	 *
 	 * @param sender 发起者, 当其不为null时, 会检查服务器组
 	 * @param name   玩家名
+	 *
 	 * @return 玩家
 	 */
 	public static Player getPlayer(Player sender, @NonNull String name) {
-		val		serverConn	= sender == null ? null : sender.getCurrentServer().orElse(null);
-		val		server		= serverConn == null ? null : serverConn.getServerInfo().getName();
-		Player	found		= getMain().getProxy().getPlayer(name).orElse(null);
+		val serverConn = sender == null ? null : sender.getCurrentServer().orElse(null);
+		val server = serverConn == null ? null : serverConn.getServerInfo().getName();
+		Player found = getMain().getProxy().getPlayer(name).orElse(null);
 		if (found != null) {
 			if (Core.canTp(server == null, server, found)) return found;
 			return null;
 		}
 
-		String	lowerName	= name.toLowerCase(Locale.ENGLISH);
-		int		delta		= Integer.MAX_VALUE;
-		val		var6		= getMain().getProxy().getAllPlayers().iterator();
+		String lowerName = name.toLowerCase(Locale.ENGLISH);
+		int delta = Integer.MAX_VALUE;
+		val var6 = getMain().getProxy().getAllPlayers().iterator();
 		while (var6.hasNext()) {
-			val	player	= var6.next();
-			val	pn		= player.getUsername();
+			val player = var6.next();
+			val pn = player.getUsername();
 
 			if (isDEBUG()) getMain().getLogger().info(String.format("寻找玩家: self=%s, search=%s, now=%s; match=%s, can=%s", //
 					sender, name, pn, pn.toLowerCase(Locale.ENGLISH).startsWith(lowerName), Core.canTp(server == null, server, player)));
 			if (pn.toLowerCase(Locale.ENGLISH).startsWith(lowerName) && Core.canTp(server == null, server, player)) {
 				int curDelta = Math.abs(pn.length() - lowerName.length());
 				if (curDelta < delta) {
-					found	= player;
-					delta	= curDelta;
+					found = player;
+					delta = curDelta;
 				}
 				if (curDelta == 0) break;
 			}
@@ -120,18 +138,19 @@ public final class Main {
 	 *
 	 * @param sender 发起者, 当其不为null时, 会检查服务器组
 	 * @param name   玩家名
+	 *
 	 * @return 玩家
 	 */
 	public static List<Player> getPlayers(Player sender, @NonNull String name) {
 
-		String	lowerName	= name.toLowerCase(Locale.ENGLISH);
-		val		list		= new ArrayList<Player>();
-		val		var6		= getMain().getProxy().getAllPlayers().iterator();
-		val		serverConn	= sender == null ? null : sender.getCurrentServer().orElse(null);
-		val		server		= serverConn == null ? null : serverConn.getServerInfo().getName();
+		String lowerName = name.toLowerCase(Locale.ENGLISH);
+		val list = new ArrayList<Player>();
+		val var6 = getMain().getProxy().getAllPlayers().iterator();
+		val serverConn = sender == null ? null : sender.getCurrentServer().orElse(null);
+		val server = serverConn == null ? null : serverConn.getServerInfo().getName();
 		while (var6.hasNext()) {
-			val	player	= var6.next();
-			val	pn		= player.getUsername();
+			val player = var6.next();
+			val pn = player.getUsername();
 			if (pn.toLowerCase(Locale.ENGLISH).startsWith(lowerName) && Core.canTp(server == null, server, player)) {
 				list.add(player);
 			}
@@ -163,8 +182,9 @@ public final class Main {
 	 *
 	 * @param server 服务器
 	 * @param buf    数据
+	 *
 	 * @return true if the message was sent immediately, false otherwise if queue is
-	 *         true, it has been queued, if itis false it has been discarded.
+	 * true, it has been queued, if itis false it has been discarded.
 	 */
 	public static boolean send(@NonNull RegisteredServer server, @NonNull byte[] buf) {
 		for (val player : server.getPlayersConnected()) {
@@ -192,10 +212,12 @@ public final class Main {
 	 *
 	 * @param server 服务器
 	 * @param buf    数据
-	 * @deprecated 不推荐使用info发送信息,请使用: {@link #send(RegisteredServer, byte[])} 代替
+	 *
 	 * @return true if the message was sent immediately, false otherwise if queue is
-	 *         true, it has been queued, if itis false it has been discarded.
+	 * true, it has been queued, if itis false it has been discarded.
+	 *
 	 * @see #send(RegisteredServer, byte[])
+	 * @deprecated 不推荐使用info发送信息, 请使用: {@link #send(RegisteredServer, byte[])} 代替
 	 */
 	@Deprecated
 	public static boolean send(@NonNull ServerInfo server, @NonNull byte[] buf) {
@@ -214,8 +236,9 @@ public final class Main {
 	 *
 	 * @param server 服务器
 	 * @param buf    数据
+	 *
 	 * @return true if the message was sent immediately, false otherwise if queue is
-	 *         true, it has been queued, if itis false it has been discarded.
+	 * true, it has been queued, if itis false it has been discarded.
 	 */
 	public static boolean sendQueue(@NonNull RegisteredServer server, @NonNull byte[] buf) {
 		for (val player : server.getPlayersConnected()) {
@@ -230,36 +253,7 @@ public final class Main {
 		return false;
 	}
 
-	/** server */
-	@Getter private final ProxyServer		proxy;
-
-	/** logger */
-	@Getter private final Logger			logger;
-
-	/** 插件目录 */
-	@Getter private final Path				dataFolder;
-
-	/** bstats */
-	@Getter private final Metrics.Factory	metricsFactory;
-
-	/** class loader */
-	@Getter private final ClassLoader		classLoader;
-
-	/** 时间修正任务 */
-	private ScheduledTask					timeAmendTask;
-
-	@SuppressWarnings("javadoc")
-	@Inject
-	private Main(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory, Metrics.Factory metricsFactory) {
-		main				= this;
-		this.proxy			= server;
-		this.logger			= logger;
-		this.dataFolder		= dataDirectory;
-		this.metricsFactory	= metricsFactory;
-		this.classLoader	= getClass().getClassLoader();
-	}
-
-	/** */
+	/**  */
 	private void bstats() {
 
 		Metrics metrics = metricsFactory.make(this, 14492);
@@ -276,8 +270,8 @@ public final class Main {
 
 	/** 检查中央配置文件 */
 	private void checkYuanluConfig() {
-		val				configFile	= getDataFolder().getParent().resolve("yuanlu").resolve("config.yml");
-		Configuration	config		= null;
+		val configFile = getDataFolder().getParent().resolve("yuanlu").resolve("config.yml");
+		Configuration config = null;
 
 		if (Files.isRegularFile(configFile)) try (val in = Files.newInputStream(configFile)) {
 			config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(in);
@@ -300,13 +294,14 @@ public final class Main {
 	 * 唤起数据包发送队列(对应bc的send.queue实现)
 	 *
 	 * @param event ServerConnectedEvent
+	 *
 	 * @deprecated EVENT
 	 */
 	@Deprecated
 	@Subscribe
 	public void event_callSendQueue(@NonNull ServerPostConnectEvent event) {
-		val	player	= event.getPlayer();
-		val	server	= player.getCurrentServer().orElseThrow(NullPointerException::new).getServerInfo();
+		val player = event.getPlayer();
+		val server = player.getCurrentServer().orElseThrow(NullPointerException::new).getServerInfo();
 		synchronized (PACKET_QUEUE) {
 
 			val que = PACKET_QUEUE.get(server);
@@ -326,6 +321,7 @@ public final class Main {
 	 * EVENT
 	 *
 	 * @param e 插件消息
+	 *
 	 * @deprecated BUNGEE
 	 */
 	@Deprecated
@@ -336,16 +332,16 @@ public final class Main {
 		e.setResult(PluginMessageEvent.ForwardResult.handled());
 		if (isDEBUG()) getLogger().info("e.getTar:  " + e.getTarget().getClass());
 		if (!(e.getSource() instanceof ServerConnection) || !(e.getTarget() instanceof Player)) return;
-		ServerConnection	server	= (ServerConnection) e.getSource();
-		Player				player	= (Player) e.getTarget();
-		val					message	= e.getData();
-		val					id		= ShareData.readInt(message, 0, -1);
-		val					type	= Channel.byId(id);
+		ServerConnection server = (ServerConnection) e.getSource();
+		Player player = (Player) e.getTarget();
+		val message = e.getData();
+		val id = ShareData.readInt(message, 0, -1);
+		val type = Channel.byId(id);
 		if (ShareData.isDEBUG()) ShareData.getLogger().info("[CHANNEL] receive: " + player.getUsername() + "-" + type + ": " + Arrays.toString(message));
 		switch (Objects.requireNonNull(type, "unknown type id: " + id)) {
 		case PERMISSION: {
-			val	permission	= Channel.Permission.parseC(message);
-			val	allow		= player.hasPermission(permission);
+			val permission = Channel.Permission.parseC(message);
+			val allow = player.hasPermission(permission);
 			send(player, Channel.Permission.sendC(permission, allow));
 			break;
 		}
@@ -359,8 +355,8 @@ public final class Main {
 			break;
 		}
 		case COOLDOWN: {
-			val	end		= Channel.Cooldown.parseC(message) + Core.getTimeAmend(server.getServerInfo());
-			val	uuid	= player.getUniqueId();
+			val end = Channel.Cooldown.parseC(message) + Core.getTimeAmend(server.getServerInfo());
+			val uuid = player.getUniqueId();
 			for (val s : getProxy().getAllServers()) {
 				send(s, Channel.Cooldown.broadcast(uuid, end - Core.getTimeAmend(s.getServerInfo())));
 			}
@@ -371,8 +367,8 @@ public final class Main {
 			break;
 		}
 		case VANISH: {
-			val	always	= Channel.Vanish.parse(message);
-			val	inHide	= Core.switchVanish(player, always);
+			val always = Channel.Vanish.parse(message);
+			val inHide = Core.switchVanish(player, always);
 			send(player, Channel.Vanish.sendC(inHide));
 			break;
 		}
@@ -413,6 +409,7 @@ public final class Main {
 	 * 初始化
 	 *
 	 * @param event ProxyInitializeEvent
+	 *
 	 * @deprecated EVENT
 	 */
 	@Deprecated
@@ -437,6 +434,7 @@ public final class Main {
 	 * 关闭
 	 *
 	 * @param event ProxyShutdownEvent
+	 *
 	 * @deprecated EVENT
 	 */
 	@Deprecated
@@ -450,6 +448,7 @@ public final class Main {
 	 * EVENT
 	 *
 	 * @param e 服务器连接
+	 *
 	 * @deprecated EVENT
 	 */
 	@Deprecated
@@ -465,7 +464,9 @@ public final class Main {
 	 * 加载配置
 	 *
 	 * @param fileName 配置文件名，例如{@code "config.yml"}
+	 *
 	 * @return 配置文件
+	 *
 	 * @author yuanlu
 	 */
 	public Configuration loadFile(String fileName) {
@@ -495,7 +496,9 @@ public final class Main {
 	 *
 	 * @param fileName 配置文件名，例如{@code "config.yml"}
 	 * @param oldNames 配置文件旧的命名, 如果发现则会自动重命名
+	 *
 	 * @return 配置文件
+	 *
 	 * @author yuanlu
 	 */
 	public Configuration loadFile(String fileName, String... oldNames) {
@@ -543,7 +546,7 @@ public final class Main {
 					val toServer = getProxy().getServer(back.getTo()).orElse(null);
 					if (toServer == null) {
 						ShareData.getLogger().warning("[PACKAGE] Can not found back's toServer: " + back.getTo() + //
-						", from: " + server.getServerInfo().getName());
+								", from: " + server.getServerInfo().getName());
 						return;
 					}
 					send(toServer, backPack);
@@ -551,7 +554,7 @@ public final class Main {
 					val toPlayer = getProxy().getPlayer(back.getTo()).orElse(null);
 					if (toPlayer == null) {
 						ShareData.getLogger().warning("[PACKAGE] Can not found back's toPlayer: " + back.getTo() + //
-						", from: " + server.getServerInfo().getName());
+								", from: " + server.getServerInfo().getName());
 						return;
 					}
 					send(toPlayer, backPack);
@@ -604,9 +607,9 @@ public final class Main {
 			break;
 		case 4:
 			Channel.Home.p4C_listHome(buf, () -> {
-				val					serverName	= server.getServerInfo().getName();
-				val					WARPS		= Core.getHomes(player);
-				ArrayList<String>	w1			= new ArrayList<>(), w2 = new ArrayList<>();
+				val serverName = server.getServerInfo().getName();
+				val WARPS = Core.getHomes(player);
+				ArrayList<String> w1 = new ArrayList<>(), w2 = new ArrayList<>();
 				WARPS.forEach((name, loc) -> (Core.canTp(serverName, loc.getServer()) ? w1 : w2).add(name));
 				send(player, Channel.Home.s4S_listHomeResp(w1, w2));
 			});
@@ -675,8 +678,8 @@ public final class Main {
 			break;
 		case 0x6:
 			Channel.Tp.p6C_tpThird(buf, (mover, target) -> {
-				val	m	= getProxy().getPlayer(mover).orElse(null);
-				val	t	= getProxy().getPlayer(target).orElse(null);
+				val m = getProxy().getPlayer(mover).orElse(null);
+				val t = getProxy().getPlayer(target).orElse(null);
 				if (m == null || t == null) {
 					send(player, Channel.Tp.s7S_tpThirdReceive(false, false));
 				} else {
@@ -695,8 +698,8 @@ public final class Main {
 			break;
 		case 0x9:
 			Channel.Tp.p9C_tpReqThird(buf, (mover, target, code) -> {
-				val	m	= getPlayer((code & 1) > 0 ? null : player, mover);
-				val	t	= getPlayer((code & 1) > 0 ? null : player, target);
+				val m = getPlayer((code & 1) > 0 ? null : player, mover);
+				val t = getPlayer((code & 1) > 0 ? null : player, target);
 				if (m != null && t != null) {
 					send(m, Channel.Tp.s2S_tpReq(t.getUsername(), t.getUsername(), 4));
 					send(t, Channel.Tp.s2S_tpReq(m.getUsername(), m.getUsername(), 5));
@@ -710,7 +713,7 @@ public final class Main {
 				val t = getProxy()//
 						.getPlayer(target)//
 						.orElseThrow(() -> new IllegalStateException("Player \"" + player.getUsername() + "\" is not connected to any server.")) //
-				;
+						;
 				send(t, Channel.Tp.scS_cancel(player.getUsername()));
 			});
 			break;
@@ -760,9 +763,9 @@ public final class Main {
 			break;
 		case 4:
 			Channel.Warp.p4C_listWarp(buf, () -> {
-				val					serverName	= server.getServerInfo().getName();
-				val					WARPS		= ConfigManager.WARPS;
-				ArrayList<String>	w1			= new ArrayList<>(), w2 = new ArrayList<>();
+				val serverName = server.getServerInfo().getName();
+				val WARPS = ConfigManager.WARPS;
+				ArrayList<String> w1 = new ArrayList<>(), w2 = new ArrayList<>();
 				WARPS.forEach((name, loc) -> (Core.canTp(serverName, loc.getServer()) ? w1 : w2).add(name));
 				send(player, Channel.Warp.s4S_listWarpResp(w1, w2));
 			});
@@ -776,8 +779,9 @@ public final class Main {
 	/**
 	 * EVENT<br>
 	 * 无效
-	 * 
+	 *
 	 * @param e Tab响应
+	 *
 	 * @deprecated EVENT
 	 */
 	@Deprecated

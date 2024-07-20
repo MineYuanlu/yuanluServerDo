@@ -5,128 +5,36 @@
  */
 package yuan.plugins.serverDo;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import lombok.NonNull;
+import lombok.val;
+
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Set;
-import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-
-import lombok.NonNull;
-import lombok.val;
 
 /**
  * 工具类<br>
  * A类
  *
  * @author yuanlu
- *
  */
 public final class Tool {
-	/**
-	 * 结果映射
-	 *
-	 * @author yuanlu
-	 *
-	 * @param <K> 键
-	 * @param <V> 值
-	 */
-	public static final class ResultEntry<K, V> {
-		/**
-		 * 键
-		 */
-		private K	k;
-		/**
-		 * 值
-		 */
-		private V	v;
-
-		/**
-		 * 私有
-		 */
-		private ResultEntry() {
-		}
-
-		/**
-		 * 清理节点
-		 */
-		private void clear() {
-			this.k	= null;
-			this.v	= null;
-		}
-
-		/**
-		 * @param k K
-		 */
-		public void setKey(K k) {
-			this.k = k;
-		}
-
-		/**
-		 * @param v V
-		 */
-		public void setValue(V v) {
-			this.v = v;
-		}
-	}
-
-	/**
-	 * 可以抛出任何错误的运行接口
-	 *
-	 * @author yuanlu
-	 * @param <E> 错误类型
-	 * @param <T> 输入类型
-	 * @param <R> 输出类型
-	 *
-	 */
-	@FunctionalInterface
-	public interface ThrowableFunction<E extends Throwable, T, R> {
-		/**
-		 * Applies this function to the given argument.
-		 *
-		 * @param t the function argument
-		 * @return the function result
-		 * @throws E the function error
-		 */
-		R apply(T t) throws E;
-	}
-
-	/**
-	 * 可以抛出任何错误的运行接口
-	 *
-	 * @author yuanlu
-	 * @param <T> 错误类型
-	 *
-	 */
-	@FunctionalInterface
-	public interface ThrowableRunnable<T extends Throwable> {
-		/**
-		 * 运行
-		 *
-		 * @throws T 错误
-		 */
-		void run() throws T;
-	}
-
 	/** 空的运行体 */
-	public static final Runnable	EMPTY_RUNNABLE	= () -> {
-													};
-
+	public static final  Runnable EMPTY_RUNNABLE = () -> {
+	};
 	/** 随机字符串 */
-	private static final char[]		RANDOM			= "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM!@#$%^&*()".toCharArray();
-
+	private static final char[]   RANDOM         = "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM!@#$%^&*()".toCharArray();
 	/** 驼峰转换正则 */
-	private static Pattern			humpPattern		= Pattern.compile("[A-Z]");
+	private static       Pattern  humpPattern    = Pattern.compile("[A-Z]");
+
+	/**
+	 * 禁止实例化
+	 */
+	private Tool() {
+	}
 
 	/**
 	 * 反序列化(list)
@@ -135,6 +43,7 @@ public final class Tool {
 	 * @param str       序列化字符串
 	 * @param split     分隔符
 	 * @param translate 翻译器
+	 *
 	 * @return 反序列化结果
 	 */
 	public static <E> ArrayList<E> deserializeList(String str, String split, Function<String, E> translate) {
@@ -154,6 +63,7 @@ public final class Tool {
 	 *
 	 * @param a 对象
 	 * @param b 对象
+	 *
 	 * @return 是否一致
 	 */
 	public static boolean equals(Object a, Object b) {
@@ -186,6 +96,7 @@ public final class Tool {
 	 *
 	 * @param str 给定字符串
 	 * @param c   内容
+	 *
 	 * @return 匹配的列表
 	 */
 	public static List<String> getMatchList(@NonNull String str, @NonNull Collection<String> c) {
@@ -202,6 +113,7 @@ public final class Tool {
 	 * @param str   给定字符串
 	 * @param c     内容
 	 * @param trans 内容转换
+	 *
 	 * @return 匹配的列表
 	 */
 	public static <T> List<String> getMatchList(@NonNull String str, @NonNull Collection<T> c, Function<T, String> trans) {
@@ -219,12 +131,13 @@ public final class Tool {
 	 *
 	 * @param str    原始字符串
 	 * @param joiner 单词间插值
+	 *
 	 * @return 转换结果
 	 */
 	public static String humpTrans(String str, Object joiner) {
-		val	matcher	= humpPattern.matcher(str);
-		val	sb		= new StringBuffer();
-		val	j		= String.valueOf(joiner);
+		val matcher = humpPattern.matcher(str);
+		val sb = new StringBuffer();
+		val j = String.valueOf(joiner);
 		while (matcher.find()) {
 			matcher.appendReplacement(sb, j + matcher.group(0).toLowerCase());
 		}
@@ -239,6 +152,7 @@ public final class Tool {
 	 *
 	 * @param str    原始字符串
 	 * @param joiner 单词间插值
+	 *
 	 * @return 转换结果
 	 */
 	public static String humpTransBack(String str, Object joiner) {
@@ -246,8 +160,8 @@ public final class Tool {
 		try {
 			val join = String.valueOf(joiner);
 			sb = new StringBuilder();
-			int	i	= 0;
-			int	j	= 0;
+			int i = 0;
+			int j = 0;
 			while ((i = str.indexOf(join, i)) >= 0) {
 				sb.append(str, j, i);
 				sb.append(Character.toUpperCase(str.charAt(i += join.length())));
@@ -265,6 +179,7 @@ public final class Tool {
 	 * 判断字符串是否有为true的意图
 	 *
 	 * @param s 字符串
+	 *
 	 * @return 是否有为true的意图
 	 */
 	public static boolean isTrue(String s) {
@@ -282,11 +197,12 @@ public final class Tool {
 	 * @param frame     框架格式(elements,size)
 	 * @param element   元素格式(index,data)
 	 * @param delimiter 分隔符
+	 *
 	 * @return 字符串
 	 */
 	public static String join(Collection<?> c, String frame, String element, String delimiter) {
-		StringJoiner	sj	= new StringJoiner(delimiter);
-		int				i	= 0;
+		StringJoiner sj = new StringJoiner(delimiter);
+		int i = 0;
 		for (val x : c) sj.add(String.format(element, ++i, x));
 		return String.format(frame, sj, i);
 	}
@@ -334,6 +250,7 @@ public final class Tool {
 	 * @param map    图
 	 * @param func   转换工具
 	 * @param result 结果存储的集合
+	 *
 	 * @return 传入的存储集合
 	 */
 	public static <K, V, R, C extends Collection<R>> C mapToCollection(Map<K, V> map, BiFunction<K, V, R> func, C result) {
@@ -352,6 +269,7 @@ public final class Tool {
 	 * @param map    图
 	 * @param func   转换工具
 	 * @param result 结果存储的集合
+	 *
 	 * @return 传入的存储集合
 	 */
 	public static <K, V, R, RC extends Collection<R>, VC extends Collection<V>> RC mutiMapToCollection(Map<K, VC> map, BiFunction<K, V, R> func, RC result) {
@@ -383,6 +301,7 @@ public final class Tool {
 	 * @param start 变量开始字符
 	 * @param end   变量结束字符
 	 * @param vars  变量集合
+	 *
 	 * @return 解析后字符串
 	 */
 	public static String parseVar(final String msg, char start, char end, Map<String, Object> vars) {
@@ -433,6 +352,7 @@ public final class Tool {
 	 * 随机字符串
 	 *
 	 * @param len 长度
+	 *
 	 * @return 字符串
 	 */
 	public static String randomString(int len) {
@@ -444,24 +364,24 @@ public final class Tool {
 	/**
 	 * 模糊搜索
 	 *
-	 *
 	 * @param text 给定字符串
 	 * @param itr  内容
+	 *
 	 * @return 搜索结果
 	 */
 	public static <T> T search(@NonNull Object text, Iterator<T> itr) {
-		T		found		= null;
-		String	lowerName	= text.toString().toLowerCase(Locale.ENGLISH);
-		int		delta		= Integer.MAX_VALUE;
+		T found = null;
+		String lowerName = text.toString().toLowerCase(Locale.ENGLISH);
+		int delta = Integer.MAX_VALUE;
 
 		while (itr.hasNext()) {
-			val	t	= itr.next();
-			val	now	= t.toString();
+			val t = itr.next();
+			val now = t.toString();
 			if (now.toLowerCase(Locale.ENGLISH).startsWith(lowerName)) {
 				int curDelta = Math.abs(now.length() - lowerName.length());
 				if (curDelta < delta) {
-					found	= t;
-					delta	= curDelta;
+					found = t;
+					delta = curDelta;
 					if (curDelta == 0) break;
 				}
 			}
@@ -476,12 +396,13 @@ public final class Tool {
 	 * @param c         序列化集合
 	 * @param split     元素分隔符
 	 * @param translate 元素翻译器
+	 *
 	 * @return 序列化字符串
 	 */
 	public static <E> String serialize(Collection<E> c, char split, Function<? super E, String> translate) {
 		if (c.isEmpty()) return "";
-		StringBuilder	sb	= new StringBuilder();
-		Iterator<E>		itr	= c.iterator();
+		StringBuilder sb = new StringBuilder();
+		Iterator<E> itr = c.iterator();
 		while (true) {
 			sb.append(translate.apply(itr.next()));
 			if (!itr.hasNext()) return sb.toString();
@@ -496,6 +417,7 @@ public final class Tool {
 	 * @param <M> Map类型
 	 * @param set 元素集合
 	 * @param map 元素映射图(结果)
+	 *
 	 * @return 传入的元素映射图
 	 */
 	public static <E, M extends Map<E, E>> M setToMap(Set<E> set, M map) {
@@ -510,6 +432,7 @@ public final class Tool {
 	 * @param <R>  结果类型
 	 * @param list 要翻译的列表
 	 * @param func 翻译工具
+	 *
 	 * @return 结果列表
 	 */
 	public static <T, R> ArrayList<R> translate(List<T> list, Function<T, R> func) {
@@ -534,6 +457,7 @@ public final class Tool {
 	 * @param map    要翻译的映射图
 	 * @param func   翻译工具
 	 * @param result 结果
+	 *
 	 * @return 传入的结果映射图
 	 */
 	public static <TK, TV, RK, RV, RM extends LinkedHashMap<RK, RV>> RM translate(Map<TK, TV> map, BiConsumer<Entry<TK, TV>, ResultEntry<RK, RV>> func,
@@ -556,6 +480,7 @@ public final class Tool {
 	 * @param <R>  结果类型
 	 * @param list 要翻译的列表
 	 * @param func 翻译工具
+	 *
 	 * @return 结果集合
 	 */
 	public static <T, R> HashSet<R> translate(Set<T> list, Function<T, R> func) {
@@ -576,6 +501,7 @@ public final class Tool {
 	 * @param <R>  结果类型
 	 * @param list 要翻译的集合
 	 * @param func 翻译工具
+	 *
 	 * @return 结果列表
 	 */
 	public static <T, R> ArrayList<R> translateToList(Collection<T> list, Function<T, R> func) {
@@ -596,6 +522,7 @@ public final class Tool {
 	 * @param <R>  结果类型
 	 * @param list 要翻译的集合
 	 * @param func 翻译工具
+	 *
 	 * @return 结果集合
 	 */
 	public static <T, R> HashSet<R> translateToSet(Collection<T> list, Function<T, R> func) {
@@ -614,7 +541,6 @@ public final class Tool {
 	 *
 	 * @param needRun 是否需要运行<br>
 	 *                若为false则什么都不做
-	 *
 	 * @param tr      可抛出错误的代码体
 	 */
 	public static void tryRun(boolean needRun, ThrowableRunnable<?> tr) {
@@ -655,9 +581,90 @@ public final class Tool {
 	}
 
 	/**
-	 * 禁止实例化
+	 * 可以抛出任何错误的运行接口
+	 *
+	 * @param <E> 错误类型
+	 * @param <T> 输入类型
+	 * @param <R> 输出类型
+	 *
+	 * @author yuanlu
 	 */
-	private Tool() {
+	@FunctionalInterface
+	public interface ThrowableFunction<E extends Throwable, T, R> {
+		/**
+		 * Applies this function to the given argument.
+		 *
+		 * @param t the function argument
+		 *
+		 * @return the function result
+		 *
+		 * @throws E the function error
+		 */
+		R apply(T t) throws E;
+	}
+
+	/**
+	 * 可以抛出任何错误的运行接口
+	 *
+	 * @param <T> 错误类型
+	 *
+	 * @author yuanlu
+	 */
+	@FunctionalInterface
+	public interface ThrowableRunnable<T extends Throwable> {
+		/**
+		 * 运行
+		 *
+		 * @throws T 错误
+		 */
+		void run() throws T;
+	}
+
+	/**
+	 * 结果映射
+	 *
+	 * @param <K> 键
+	 * @param <V> 值
+	 *
+	 * @author yuanlu
+	 */
+	public static final class ResultEntry<K, V> {
+		/**
+		 * 键
+		 */
+		private K k;
+		/**
+		 * 值
+		 */
+		private V v;
+
+		/**
+		 * 私有
+		 */
+		private ResultEntry() {
+		}
+
+		/**
+		 * 清理节点
+		 */
+		private void clear() {
+			this.k = null;
+			this.v = null;
+		}
+
+		/**
+		 * @param k K
+		 */
+		public void setKey(K k) {
+			this.k = k;
+		}
+
+		/**
+		 * @param v V
+		 */
+		public void setValue(V v) {
+			this.v = v;
+		}
 	}
 
 }

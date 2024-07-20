@@ -9,8 +9,8 @@ server-group:
     - server4
 #禁用的服务器, 例如登录服务器
 server-ban:
- - 'auth'
- - 'lobby'
+  - 'auth'
+  - 'lobby'
 
 #名称获取设置
 setting:

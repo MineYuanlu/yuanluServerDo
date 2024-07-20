@@ -3,21 +3,19 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
-import java.util.List;
-
+import lombok.val;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-
-import lombok.val;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Main;
+
+import java.util.List;
 
 /**
  * tpcancel命令
  *
  * @author yuanlu
- *
  */
 public final class CmdTpcancel extends Cmd {
 	/** @param name 命令名 */
@@ -27,8 +25,8 @@ public final class CmdTpcancel extends Cmd {
 
 	@Override
 	protected boolean execute0(CommandSender sender, String[] args) {
-		val	player	= (Player) sender;
-		val	who		= args.length > 0 ? args[0] : null;
+		val player = (Player) sender;
+		val who = args.length > 0 ? args[0] : null;
 		CmdTpa.removeTpReq(player, who, (name, display) -> {
 			if (name == null) msg("no-request", player);
 			else if (name.isEmpty()) msg("not-found", player, who);

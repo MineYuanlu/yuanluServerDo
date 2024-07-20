@@ -1,44 +1,33 @@
 package yuan.plugins.serverDo;
 
+import lombok.AllArgsConstructor;
+import lombok.val;
+
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import lombok.AllArgsConstructor;
-import lombok.val;
-
 /**
  * 最近最少使用
  *
- * @author sun.misc
- *
  * @param <K> K
  * @param <V> V
+ *
+ * @author sun.misc
  */
 @SuppressWarnings("unchecked")
 public abstract class LRUCache<K, V> {
-	/**
-	 * 节点
-	 *
-	 * @author yuanlu
-	 *
-	 * @param <K> 键
-	 * @param <V> 值
-	 */
-	@AllArgsConstructor
-	@SuppressWarnings("javadoc")
-	private static final class Node<K, V> {
-		K	k;
-		V	v;
-
-		void set(K k, V v) {
-			this.k	= k;
-			this.v	= v;
-		}
-	}
-
 	/** 缓存使用数 */
 	public static final AtomicInteger CACHE_USE = new AtomicInteger();
+	/** 缓存 */
+	private             Object[]      cache     = null;
+	/** 缓存大小 */
+	private             int           size;
+
+	/** @param size 缓存大小 */
+	public LRUCache(int size) {
+		this.size = size;
+	}
 
 	/**
 	 * 将元素移到最前端
@@ -54,21 +43,11 @@ public abstract class LRUCache<K, V> {
 		objs[0] = obj;
 	}
 
-	/** 缓存 */
-	private Object[]	cache	= null;
-
-	/** 缓存大小 */
-	private int			size;
-
-	/** @param size 缓存大小 */
-	public LRUCache(int size) {
-		this.size = size;
-	}
-
 	/**
 	 * 检出元素, 不会对缓存进行任何修改
 	 *
 	 * @param k 键
+	 *
 	 * @return 值, 当不存在时返回null
 	 */
 	public synchronized final V check(K k) {
@@ -115,6 +94,7 @@ public abstract class LRUCache<K, V> {
 	 * 创建对象
 	 *
 	 * @param k 键
+	 *
 	 * @return 值
 	 */
 	protected abstract V create(K k);
@@ -123,8 +103,8 @@ public abstract class LRUCache<K, V> {
 	 * 获取元素
 	 *
 	 * @param k 键
-	 * @return 值
 	 *
+	 * @return 值
 	 */
 	public synchronized final V get(K k) {
 		CACHE_USE.addAndGet(1);
@@ -139,8 +119,8 @@ public abstract class LRUCache<K, V> {
 				}
 			}
 		}
-		V			v		= create(k);
-		Node<K, V>	node	= (Node<K, V>) cache[size - 1];
+		V v = create(k);
+		Node<K, V> node = (Node<K, V>) cache[size - 1];
 		if (node != null) {
 			clearHandle(node.k, node.v);
 			node.set(k, v);
@@ -163,5 +143,25 @@ public abstract class LRUCache<K, V> {
 			} else Arrays.fill(cache, size, cache.length, null);
 		}
 		this.size = size;
+	}
+
+	/**
+	 * 节点
+	 *
+	 * @param <K> 键
+	 * @param <V> 值
+	 *
+	 * @author yuanlu
+	 */
+	@AllArgsConstructor
+	@SuppressWarnings("javadoc")
+	private static final class Node<K, V> {
+		K k;
+		V v;
+
+		void set(K k, V v) {
+			this.k = k;
+			this.v = v;
+		}
 	}
 }

@@ -7,19 +7,11 @@
  */
 package yuan.plugins.serverDo.bukkit.cmds;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
-
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-
 import lombok.NonNull;
 import lombok.Value;
 import lombok.val;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.Channel.Package.BoolConsumer;
 import yuan.plugins.serverDo.Tool;
@@ -27,34 +19,26 @@ import yuan.plugins.serverDo.WaitMaintain;
 import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Main;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+
 /**
  * tpa命令
  *
  * @author yuanlu
- *
  */
 public final class CmdTpa extends TabTp {
-	/**
-	 * 传送请求等待信息
-	 *
-	 * @author yuanlu
-	 *
-	 */
-	@Value
-	private static final class TpWaitInfo {
-		/** 发起请求的玩家全名 */
-		@NonNull String	sender;
-		/** 发起请求的玩家展示名 */
-		@NonNull String	display;
-
-		@Override
-		public String toString() {
-			return sender;
-		}
-	}
-
 	/** 传送等待 */
 	private static final Map<UUID, ArrayList<TpWaitInfo>> TP_WAIT = new ConcurrentHashMap<>();
+
+	/** @param name 命令名 */
+	protected CmdTpa(String name) {
+		super(name);
+	}
 
 	/**
 	 * 增加传送请求(本地)
@@ -71,12 +55,13 @@ public final class CmdTpa extends TabTp {
 	 * 获取玩家请求列表
 	 *
 	 * @param sender 目标
+	 *
 	 * @return 对此目标请求的玩家列表
 	 */
 	static List<String> getReqList(CommandSender sender) {
 		if (sender instanceof Player) {
-			Player	player	= (Player) sender;
-			val		list	= TP_WAIT.get(player.getUniqueId());
+			Player player = (Player) sender;
+			val list = TP_WAIT.get(player.getUniqueId());
 			if (list != null && !list.isEmpty()) return Tool.translate(list, i -> i.sender);
 		}
 		return null;
@@ -99,11 +84,6 @@ public final class CmdTpa extends TabTp {
 			if (tar == null) nameAndDisplay.accept("", "");
 			else nameAndDisplay.accept(tar.getSender(), tar.getDisplay());
 		}
-	}
-
-	/** @param name 命令名 */
-	protected CmdTpa(String name) {
-		super(name);
 	}
 
 	@Override
@@ -135,6 +115,26 @@ public final class CmdTpa extends TabTp {
 			Main.send(player, Channel.Tp.s0C_tpReq(args[0], Core.tpReqCode(player, 1)));
 			return true;
 		} else return msg("help", player);
+	}
+
+	/**
+	 * 传送请求等待信息
+	 *
+	 * @author yuanlu
+	 */
+	@Value
+	private static final class TpWaitInfo {
+		/** 发起请求的玩家全名 */
+		@NonNull
+		String sender;
+		/** 发起请求的玩家展示名 */
+		@NonNull
+		String display;
+
+		@Override
+		public String toString() {
+			return sender;
+		}
 	}
 
 }

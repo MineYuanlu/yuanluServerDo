@@ -3,17 +3,16 @@
  */
 package yuan.plugins.serverDo.velocity;
 
-import java.util.List;
-import java.util.stream.Stream;
-
 import com.velocitypowered.api.event.player.TabCompleteEvent;
 import com.velocitypowered.api.proxy.Player;
-
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.val;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.ShareData.TabType;
+
+import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * tab处理器
@@ -82,8 +81,8 @@ public final class TabHandler {
 		if (list.size() != 1) return;
 		val str = list.get(0);
 		if (str != null) {
-			val	type	= TabType.getType(ConfigManager.getTabReplace(), str);
-			val	request	= TabType.getValue(ConfigManager.getTabReplace(), str);
+			val type = TabType.getType(ConfigManager.getTabReplace(), str);
+			val request = TabType.getValue(ConfigManager.getTabReplace(), str);
 			if (type == null || request == null) return;
 			list.clear();
 			switch (type) {

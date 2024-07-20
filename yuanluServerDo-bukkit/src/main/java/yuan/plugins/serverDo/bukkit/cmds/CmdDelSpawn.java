@@ -15,7 +15,6 @@ import yuan.plugins.serverDo.bukkit.Main;
  * delspawn命令
  *
  * @author yuanlu
- *
  */
 public final class CmdDelSpawn extends Cmd {
 
@@ -24,10 +23,9 @@ public final class CmdDelSpawn extends Cmd {
 		super(name);
 	}
 
-
 	@Override
 	protected boolean execute0(CommandSender sender, String[] args) {
-		val	player	= (Player) sender;
+		val player = (Player) sender;
 		Core.listenCallBack(player, Channel.WARP, 1, (BoolConsumer) success -> {
 			msg(success ? "success" : "fail", player, CmdSpawn.NAME);
 		});

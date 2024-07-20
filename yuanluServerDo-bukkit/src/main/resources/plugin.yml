@@ -7,4 +7,4 @@ website: ${parent.url}
 api-version: 1.13
 
 # softdepend: ['CMI','CMILib','Essentials']
-loadbefore: ['CMI','CMILib','Essentials']
+loadbefore: [ 'CMI','CMILib','Essentials' ]

@@ -14,7 +14,6 @@ import yuan.plugins.serverDo.bukkit.Main;
  * setwarp命令
  *
  * @author yuanlu
- *
  */
 public final class CmdSetSpawn extends Cmd {
 
@@ -22,10 +21,11 @@ public final class CmdSetSpawn extends Cmd {
 	CmdSetSpawn(String name) {
 		super(name);
 	}
+
 	@Override
 	protected boolean execute0(CommandSender sender, String[] args) {
-		val	player	= (Player) sender;
-		val	loc		= Core.toSLoc(player.getLocation());
+		val player = (Player) sender;
+		val loc = Core.toSLoc(player.getLocation());
 		Core.listenCallBack(player, Channel.WARP, 0, (Runnable) () -> {
 			msg("success", player, CmdSpawn.NAME);
 		});

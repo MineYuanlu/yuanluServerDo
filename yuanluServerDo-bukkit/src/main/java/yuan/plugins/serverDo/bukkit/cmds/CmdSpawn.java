@@ -8,25 +8,22 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import yuan.plugins.serverDo.Channel;
 import yuan.plugins.serverDo.Channel.Package.BoolConsumer;
-import yuan.plugins.serverDo.Tool;
 import yuan.plugins.serverDo.bukkit.Core;
 import yuan.plugins.serverDo.bukkit.Main;
 
-import java.util.Collection;
 import java.util.function.BiConsumer;
 
 /**
  * warp命令
  *
  * @author yuanlu
- *
  */
 public final class CmdSpawn extends Cmd {
 
 	/**
-	 *  spawn的warp名称
+	 * spawn的warp名称
 	 */
-	public static final String NAME="spawn";
+	public static final String NAME = "spawn";
 
 	/** @param name 命令名 */
 	CmdSpawn(String name) {
