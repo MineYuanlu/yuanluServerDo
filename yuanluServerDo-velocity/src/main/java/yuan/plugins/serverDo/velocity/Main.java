@@ -428,6 +428,7 @@ public final class Main {
 
 		getProxy().getChannelRegistrar().register(BC_CHANNEL);
 		getLogger().info(SHOW_NAME + "-启动(velocity)");
+		getLogger().info(Main.getPluginContainer().getDescription().getVersion().orElse("Unknown"));
 
 		startTimeAmendLoop();
 	}
@@ -781,7 +782,7 @@ public final class Main {
 	 */
 	@Deprecated
 	@Subscribe
-	public void onTab(TabCompleteEvent e) {
+	public void event_onTab(TabCompleteEvent e) {
 		if (isDEBUG()) getLogger().info("Tab Event: " + e);
 		TabHandler.TabComplete(e);
 	}

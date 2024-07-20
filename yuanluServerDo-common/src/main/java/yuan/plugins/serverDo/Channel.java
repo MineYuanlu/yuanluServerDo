@@ -1027,7 +1027,7 @@ public enum Channel {
 		 */
 		public static ServerInfo parseS(byte[] buf) {
 			try (val in = DataIn.pool(buf)) {
-				return new ServerInfo(in.readUTF(), in.readUTF());
+				return new ServerInfo(in.readUTF(), in.readUTF(), ProxyType.valueOf(in.readUTF()));
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -1040,10 +1040,11 @@ public enum Channel {
 		 * @param version BC版本
 		 * @return 数据包
 		 */
-		public static byte@NonNull[] sendS(@NonNull String tab, @NonNull String version) {
+		public static byte@NonNull[] sendS(@NonNull String tab, @NonNull String version, @NonNull ProxyType proxyType) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeUTF(tab);
 				out.writeUTF(version);
+				out.writeUTF(proxyType.name());
 				return out.getByte();
 			} catch (IOException e) {
 				throw new RuntimeException(e);
@@ -1055,6 +1056,12 @@ public enum Channel {
 
 		/** BC版本 */
 		String	version;
+
+		ProxyType proxyType;
+
+	    public enum ProxyType{
+			BungeeCord, Velocity
+		}
 	}
 
 	/**

@@ -433,8 +433,7 @@ public final class ConfigManager {
 		setSaveDelay(config.getLong("save-delay", getSaveDelay()));
 		setUseAt(config.getBoolean("use-at", isUseAt()));
 		loadGroup(config);
-
-		serverInfo = Channel.ServerInfo.sendS(tabReplace, Main.getPluginContainer().getDescription().getVersion().orElse("Unknown"));
+		serverInfo = Channel.ServerInfo.sendS(tabReplace, Main.getPluginContainer().getDescription().getVersion().orElse("Unknown"), Channel.ServerInfo.ProxyType.Velocity);
 
 		Arrays.stream(ConfFile.values()).forEach(ConfFile::load);
 
