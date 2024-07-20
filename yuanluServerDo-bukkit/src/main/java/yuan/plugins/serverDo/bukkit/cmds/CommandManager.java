@@ -7,6 +7,7 @@ import lombok.*;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.bukkit.MESSAGE;
@@ -14,10 +15,8 @@ import yuan.plugins.serverDo.bukkit.Main;
 import yuan.plugins.serverDo.bukkit.PackageUtil;
 
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.lang.reflect.Modifier;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -31,7 +30,19 @@ public final class CommandManager implements MESSAGE {
 	 * 所有的命令<br>
 	 * {@code 命令名->命令信息}
 	 */
-	static final HashMap<String, CmdInfo> INFOS = new HashMap<>();
+	static final HashMap<String, CmdInfo> INFOS        = new HashMap<>();
+	static final HashMap<String, Cmd>     CMD_INSTANCE = new HashMap<>();
+
+	public static List<String> tabParse(@NonNull CommandSender player, @NonNull String cmdline) {
+
+		val start = cmdline.startsWith("/") ? 1 : 0;
+		val end = cmdline.indexOf(' ');
+		val cmd = cmdline.substring(start, end < 0 ? cmdline.length() : end);
+		val instance = CMD_INSTANCE.get(cmd);
+		if (instance == null) return Collections.emptyList();
+
+		return instance.tabComplete(player, cmd, end < 0 ? new String[0] : cmdline.substring(end + 1).split(" "));
+	}
 
 	/**
 	 * 初始化所有命令
@@ -45,7 +56,8 @@ public final class CommandManager implements MESSAGE {
 		for (val name : names) {
 			try {
 				val c = Class.forName(name);
-				if (c == Cmd.class || !Cmd.class.isAssignableFrom(c)) {
+				if (c == Cmd.class || !Cmd.class.isAssignableFrom(c) ||//
+						Modifier.isAbstract(c.getModifiers()) || Modifier.isInterface(c.getModifiers())) {
 					//					ShareData.getLogger().warning("[CMD] 非法命令: " + name);
 					continue;
 				}
@@ -77,7 +89,8 @@ public final class CommandManager implements MESSAGE {
 			if (info.getNames().isEmpty()) ShareData.getLogger().warning("关闭命令: " + cmd);
 			else for (val cmdName : info.getNames()) {
 				INFOS.put(cmdName, info);
-				register(constructor.newInstance(cmdName));
+				val instance = register(constructor.newInstance(cmdName));
+				CMD_INSTANCE.put(cmdName, instance);
 			}
 		} catch (Exception e) {
 			ShareData.getLogger().warning("注册命令时出错: " + c);
@@ -105,6 +118,11 @@ public final class CommandManager implements MESSAGE {
 			Main.getMain().getLogger().warning("CAN NOT REGISTER COMMAND: " + e2);
 		}
 		return cmd;
+	}
+
+	/** 获取所有命令名称 */
+	public static ArrayList<String> getCommandNames() {
+		return new ArrayList<>(INFOS.keySet());
 	}
 
 	/** 命令信息 */

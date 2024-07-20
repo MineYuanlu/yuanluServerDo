@@ -6,7 +6,7 @@
 
     <groupId>bid.yuanlu</groupId>
     <artifactId>yuanluServerDo</artifactId>
-    <version>1.2.1-SNATHOST</version>
+    <version>1.2.2</version>
     <name>YuanluServerDo</name>
     <description>Provide players with a series of cross server operations</description>
     <packaging>pom</packaging>
@@ -17,7 +17,7 @@
             <email>2573580691@qq.com</email>
         </developer>
     </developers>
-    <url>https://git.yuanlu.bid/yuanlu/yuanluServerDo</url>
+    <url>https://github.com/MineYuanlu/yuanluServerDo</url>
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -82,7 +82,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.24</version>
+            <version>1.18.34</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

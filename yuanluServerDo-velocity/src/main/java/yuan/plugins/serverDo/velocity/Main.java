@@ -7,6 +7,7 @@ package yuan.plugins.serverDo.velocity;
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.command.CommandExecuteEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.event.player.TabCompleteEvent;
@@ -396,7 +397,15 @@ public final class Main {
 			Channel.TransWarp.parseS(message, w -> TransHandler.receiveWarp(player, w));
 			break;
 		}
-		case SERVER_INFO:
+		case SERVER_INFO: {
+			val pkg = Channel.ServerInfo.parseC(message);
+			CmdProxy.addCmds(pkg.getNamespace(), pkg.getCmds());
+			break;
+		}
+		case TAB_PARSE: {
+			Channel.TabParse.parseC(message, (token, tabs) -> CmdProxy.cmdTabCallback(token, player, tabs));
+			break;
+		}
 		default:
 			ShareData.getLogger().warning("[channel] BAD PACKAGE: " + type);
 			break;
@@ -789,6 +798,25 @@ public final class Main {
 	public void event_onTab(TabCompleteEvent e) {
 		if (isDEBUG()) getLogger().info("Tab Event: " + e);
 		TabHandler.TabComplete(e);
+	}
+
+	/**
+	 * EVNET
+	 *
+	 * @param e 命令执行
+	 *
+	 * @deprecated EVENT
+	 */
+	@Deprecated
+	@Subscribe
+	public void event_onCmd(CommandExecuteEvent e) {
+		String cmd = e.getCommand();
+		{
+			val start = cmd.startsWith("/") ? 1 : 0;
+			val end = cmd.indexOf(' ');
+			cmd = cmd.substring(start, end < 0 ? cmd.length() : end);
+		}
+		if (CmdProxy.isProxyed(cmd)) e.setResult(CommandExecuteEvent.CommandResult.forwardToServer());
 	}
 
 	/**

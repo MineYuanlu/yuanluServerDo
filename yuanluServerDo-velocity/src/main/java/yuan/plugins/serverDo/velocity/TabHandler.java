@@ -7,6 +7,7 @@ import com.velocitypowered.api.event.player.TabCompleteEvent;
 import com.velocitypowered.api.proxy.Player;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.val;
 import yuan.plugins.serverDo.ShareData;
 import yuan.plugins.serverDo.ShareData.TabType;
@@ -18,13 +19,11 @@ import java.util.stream.Stream;
  * tab处理器
  *
  * @author yuanlu
- * @deprecated Velocity不支持tab
  */
 @SuppressWarnings("javadoc")
-@Deprecated
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class TabHandler {
-	private static void onAt(TabCompleteEvent e, String request, List<String> list) {
+	private static void onAt(Player player, String request, List<String> list) {
 		if (!ConfigManager.isUseAt()) {
 			list.add("@" + request);
 			return;
@@ -39,9 +38,7 @@ public final class TabHandler {
 		stream.map("@"::concat).forEach(list::add);
 	}
 
-	private static void onHome(TabCompleteEvent e, String request, List<String> list) {
-		val player = e.getPlayer();
-		if (player == null) return;
+	private static void onHome(Player player, String request, List<String> list) {
 		val server = player.getCurrentServer().orElse(null);
 		if (server == null) return;
 		val serverName = server.getServerInfo().getName();
@@ -51,8 +48,8 @@ public final class TabHandler {
 		});
 	}
 
-	private static void onTp(TabCompleteEvent e, String request, List<String> list, boolean isAll) {
-		val server = e.getPlayer().getCurrentServer().orElse(null);
+	private static void onTp(Player player, String request, List<String> list, boolean isAll) {
+		val server = player.getCurrentServer().orElse(null);
 		if (server == null) return;
 		val serverName = server.getServerInfo().getName();
 		if (ConfigManager.allowServer(serverName)) for (val p : Main.getMain().getProxy().getAllPlayers()) {
@@ -62,8 +59,8 @@ public final class TabHandler {
 		}
 	}
 
-	private static void onWarp(TabCompleteEvent e, String request, List<String> list) {
-		val server = e.getPlayer().getCurrentServer().orElse(null);
+	private static void onWarp(Player player, String request, List<String> list) {
+		val server = player.getCurrentServer().orElse(null);
 		if (server == null) return;
 		val serverName = server.getServerInfo().getName();
 		ConfigManager.WARPS.forEach((name, loc) -> {
@@ -74,11 +71,10 @@ public final class TabHandler {
 	/**
 	 * EVENT
 	 *
-	 * @param e 补全响应
+	 * @param list 补全响应
 	 */
-	public static void TabComplete(TabCompleteEvent e) {
-		val list = e.getSuggestions();
-		if (list.size() != 1) return;
+	public static void TabComplete(Player player, @NonNull List<String> list) {
+		if (list.size() != 1 || player == null) return;
 		val str = list.get(0);
 		if (str != null) {
 			val type = TabType.getType(ConfigManager.getTabReplace(), str);
@@ -87,25 +83,35 @@ public final class TabHandler {
 			list.clear();
 			switch (type) {
 			case TP_ALL:
-				onTp(e, request, list, true);
+				onTp(player, request, list, true);
 				break;
 			case TP_NORMAL:
-				onTp(e, request, list, false);
+				onTp(player, request, list, false);
 				break;
 			case WARP:
-				onWarp(e, request, list);
+				onWarp(player, request, list);
 				break;
 			case HOME:
-				onHome(e, request, list);
+				onHome(player, request, list);
 				break;
 			case AT:
-				onAt(e, request, list);
+				onAt(player, request, list);
 				break;
 
 			}
 			if (ShareData.isDEBUG()) ShareData.getLogger().info(String.format("Tab: type=%s, req=%s, list=%s", type, request, list));
 			if (list.isEmpty()) list.add(request);
 		}
+	}
+
+	/**
+	 * EVENT
+	 *
+	 * @param e 补全响应
+	 */
+	public static void TabComplete(TabCompleteEvent e) {
+		val list = e.getSuggestions();
+		TabComplete(e.getPlayer(), list);
 	}
 
 }

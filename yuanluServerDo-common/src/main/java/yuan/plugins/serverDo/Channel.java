@@ -54,7 +54,10 @@ public enum Channel {
 	/** 返回 */
 	BACK(Back.class),
 	/** 播放音效 */
-	PLAY_SOUND(PlaySound.class);
+	PLAY_SOUND(PlaySound.class),
+	/** TAB解析 */
+	TAB_PARSE(TabParse.class),
+	;
 
 	/** 数据包计数 */
 	public static final  EnumMap<Channel, AtomicInteger> PACK_COUNT = new EnumMap<>(Channel.class);
@@ -948,6 +951,12 @@ public enum Channel {
 			void accept(T t, boolean u);
 		}
 
+		@SuppressWarnings("javadoc")
+		@FunctionalInterface
+		public interface LongObjConsumer<T> {
+			void accept(long t, T u);
+		}
+
 	}
 
 	/**
@@ -1082,7 +1091,94 @@ public enum Channel {
 	}
 
 	/**
-	 * 权限检查数据包
+	 * TAB解析数据包
+	 *
+	 * @author yuanlu
+	 */
+	@Value
+	@EqualsAndHashCode(callSuper = false)
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	public static final class TabParse extends Package {
+		/** 此数据包ID */
+		protected static @Getter int ID;
+
+		public static void parseS(byte[] buf, LongObjConsumer<String> consumer) {
+			try (val in = DataIn.pool(buf)) {
+				val id = in.readLong();
+				val cmd = in.readUTF();
+				consumer.accept(id, cmd);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		public static byte @NonNull [] sendS(long id, @NonNull String cmd) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeLong(id);
+				out.writeUTF(cmd);
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		public static void parseC(byte[] buf, LongObjConsumer<ArrayList<String>> consumer) {
+			try (val in = DataIn.pool(buf)) {
+				val id = in.readLong();
+				val size = in.readInt();
+				val tabs = new ArrayList<String>(size);
+				for (int i = 0; i < size; i++) {
+					tabs.add(in.readUTF());
+				}
+				consumer.accept(id, tabs);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		/**
+		 * @param tabs 补全提示
+		 *
+		 * @return 数据包
+		 */
+		public static byte @NonNull [] sendC(long id, @NonNull Collection<String> tabs) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeLong(id);
+				out.writeInt(tabs.size());
+				for (val tab : tabs) out.writeUTF(tab);
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		@Data
+		@AllArgsConstructor
+		public static class ServerPkg {
+			/** tab名称(全部) */
+			String    tab;
+			/** BC版本 */
+			String    version;
+			ProxyType proxyType;
+
+			public enum ProxyType {
+				BungeeCord, Velocity
+			}
+		}
+
+		@Data
+		@NoArgsConstructor
+		public static class ClientPkg {
+			/** 后端命名空间 */
+			String            namespace;
+			/** 后端命令 */
+			ArrayList<String> cmds;
+		}
+
+	}
+
+	/**
+	 * 服务器信息数据包
 	 *
 	 * @author yuanlu
 	 */
@@ -1092,11 +1188,6 @@ public enum Channel {
 	public static final class ServerInfo extends Package {
 		/** 此数据包ID */
 		protected static @Getter int ID;
-		/** tab名称(全部) */
-		String    tab;
-		/** BC版本 */
-		String    version;
-		ProxyType proxyType;
 
 		/**
 		 * 解析Server
@@ -1105,9 +1196,9 @@ public enum Channel {
 		 *
 		 * @return 权限节点
 		 */
-		public static ServerInfo parseS(byte[] buf) {
+		public static ServerPkg parseS(byte[] buf) {
 			try (val in = DataIn.pool(buf)) {
-				return new ServerInfo(in.readUTF(), in.readUTF(), ProxyType.valueOf(in.readUTF()));
+				return new ServerPkg(in.readUTF(), in.readUTF(), ServerPkg.ProxyType.valueOf(in.readUTF()));
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
@@ -1121,7 +1212,7 @@ public enum Channel {
 		 *
 		 * @return 数据包
 		 */
-		public static byte @NonNull [] sendS(@NonNull String tab, @NonNull String version, @NonNull ProxyType proxyType) {
+		public static byte @NonNull [] sendS(@NonNull String tab, @NonNull String version, @NonNull ServerPkg.ProxyType proxyType) {
 			try (val out = DataOut.pool(ID)) {
 				out.writeUTF(tab);
 				out.writeUTF(version);
@@ -1132,9 +1223,61 @@ public enum Channel {
 			}
 		}
 
-		public enum ProxyType {
-			BungeeCord, Velocity
+		public static ClientPkg parseC(byte[] buf) {
+			try (val in = DataIn.pool(buf)) {
+				val pkg = new ClientPkg();
+				pkg.setNamespace(in.readUTF());
+				val size = in.readInt();
+				pkg.setCmds(new ArrayList<>(size));
+				for (int i = 0; i < size; i++) {
+					pkg.getCmds().add(in.readUTF());
+				}
+				return pkg;
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
+
+		/**
+		 * @param cmds      后端命令
+		 * @param namespace 后端命名空间(用于namespace:cmd的别称)
+		 *
+		 * @return 数据包
+		 */
+		public static byte @NonNull [] sendC(@NonNull String namespace, @NonNull Collection<String> cmds) {
+			try (val out = DataOut.pool(ID)) {
+				out.writeUTF(namespace);
+				out.writeInt(cmds.size());
+				for (val cmd : cmds) out.writeUTF(cmd);
+				return out.getByte();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		@Data
+		@AllArgsConstructor
+		public static class ServerPkg {
+			/** tab名称(全部) */
+			String    tab;
+			/** BC版本 */
+			String    version;
+			ProxyType proxyType;
+
+			public enum ProxyType {
+				BungeeCord, Velocity
+			}
+		}
+
+		@Data
+		@NoArgsConstructor
+		public static class ClientPkg {
+			/** 后端命名空间 */
+			String            namespace;
+			/** 后端命令 */
+			ArrayList<String> cmds;
+		}
+
 	}
 
 	/**

@@ -109,7 +109,7 @@ public final class ConfigManager {
 		setUseAt(config.getBoolean("use-at", isUseAt()));
 		loadGroup(config);
 
-		serverInfo = Channel.ServerInfo.sendS(tabReplace, Main.getMain().getDescription().getVersion(), Channel.ServerInfo.ProxyType.BungeeCord);
+		serverInfo = Channel.ServerInfo.sendS(tabReplace, Main.getMain().getDescription().getVersion(), Channel.ServerInfo.ServerPkg.ProxyType.BungeeCord);
 
 		Arrays.stream(ConfFile.values()).forEach(ConfFile::load);
 

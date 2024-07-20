@@ -2,7 +2,7 @@
   "id": "yuanlu-server-do",
   "name": "yuanluServerDo",
   "version": "${project.version}",
-  "url": "https://git.yuanlu.bid/yuanlu/yuanluServerDo",
+  "url": "https://github.com/MineYuanlu/yuanluServerDo",
   "authors": [
     "yuanlu"
   ],

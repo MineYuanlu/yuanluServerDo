@@ -109,7 +109,7 @@ public final class ConfigManager {
 		setUseAt(config.getBoolean("use-at", isUseAt()));
 		loadGroup(config);
 		serverInfo = Channel.ServerInfo.sendS(tabReplace, Main.getPluginContainer().getDescription().getVersion().orElse("Unknown"),
-				Channel.ServerInfo.ProxyType.Velocity);
+				Channel.ServerInfo.ServerPkg.ProxyType.Velocity);
 
 		Arrays.stream(ConfFile.values()).forEach(ConfFile::load);
 

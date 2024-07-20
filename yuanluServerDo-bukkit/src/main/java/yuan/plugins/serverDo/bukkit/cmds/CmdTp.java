@@ -68,7 +68,7 @@ public final class CmdTp extends TabTp {
 		}
 		StringJoiner sj = new StringJoiner(" ", defaultCmd, "");
 		for (val arg : args) sj.add(arg);
-		if (ShareData.isDEBUG()) ShareData.getLogger().info("[cmd] 转发: " + sj.toString());
+		if (ShareData.isDEBUG()) ShareData.getLogger().info("[cmd] 转发: " + sj);
 		Bukkit.dispatchCommand(sender, sj.toString());
 		return false;
 	}

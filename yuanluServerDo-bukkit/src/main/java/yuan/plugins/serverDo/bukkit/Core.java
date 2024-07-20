@@ -29,6 +29,7 @@ import yuan.plugins.serverDo.Channel.PlaySound.Sounds;
 import yuan.plugins.serverDo.ShareData.TabType;
 import yuan.plugins.serverDo.bukkit.cmds.CmdTpaccept;
 import yuan.plugins.serverDo.bukkit.cmds.CmdVanish;
+import yuan.plugins.serverDo.bukkit.cmds.CommandManager;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -444,7 +445,7 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 	/** @deprecated BUKKIT */
 	@Deprecated
 	@Override
-	public void onPluginMessageReceived(@NonNull String c, @NonNull Player player, byte[] message) {
+	public void onPluginMessageReceived(@NonNull String c, @NonNull Player player, byte @NonNull [] message) {
 		if (!ShareData.BC_CHANNEL.equals(c)) return;
 		Channel type = Channel.byId(ShareData.readInt(message, 0, -1));
 		if (type == null) return;
@@ -503,6 +504,17 @@ public final class Core implements PluginMessageListener, MESSAGE, Listener {
 			TabHandler.TAB_REPLACE.put(player.getUniqueId(), info.getTab().intern());
 			val meVer = Main.getMain().getDescription().getVersion();
 			if (!meVer.equals(info.getVersion())) VER_NO_RECOMMEND.send(player, meVer, info.getVersion());
+			if (info.getProxyType() == Channel.ServerInfo.ServerPkg.ProxyType.Velocity) {
+				// velocity 高版本需要注册命令实现tab替换
+				Main.send(player, Channel.ServerInfo.sendC(Main.getMain().getName(), CommandManager.getCommandNames()));
+			}
+			break;
+		}
+		case TAB_PARSE: {
+			Channel.TabParse.parseS(message, (id, cmd) -> {
+				val tabs = CommandManager.tabParse(player, cmd);
+				Main.send(player, Channel.TabParse.sendC(id, tabs));
+			});
 			break;
 		}
 		case VANISH: {
