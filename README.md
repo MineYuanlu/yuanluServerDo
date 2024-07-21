@@ -1,6 +1,6 @@
 # yuanluerServerDo
 
-__插件暂时或永久停更，作者大三学业繁忙，实验室事情较多，准备考研相关。无法再分出精力维护，有能力者可以提交维护代码__
+__插件暂时或永久停更，作者毕业上班了。无法再分出精力维护，有能力者可以提交维护代码__
 
 让跨服玩家无缝执行命令  
 Allow players on the group server to seamlessly execute commands across servers
