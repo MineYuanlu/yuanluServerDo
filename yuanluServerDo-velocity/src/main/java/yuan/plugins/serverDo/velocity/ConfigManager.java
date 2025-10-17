@@ -325,13 +325,25 @@ public final class ConfigManager {
 	@AllArgsConstructor
 	public enum PlayerConfFile {
 		/** 传送家 */
-		HOME("home.yml") {
-			@Override
-			protected void save(UUID u) {
-				HashMap<String, ShareLocation> map = HOMES.check(u);
-				if (map != null) HOMES.clearHandle(u, map);
-			}
-		};
+	    HOME("home") {  // 这里去掉.yml，因为我们在文件名中会添加
+        	@Override
+        	protected void save(UUID u) {
+	            HashMap<String, ShareLocation> map = HOMES.check(u);
+            	if (map != null) HOMES.clearHandle(u, map);
+        	}
+        
+	        @Override
+        	public File getFile(UUID u, boolean mk) {
+	            val folder = Main.getMain().getDataFolder();
+            	val homeDir = folder.resolve("home"); // 创建home目录
+            	if (mk) {
+	                homeDir.toFile().mkdirs(); // 创建home目录
+            	}
+            	// 返回 home/<uuid>.yml 文件
+            	return homeDir.resolve(u.toString() + ".yml").toFile();
+        	}
+    	};
+
 
 		/** Yaml处理器 */
 		protected static final ConfigurationProvider         YAML       = ConfigurationProvider.getProvider(YamlConfiguration.class);
@@ -444,10 +456,12 @@ public final class ConfigManager {
 		 *
 		 * @throws IOException IOE
 		 */
-		private HashMap<String, ShareLocation> load0(@NonNull UUID uid) throws IOException {
-			HashMap<String, ShareLocation> m = new HashMap<>();
-			val f = HOME.getFile(uid, false);
-			val warps = PlayerConfFile.YAML.load(f);
+	private HashMap<String, ShareLocation> load0(@NonNull UUID uid) throws IOException {
+        	HashMap<String, ShareLocation> m = new HashMap<>();
+        	val f = HOME.getFile(uid, false);
+        	if (!f.exists()) return m; // 文件不存在返回空map        
+        	val warps = PlayerConfFile.YAML.load(f);
+        	// ... 其余加载逻辑不变
 			for (val name : warps.getKeys()) {
 				val warp = warps.getSection(name);
 
@@ -476,20 +490,20 @@ public final class ConfigManager {
 		 *
 		 * @throws IOException IOE
 		 */
-		private void save0(@NonNull UUID uid, HashMap<String, ShareLocation> map) throws IOException {
-			val warps = new Configuration();
-			for (val e : map.entrySet()) {
-				val name = e.getKey();
-				val warp = e.getValue();
-				warps.set(name + ".world", warp.getWorld());
-				warps.set(name + ".server", warp.getServer());
-				warps.set(name + ".x", warp.getX());
-				warps.set(name + ".y", warp.getY());
-				warps.set(name + ".z", warp.getZ());
-				warps.set(name + ".yaw", warp.getYaw());
-				warps.set(name + ".pitch", warp.getPitch());
-			}
-			PlayerConfFile.YAML.save(warps, PlayerConfFile.HOME.getFile(uid, true));
-		}
+	private void save0(@NonNull UUID uid, HashMap<String, ShareLocation> map) throws IOException {
+        	val warps = new Configuration();
+        	for (val e : map.entrySet()) {
+	            val name = e.getKey();
+            	val warp = e.getValue();
+            	warps.set(name + ".world", warp.getWorld());
+            	warps.set(name + ".server", warp.getServer());
+            	warps.set(name + ".x", warp.getX());
+            	warps.set(name + ".y", warp.getY());
+            	warps.set(name + ".z", warp.getZ());
+            	warps.set(name + ".yaw", warp.getYaw());
+	            warps.set(name + ".pitch", warp.getPitch());
+        	}
+	        PlayerConfFile.YAML.save(warps, PlayerConfFile.HOME.getFile(uid, true));
+    	}
 	}
 }
