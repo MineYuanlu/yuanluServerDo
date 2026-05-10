@@ -13,7 +13,7 @@ concurrency:
 jobs:
   # ============================================================
   # Phase 1: 编译矩阵测试
-  # 验证项目在不同 Java 版本下均能编译通过
+  # 验证项目在不同 Java 版本下均能编译通过，并产物归档
   # ============================================================
   build:
     name: Build (JDK ${{ matrix.java }})
@@ -22,12 +22,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: ['8', '11', '17', '21']
+        java: ['17', '21']
 
     steps:
+      # 检出仓库代码
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 配置 JDK 环境（Temurin 发行版，启用 Maven 缓存）
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
@@ -35,9 +37,11 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      # 使用 Maven Wrapper 并行编译全项目
       - name: Build with Maven
         run: ./mvnw -B -T 1C clean package --file pom.xml
 
+      # 上传所有模块编译产物，供后续冒烟测试使用
       - name: Upload JAR artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -51,8 +55,8 @@ jobs:
           if-no-files-found: warn
 
   # ============================================================
-  # Phase 2: 冒烟测试 - Bukkit 端
-  # 在真实 Minecraft 服务器上验证插件能否正常加载
+  # Phase 2: 冒烟测试 — Bukkit 端（真实后端服务器）
+  # 在 Paper / Spigot / Purpur 上验证插件加载
   # ============================================================
   smoke-test-bukkit:
     name: Smoke Test Bukkit (${{ matrix.runtime }} ${{ matrix.version }} / JDK ${{ matrix.java }})
@@ -63,44 +67,58 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # --- 经典版本 (1.15.x 时代，项目目标版本) ---
+          # --- Paper ---
           - runtime: paper
             version: '1.15.2'
             java: '11'
             module: yuanluServerDo-bukkit
-          # - runtime: spigot    # BuildTools 编译较慢，按需启用
-          #   version: '1.15.2'
-          #   java: '11'
-          #   module: yuanluServerDo-bukkit
-          # - runtime: craftbukkit
-          #   version: '1.15.2'
-          #   java: '11'
-          #   module: yuanluServerDo-bukkit
-
-          # --- 中间兼容版本 (1.16.x - 1.20.x) ---
           - runtime: paper
             version: '1.16.5'
+            java: '17'
+            module: yuanluServerDo-bukkit
+          - runtime: paper
+            version: '1.17.1'
             java: '17'
             module: yuanluServerDo-bukkit
           - runtime: paper
             version: '1.20.4'
             java: '17'
             module: yuanluServerDo-bukkit
-
-          # --- 最新版本 (1.21.x) ---
           - runtime: paper
             version: '1.21.4'
             java: '21'
             module: yuanluServerDo-bukkit
-          # - runtime: spigot
-          #   version: '1.21.4'
-          #   java: '21'
-          #   module: yuanluServerDo-bukkit
+
+          # --- Spigot（BuildTools 编译慢，需延长超时） ---
+          - runtime: spigot
+            version: '1.15.2'
+            java: '11'
+            module: yuanluServerDo-bukkit
+          - runtime: spigot
+            version: '1.16.5'
+            java: '17'
+            module: yuanluServerDo-bukkit
+          - runtime: spigot
+            version: '1.21.4'
+            java: '21'
+            module: yuanluServerDo-bukkit
+
+          # --- Purpur ---
+          - runtime: purpur
+            version: '1.20.4'
+            java: '17'
+            module: yuanluServerDo-bukkit
+          - runtime: purpur
+            version: '1.21.4'
+            java: '21'
+            module: yuanluServerDo-bukkit
 
     steps:
+      # 检出仓库代码
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 配置 JDK 环境
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
@@ -108,11 +126,14 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      # 针对当前矩阵指定的模块编译插件 JAR（含依赖）
       - name: Build plugin JAR
         run: ./mvnw -B -T 1C clean package -pl ${{ matrix.module }} -am -DskipTests
 
+      # Spigot 通过 BuildTools 编译耗时较长，单独延长超时
       - name: Run server smoke test
         uses: gmitch215/TestMC@v2
+        timeout-minutes: ${{ matrix.runtime == 'spigot' && 25 || 20 }}
         with:
           path: '${{ matrix.module }}/target/*.jar'
           runtime: ${{ matrix.runtime }}
@@ -123,7 +144,7 @@ jobs:
             plugins
 
   # ============================================================
-  # Phase 2: 冒烟测试 - 代理端 (BungeeCord)
+  # Phase 2: 冒烟测试 — 代理端 (BungeeCord)
   # ============================================================
   smoke-test-bungeecord:
     name: Smoke Test Proxy (BungeeCord ${{ matrix.version }} / JDK ${{ matrix.java }})
@@ -134,21 +155,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 目标版本 (项目依赖 bungeecord-api 1.16-R0.5)
           - runtime: bungeecord
             version: '1.16.5'
             java: '17'
             module: yuanluServerDo-bungeecord
-          # 最新版本兼容性
+          - runtime: bungeecord
+            version: '1.20.5'
+            java: '21'
+            module: yuanluServerDo-bungeecord
           - runtime: bungeecord
             version: '1.21.4'
             java: '21'
             module: yuanluServerDo-bungeecord
 
     steps:
+      # 检出仓库代码
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 配置 JDK 环境
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
@@ -156,9 +181,11 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      # 编译代理端插件 JAR
       - name: Build plugin JAR
         run: ./mvnw -B -T 1C clean package -pl ${{ matrix.module }} -am -DskipTests
 
+      # 在 BungeeCord 上运行冒烟测试
       - name: Run proxy smoke test
         uses: gmitch215/TestMC@v2
         with:
@@ -170,7 +197,60 @@ jobs:
             bungee
 
   # ============================================================
-  # Phase 2: 冒烟测试 - 代理端 (Velocity)
+  # Phase 2: 冒烟测试 — 代理端 (Waterfall)
+  # ============================================================
+  smoke-test-waterfall:
+    name: Smoke Test Proxy (Waterfall ${{ matrix.version }} / JDK ${{ matrix.java }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: waterfall
+            version: '1.16.5'
+            java: '17'
+            module: yuanluServerDo-bungeecord
+          - runtime: waterfall
+            version: '1.20.5'
+            java: '21'
+            module: yuanluServerDo-bungeecord
+          - runtime: waterfall
+            version: '1.21.4'
+            java: '21'
+            module: yuanluServerDo-bungeecord
+
+    steps:
+      # 检出仓库代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 配置 JDK 环境
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: maven
+
+      # 编译代理端插件 JAR
+      - name: Build plugin JAR
+        run: ./mvnw -B -T 1C clean package -pl ${{ matrix.module }} -am -DskipTests
+
+      # 在 Waterfall 上运行冒烟测试
+      - name: Run proxy smoke test
+        uses: gmitch215/TestMC@v2
+        with:
+          path: '${{ matrix.module }}/target/*.jar'
+          runtime: ${{ matrix.runtime }}
+          version: ${{ matrix.version }}
+          time: 120
+          commands: |
+            bungee
+
+  # ============================================================
+  # Phase 2: 冒烟测试 — 代理端 (Velocity)
   # ============================================================
   smoke-test-velocity:
     name: Smoke Test Proxy (Velocity ${{ matrix.version }} / JDK ${{ matrix.java }})
@@ -191,11 +271,17 @@ jobs:
             version: '3.4.0-SNAPSHOT'
             java: '17'
             module: yuanluServerDo-velocity
+          # - runtime: velocity
+          #   version: 3.5.0-SNAPSHOT
+          #   java: '21'
+          #   module: yuanluServerDo-velocity
 
     steps:
+      # 检出仓库代码
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 配置 JDK 环境
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
@@ -203,9 +289,11 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      # 编译代理端插件 JAR
       - name: Build plugin JAR
         run: ./mvnw -B -T 1C clean package -pl ${{ matrix.module }} -am -DskipTests
 
+      # 在 Velocity 上运行冒烟测试
       - name: Run proxy smoke test
         uses: gmitch215/TestMC@v2
         with:
