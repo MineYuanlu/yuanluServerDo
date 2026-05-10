@@ -1,0 +1,245 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================
+  # Phase 1: 编译矩阵测试
+  # 验证项目在不同 Java 版本下均能编译通过
+  # ============================================================
+  build:
+    name: Build (JDK ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['8', '11', '17', '21']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: ./mvnw -B -T 1C clean package --file pom.xml
+
+      - name: Upload JAR artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jars-jdk${{ matrix.java }}
+          path: |
+            yuanluServerDo-bukkit/target/*.jar
+            yuanluServerDo-bungeecord/target/*.jar
+            yuanluServerDo-velocity/target/*.jar
+            yuanluServerDo-bukkit-bungeecord/target/*.jar
+            yuanluServerDo-bukkit-velocity/target/*.jar
+          if-no-files-found: warn
+
+  # ============================================================
+  # Phase 2: 冒烟测试 - Bukkit 端
+  # 在真实 Minecraft 服务器上验证插件能否正常加载
+  # ============================================================
+  smoke-test-bukkit:
+    name: Smoke Test Bukkit (${{ matrix.runtime }} ${{ matrix.version }} / JDK ${{ matrix.java }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- 经典版本 (1.15.x 时代，项目目标版本) ---
+          - runtime: paper
+            version: '1.15.2'
+            java: '11'
+            module: yuanluServerDo-bukkit
+          # - runtime: spigot    # BuildTools 编译较慢，按需启用
+          #   version: '1.15.2'
+          #   java: '11'
+          #   module: yuanluServerDo-bukkit
+          # - runtime: craftbukkit
+          #   version: '1.15.2'
+          #   java: '11'
+          #   module: yuanluServerDo-bukkit
+
+          # --- 中间兼容版本 (1.16.x - 1.20.x) ---
+          - runtime: paper
+            version: '1.16.5'
+            java: '17'
+            module: yuanluServerDo-bukkit
+          - runtime: paper
+            version: '1.20.4'
+            java: '17'
+            module: yuanluServerDo-bukkit
+
+          # --- 最新版本 (1.21.x) ---
+          - runtime: paper
+            version: '1.21.4'
+            java: '21'
+            module: yuanluServerDo-bukkit
+          # - runtime: spigot
+          #   version: '1.21.4'
+          #   java: '21'
+          #   module: yuanluServerDo-bukkit
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build plugin JAR
+        run: ./mvnw -B -T 1C clean package -pl ${{ matrix.module }} -am -DskipTests
+
+      - name: Run server smoke test
+        uses: gmitch215/TestMC@v2
+        with:
+          path: '${{ matrix.module }}/target/*.jar'
+          runtime: ${{ matrix.runtime }}
+          version: ${{ matrix.version }}
+          time: 120
+          commands: |
+            version
+            plugins
+
+  # ============================================================
+  # Phase 2: 冒烟测试 - 代理端 (BungeeCord)
+  # ============================================================
+  smoke-test-bungeecord:
+    name: Smoke Test Proxy (BungeeCord ${{ matrix.version }} / JDK ${{ matrix.java }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 目标版本 (项目依赖 bungeecord-api 1.16-R0.5)
+          - runtime: bungeecord
+            version: '1.16.5'
+            java: '17'
+            module: yuanluServerDo-bungeecord
+          # 最新版本兼容性
+          - runtime: bungeecord
+            version: '1.21.4'
+            java: '21'
+            module: yuanluServerDo-bungeecord
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build plugin JAR
+        run: ./mvnw -B -T 1C clean package -pl ${{ matrix.module }} -am -DskipTests
+
+      - name: Run proxy smoke test
+        uses: gmitch215/TestMC@v2
+        with:
+          path: '${{ matrix.module }}/target/*.jar'
+          runtime: ${{ matrix.runtime }}
+          version: ${{ matrix.version }}
+          time: 120
+          commands: |
+            bungee
+
+  # ============================================================
+  # Phase 2: 冒烟测试 - 代理端 (Velocity)
+  # ============================================================
+  smoke-test-velocity:
+    name: Smoke Test Proxy (Velocity ${{ matrix.version }} / JDK ${{ matrix.java }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 目标版本 (项目依赖 velocity-api 3.3.0-SNAPSHOT)
+          - runtime: velocity
+            version: '3.3.0-SNAPSHOT'
+            java: '17'
+            module: yuanluServerDo-velocity
+          # 当前最新稳定版本
+          - runtime: velocity
+            version: '3.4.0-SNAPSHOT'
+            java: '17'
+            module: yuanluServerDo-velocity
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build plugin JAR
+        run: ./mvnw -B -T 1C clean package -pl ${{ matrix.module }} -am -DskipTests
+
+      - name: Run proxy smoke test
+        uses: gmitch215/TestMC@v2
+        with:
+          path: '${{ matrix.module }}/target/*.jar'
+          runtime: ${{ matrix.runtime }}
+          version: ${{ matrix.version }}
+          time: 120
+          commands: |
+            velocity
+
+  # ============================================================
+  # Phase 3: 功能测试 (TODO)
+  # 使用 MockBukkit 进行单元测试，验证业务逻辑
+  # ============================================================
+  # TODO: 添加功能测试
+  #
+  # 计划：
+  # 1. 在 yuanluServerDo-bukkit 模块引入 MockBukkit 依赖
+  #    <dependency>
+  #      <groupId>org.mockbukkit.mockbukkit</groupId>
+  #      <artifactId>mockbukkit-v1.21</artifactId>
+  #      <version>4.x</version>
+  #      <scope>test</scope>
+  #    </dependency>
+  #
+  # 2. 编写测试用例：
+  #    - 插件加载/卸载测试
+  #    - 命令解析测试
+  #    - 跨服消息协议编解码测试 (Channel.java)
+  #    - 配置文件加载测试
+  #
+  # 3. 在 CI 中运行：
+  #    run: ./mvnw -B test -pl yuanluServerDo-bukkit -am
+  #
+  # 注意：MockBukkit 仅支持 Bukkit/Paper 平台，
+  # BungeeCord/Velocity 模块需另寻测试方案（如专用 Mock 框架或集成测试）
+  # ============================================================
