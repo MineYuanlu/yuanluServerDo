@@ -81,10 +81,12 @@
 
 | Version | JDK | 节点意义 |
 |---------|-----|----------|
-| 1.16.5 | 17 | BungeeCord 1.16 时代的 Waterfall 分支 |
-| 1.20.5 | 21 | 首个强制 Java 21 版本 |
-| 1.21.4 | 21 | 当前最新版本兼容性 |
+| 1.16 | 17 | BungeeCord 1.16 时代的 Waterfall 分支 |
+| 1.20 | 21 | 首个强制 Java 21 版本 |
+| 1.21 | 21 | 当前最新版本兼容性 |
 
+> Waterfall 的 PaperMC API **只支持主版本号**（如 `1.16`、`1.20`、`1.21`），不支持子版本号（如 `1.16.5`）。传入子版本号会导致 API 返回 404，进而触发 TestMC 的 `TypeError: Cannot read properties of undefined (reading 'reduce')`。
+>
 > Waterfall 作为 BungeeCord 的高性能分支，API 基本一致，但内部实现有差异，需独立验证。
 
 ---
@@ -93,9 +95,14 @@
 
 | Version | JDK | 节点意义 |
 |---------|-----|----------|
-| 3.3.0-SNAPSHOT | 17 | 目标版本（对应 `velocity-api 3.3.0-SNAPSHOT`） |
-| 3.4.0-SNAPSHOT | 17 | 当前最新可用版本 |
+| latest (3.4.0-SNAPSHOT) | 17 | 当前最新可用版本（TestMC 默认） |
 
+> ⚠️ **TestMC v2 已知 bug**：Velocity 版本校验时，用户输入会被 `.toLowerCase()` 转小写，但 `velocity.js` 版本列表中的 `SNAPSHOT` 为大写，导致严格字符串匹配失败（`Version 3.3.0-snapshot not found`）。
+> 
+> **Workaround**：CI 中不指定 `version` 参数，让 TestMC 自动使用 `velocity.js` 中定义的 `latest`（当前为 `3.4.0-SNAPSHOT`）。
+>
+> 若未来 TestMC 修复此问题，可重新显式指定 `version: 3.3.0-SNAPSHOT` 和 `3.4.0-SNAPSHOT` 分别测试。
+>
 > ⚠️ Velocity 3.5.0-SNAPSHOT 需要 **Java 21**，但 [TestMC](https://github.com/gmitch215/TestMC) 尚未支持该版本。待 TestMC 更新后应补充此矩阵项。
 
 ---
@@ -107,11 +114,11 @@
 | 版本 | 定位 | 强制 JVM | 冒烟测试覆盖 |
 |------|------|----------|--------------|
 | 1.15.2 | 项目目标版本 | Java 8+ | Paper, Spigot |
-| 1.16.5 | BungeeCord 1.16 对应时代 | Java 8+ | Paper, Spigot, BungeeCord, Waterfall |
+| 1.16.5 / 1.16 | BungeeCord 1.16 对应时代 | Java 8+ | Paper, Spigot, BungeeCord, Waterfall |
 | 1.17.1 | **首个强制 Java 16** | Java 16+ | Paper |
 | 1.20.4 | 现代兼容性中间节点 | Java 17+ | Paper, Spigot, Purpur |
-| 1.20.5 | **首个强制 Java 21** | Java 21+ | BungeeCord, Waterfall |
-| 1.21.4 | **当前最新稳定版** | Java 21+ | 全部 |
+| 1.20.5 / 1.20 | **首个强制 Java 21** | Java 21+ | BungeeCord, Waterfall |
+| 1.21.4 / 1.21 | **当前最新稳定版** | Java 21+ | 全部（Waterfall 用 1.21，Velocity 用 latest） |
 
 ---
 
